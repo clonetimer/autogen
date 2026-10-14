@@ -438,6 +438,8 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
             raise ValueError('ENVIRONMENT_FAMILIES_REQUIRED')
     if feedback_used_for_design:
         raise ValueError('FINAL_FEEDBACK_TAINTED_DESIGN')
+    if fault_strength_strata is not None and head_evidence_policy is None:
+        raise ValueError('FAULT_STRENGTH_STRATA_REQUIRES_EVIDENCE_POLICY')
     if head_evidence_policy is not None:
         if not isinstance(head_evidence_policy, HeadEvidencePolicy):
             raise ValueError('INVALID_HEAD_EVIDENCE_POLICY')
@@ -518,6 +520,21 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
         raise AssertionError('INCOMPLETE_GRAPH_OUTER_OOF')
     metrics = _scores(y, g, ontology, *(outer_oof[h] for h in _HEADS), gates)
     acceptance = policy.evaluate(metrics)
+    strength_acceptance = None
+    if head_evidence_policy is not None and fault_strength_strata is not None:
+        final_oof = np.asarray([
+            _gate(ontology, outer_oof['detection'][i],
+                  outer_oof['localization'][i], outer_oof['mechanism'][i], gates)[0]
+            for i in range(n)], dtype=int)
+        strength_acceptance = head_evidence_policy.evaluate_end_to_end_strata(
+            truth=y, decisions=final_oof,
+            environments=environment_families,
+            fault_strata=fault_strength_strata)
+        if not strength_acceptance['eligible']:
+            acceptance['eligible'] = False
+            acceptance['failed_gates'].append({
+                'metric': 'end_to_end_fault_strength_strata',
+                'reason': 'NOT_ALL_PREDECLARED_STRATA_SATISFY_JOINT_FAULT_RECALL'})
     audit = {'schema': 'phm.0.8.task-graph.v1', 'stage': 'DEVELOPMENT_ONLY',
              'method': 'nested_outer_group_oof_with_environment_exclusive_inner_selection',
              'selection_mode': selection_mode,
@@ -536,7 +553,8 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
              'fault_strength_strata_deployment_feature': False,
              'gate': vars(gates).copy(), 'acceptance_policy': vars(policy).copy(),
              'outer_fold_history': folds_audit, 'nested_outer_oof_metrics': metrics,
-             'acceptance': acceptance, 'not_deployment_qualified': True,
+             'acceptance': acceptance, 'strength_acceptance': strength_acceptance,
+             'not_deployment_qualified': True,
              'predictor_uses_labels_world_ids_or_truth': False,
              'sealed_or_calibration_worlds_used': False,
              'limitations': ['five_class_two_component_two_mechanism_ontology',
