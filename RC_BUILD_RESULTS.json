@@ -1,0 +1,9 @@
+{
+  "tier": "RC",
+  "version": "0.7.0rc1",
+  "artifact_hashes": {
+    "phm_design-0.7.0rc1-py3-none-any.whl": "f9435e428ba0c6273cced11983cf3a8aa834cc2e94a29c41db1dfb706cac4a16",
+    "phm_design-0.7.0rc1.tar.gz": "6c13beb74f52e25f6dffb4aad3f339dd1d5ab5dea43d1dfd0e83db1d924c3b60"
+  },
+  "certificate_sha256": "dc7b45b57edb18cc68a95c198adc2eda83379da3f2cbe1d2175bad3a78f254ea"
+}

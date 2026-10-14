@@ -1,0 +1,80 @@
+{
+  "schema": "phm.reference-design.v1",
+  "base_design": {
+    "schema": "phm.family-design-policy.v1",
+    "grammar": {
+      "widths": [
+        16,
+        32,
+        64
+      ],
+      "max_depth": 3,
+      "max_branches": 4,
+      "kernels": [
+        3,
+        5
+      ],
+      "dilations": [
+        1,
+        2,
+        4
+      ],
+      "allow_sharing": false,
+      "layer_ops": [
+        "linear",
+        "conv",
+        "res_tcn",
+        "self_attention"
+      ],
+      "attention_heads": [
+        2,
+        4
+      ]
+    },
+    "evolution": {
+      "seed": 170203,
+      "initial_graphs": 2,
+      "generations": 2,
+      "offspring_per_generation": 1,
+      "elite_parents": 1,
+      "max_proposal_attempts": 300,
+      "max_total_trials": 12
+    },
+    "controls": [
+      {
+        "family": "mlp",
+        "parameters": {
+          "widths": [
+            32
+          ],
+          "representation": "statistics"
+        }
+      }
+    ],
+    "seeds": [
+      11,
+      23,
+      37
+    ],
+    "training": {
+      "epochs": 60,
+      "batch_size": 24,
+      "learning_rate": 0.003,
+      "weight_decay": 0.001,
+      "patience": 60
+    },
+    "budget": {
+      "max_parameters_per_model": 150000,
+      "max_ensemble_parameters": 450000,
+      "max_trials": 12,
+      "max_trial_seconds": 120
+    },
+    "selection": "mean_seed_validation_macro_f1",
+    "abstention": {
+      "min_uncalibrated_score": 0.6
+    }
+  },
+  "bound_logits": 0.5,
+  "max_total_trials": 30,
+  "selection_guard": "development_noninferiority_strict_improvement"
+}

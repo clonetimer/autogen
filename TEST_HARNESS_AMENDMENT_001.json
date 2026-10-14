@@ -1,0 +1,13 @@
+{
+  "status": "TEST_FIXTURE_ONLY",
+  "reason": "One of seven deployment schema fixtures (Thermal_localization) absent from R57 opened fixture directory",
+  "first_attempt_result": "311_wheel 24/25; FileNotFoundError on SOP033",
+  "operation_plan_unchanged_sha256": "f9c257b508aac42432a371b0bd54a36edc34dfb2c901ea1648424d0fd38a35e5",
+  "synthesized_input_contract": "Thermal_localization",
+  "synthetic_fixture_sha256": "81d820a1a11b88a36d946aa00c90c7b716a1a8fc20daf2dc277434d7821f1556",
+  "not_native_simulation": true,
+  "not_qualification_data": true,
+  "no_changes_to_frozen_model_or_release_artifacts": true,
+  "first_failed_log_preserved": true,
+  "rerun_policy": "repeat unchanged frozen 100-operation plan in fresh stable environment; retain first failed run evidence"
+}

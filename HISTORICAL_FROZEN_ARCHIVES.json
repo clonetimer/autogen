@@ -1,0 +1,14 @@
+{
+  "PHM_AUTODESIGN_R56_ROUND1_HANDOFF_20261011.zip": {
+    "sha256": "ed923274260d6e17e84d17aaa9dea6f3adbd6f820e6b3d9614b67a1044b57f23",
+    "size_bytes": 102519896
+  },
+  "PHM_R57_FINAL_ROUND2_INCREMENTAL_20261011.zip": {
+    "sha256": "cdaeb4e7c38a5fd70f4e03b8aac8f68d086e5504deb82050e28332fca5d9c9a0",
+    "size_bytes": 42653253
+  },
+  "PHM_R59_LIMITED_RELEASE_HANDOFF_20261011.zip": {
+    "sha256": "66c687c9eb9ecd55b5fc915cf69d837b2db0bd54c2e5448b577d2df5cc8486ea",
+    "size_bytes": 18897248
+  }
+}

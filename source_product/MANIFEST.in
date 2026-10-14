@@ -1,0 +1,5 @@
+include README.md
+include paired_observation_audit.py
+recursive-include tests *.py *.json *.csv
+recursive-include configs *.json
+recursive-include scripts *.py *.sh

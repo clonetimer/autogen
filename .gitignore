@@ -1,0 +1,25 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv*/
+venv/
+.pytest_cache/
+
+# ---- Release build / run logs ----
+*.log
+
+# ---- Generated qualification evidence (large: ~141 MB / 9700+ files) ----
+# Regenerate via the release/qualification scripts; not source.
+qualification/
+
+# ---- Non-deliverable history ----
+failed_attempts/
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+.DS_Store

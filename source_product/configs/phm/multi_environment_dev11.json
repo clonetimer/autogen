@@ -1,0 +1,477 @@
+{
+  "schema": "phm.dev11.study.v1",
+  "development": {
+    "schema": "phm.native-nonadcs.challenge.v2",
+    "seed": 40061003,
+    "groups_per_role": {
+      "train": 18,
+      "validation": 8,
+      "calibration": 0,
+      "test": 0
+    },
+    "domains": [
+      "eps",
+      "thermal",
+      "data"
+    ],
+    "challenge": {
+      "fault_fraction_by_role": {
+        "train": [
+          0.08,
+          0.28
+        ],
+        "validation": [
+          0.06,
+          0.24
+        ],
+        "calibration": [
+          0.04,
+          0.22
+        ],
+        "test": [
+          0.04,
+          0.2
+        ]
+      },
+      "onset_fraction_by_role": {
+        "train": [
+          0.35,
+          0.58
+        ],
+        "validation": [
+          0.4,
+          0.64
+        ],
+        "calibration": [
+          0.45,
+          0.75
+        ],
+        "test": [
+          0.5,
+          0.75
+        ]
+      },
+      "nuisance_scale_by_role": {
+        "train": [
+          0.2,
+          1.0
+        ],
+        "validation": [
+          0.4,
+          1.2
+        ],
+        "calibration": [
+          0.7,
+          1.5
+        ],
+        "test": [
+          0.8,
+          1.5
+        ]
+      },
+      "boundary_cycles_by_role": {
+        "train": [
+          1.8,
+          3.5
+        ],
+        "validation": [
+          1.6,
+          3.8
+        ],
+        "calibration": [
+          1.4,
+          4.2
+        ],
+        "test": [
+          1.4,
+          4.2
+        ]
+      }
+    }
+  },
+  "selection_a": {
+    "schema": "phm.native-nonadcs.challenge.v2",
+    "seed": 41061003,
+    "groups_per_role": {
+      "train": 0,
+      "validation": 0,
+      "calibration": 10,
+      "test": 0
+    },
+    "domains": [
+      "eps",
+      "thermal",
+      "data"
+    ],
+    "challenge": {
+      "fault_fraction_by_role": {
+        "train": [
+          0.08,
+          0.28
+        ],
+        "validation": [
+          0.06,
+          0.24
+        ],
+        "calibration": [
+          0.04,
+          0.22
+        ],
+        "test": [
+          0.04,
+          0.2
+        ]
+      },
+      "onset_fraction_by_role": {
+        "train": [
+          0.35,
+          0.58
+        ],
+        "validation": [
+          0.4,
+          0.64
+        ],
+        "calibration": [
+          0.45,
+          0.75
+        ],
+        "test": [
+          0.5,
+          0.75
+        ]
+      },
+      "nuisance_scale_by_role": {
+        "train": [
+          0.2,
+          1.0
+        ],
+        "validation": [
+          0.4,
+          1.2
+        ],
+        "calibration": [
+          0.7,
+          1.5
+        ],
+        "test": [
+          0.8,
+          1.5
+        ]
+      },
+      "boundary_cycles_by_role": {
+        "train": [
+          1.8,
+          3.5
+        ],
+        "validation": [
+          1.6,
+          3.8
+        ],
+        "calibration": [
+          1.4,
+          4.2
+        ],
+        "test": [
+          1.4,
+          4.2
+        ]
+      }
+    }
+  },
+  "selection_b": {
+    "schema": "phm.native-nonadcs.challenge.v2",
+    "seed": 42061003,
+    "groups_per_role": {
+      "train": 0,
+      "validation": 0,
+      "calibration": 10,
+      "test": 0
+    },
+    "domains": [
+      "eps",
+      "thermal",
+      "data"
+    ],
+    "challenge": {
+      "fault_fraction_by_role": {
+        "train": [
+          0.08,
+          0.28
+        ],
+        "validation": [
+          0.06,
+          0.24
+        ],
+        "calibration": [
+          0.04,
+          0.22
+        ],
+        "test": [
+          0.04,
+          0.2
+        ]
+      },
+      "onset_fraction_by_role": {
+        "train": [
+          0.35,
+          0.58
+        ],
+        "validation": [
+          0.4,
+          0.64
+        ],
+        "calibration": [
+          0.45,
+          0.75
+        ],
+        "test": [
+          0.5,
+          0.75
+        ]
+      },
+      "nuisance_scale_by_role": {
+        "train": [
+          0.2,
+          1.0
+        ],
+        "validation": [
+          0.4,
+          1.2
+        ],
+        "calibration": [
+          0.7,
+          1.5
+        ],
+        "test": [
+          0.8,
+          1.5
+        ]
+      },
+      "boundary_cycles_by_role": {
+        "train": [
+          1.8,
+          3.5
+        ],
+        "validation": [
+          1.6,
+          3.8
+        ],
+        "calibration": [
+          1.4,
+          4.2
+        ],
+        "test": [
+          1.4,
+          4.2
+        ]
+      }
+    }
+  },
+  "risk": {
+    "schema": "phm.native-nonadcs.challenge.v2",
+    "seed": 43061003,
+    "groups_per_role": {
+      "train": 0,
+      "validation": 0,
+      "calibration": 40,
+      "test": 0
+    },
+    "domains": [
+      "eps",
+      "thermal",
+      "data"
+    ],
+    "challenge": {
+      "fault_fraction_by_role": {
+        "train": [
+          0.08,
+          0.28
+        ],
+        "validation": [
+          0.06,
+          0.24
+        ],
+        "calibration": [
+          0.04,
+          0.22
+        ],
+        "test": [
+          0.04,
+          0.2
+        ]
+      },
+      "onset_fraction_by_role": {
+        "train": [
+          0.35,
+          0.58
+        ],
+        "validation": [
+          0.4,
+          0.64
+        ],
+        "calibration": [
+          0.45,
+          0.75
+        ],
+        "test": [
+          0.5,
+          0.75
+        ]
+      },
+      "nuisance_scale_by_role": {
+        "train": [
+          0.2,
+          1.0
+        ],
+        "validation": [
+          0.4,
+          1.2
+        ],
+        "calibration": [
+          0.7,
+          1.5
+        ],
+        "test": [
+          0.8,
+          1.5
+        ]
+      },
+      "boundary_cycles_by_role": {
+        "train": [
+          1.8,
+          3.5
+        ],
+        "validation": [
+          1.6,
+          3.8
+        ],
+        "calibration": [
+          1.4,
+          4.2
+        ],
+        "test": [
+          1.4,
+          4.2
+        ]
+      }
+    }
+  },
+  "test": {
+    "schema": "phm.native-nonadcs.challenge.v2",
+    "seed": 44061003,
+    "groups_per_role": {
+      "train": 0,
+      "validation": 0,
+      "calibration": 0,
+      "test": 18
+    },
+    "domains": [
+      "eps",
+      "thermal",
+      "data"
+    ],
+    "challenge": {
+      "fault_fraction_by_role": {
+        "train": [
+          0.08,
+          0.28
+        ],
+        "validation": [
+          0.06,
+          0.24
+        ],
+        "calibration": [
+          0.04,
+          0.22
+        ],
+        "test": [
+          0.04,
+          0.2
+        ]
+      },
+      "onset_fraction_by_role": {
+        "train": [
+          0.35,
+          0.58
+        ],
+        "validation": [
+          0.4,
+          0.64
+        ],
+        "calibration": [
+          0.45,
+          0.75
+        ],
+        "test": [
+          0.5,
+          0.75
+        ]
+      },
+      "nuisance_scale_by_role": {
+        "train": [
+          0.2,
+          1.0
+        ],
+        "validation": [
+          0.4,
+          1.2
+        ],
+        "calibration": [
+          0.7,
+          1.5
+        ],
+        "test": [
+          0.8,
+          1.5
+        ]
+      },
+      "boundary_cycles_by_role": {
+        "train": [
+          1.8,
+          3.5
+        ],
+        "validation": [
+          1.6,
+          3.8
+        ],
+        "calibration": [
+          1.4,
+          4.2
+        ],
+        "test": [
+          1.4,
+          4.2
+        ]
+      }
+    }
+  },
+  "arms": {
+    "mechanism_feedback": {
+      "representation": "mechanism",
+      "proposal_strategy": "feedback",
+      "complexity": 0
+    },
+    "mechanism_random": {
+      "representation": "mechanism",
+      "proposal_strategy": "random_control",
+      "complexity": 0
+    },
+    "hybrid_feedback": {
+      "representation": "hybrid",
+      "proposal_strategy": "feedback",
+      "complexity": 1
+    }
+  },
+  "baseline_arm": "mechanism_feedback",
+  "tie_preference": [
+    "mechanism_feedback",
+    "mechanism_random",
+    "hybrid_feedback"
+  ],
+  "published_seeds_no_future_tuning": [
+    37061003,
+    38061003,
+    39061003
+  ],
+  "claim_status": "EXPERIMENTAL_RESEARCH_ONLY"
+}

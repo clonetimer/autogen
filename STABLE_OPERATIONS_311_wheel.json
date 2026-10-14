@@ -1,0 +1,311 @@
+{
+  "cell": "311_wheel",
+  "events": [
+    {
+      "cell": "311_wheel",
+      "id": "SOP001",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "ADCS",
+        "prediction": 0
+      },
+      "rss_peak_mib": 153.96484375,
+      "status": "PASS",
+      "wall_s": 0.8886333859991282
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP005",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "Data",
+        "prediction": 0
+      },
+      "rss_peak_mib": 154.40234375,
+      "status": "PASS",
+      "wall_s": 0.008379789000173332
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP009",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "Data",
+        "prediction": 0
+      },
+      "rss_peak_mib": 154.40234375,
+      "status": "PASS",
+      "wall_s": 0.007760824000797584
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP013",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "EPS",
+        "prediction": 0
+      },
+      "rss_peak_mib": 154.40234375,
+      "status": "PASS",
+      "wall_s": 0.007128569999622414
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP017",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "ADCS",
+        "prediction": 0
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.011648134001006838
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP021",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "ADCS",
+        "row_count": 241
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.0012357849991531111
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP025",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "EPS_localization",
+        "row_count": 121
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.0009262929997930769
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP029",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "EPS",
+        "row_count": 121
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.0004111779999220744
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP033",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "Thermal_localization",
+        "row_count": 64
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.0002890879986807704
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP037",
+      "kind": "invalid_observation_contract",
+      "result": {
+        "message": "OBSERVATION_NONFINITE",
+        "rejected": "ValueError"
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.001411092000125791
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP041",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "ADCS:conventional"
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.00020489899907261133
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP045",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "Data:conventional"
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.00017102899983001407
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP049",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "Data:weak_fault"
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.00014451900096901227
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP053",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "EPS:intermittent_fault"
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.000119328999062418
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP057",
+      "kind": "scope_rejected",
+      "result": {
+        "authorized": false,
+        "case": "ADCS:weak_fault"
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 2.9626000468852e-05
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP061",
+      "kind": "scope_rejected",
+      "result": {
+        "authorized": false,
+        "case": "Thermal:intermittent_fault"
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 2.777900044748094e-05
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP065",
+      "kind": "frozen_model_integrity",
+      "result": {
+        "sha256": "97cfd75ddec8068305dd7ddea62cd81e48062427fe3644a3e0d15a7759fb86c7"
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.0006624449997616466
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP069",
+      "kind": "frozen_model_integrity",
+      "result": {
+        "sha256": "3006511eed61a30b4095cd1f368c4e2776610ef8b770035bada54d3fc148260f"
+      },
+      "rss_peak_mib": 154.52734375,
+      "status": "PASS",
+      "wall_s": 0.004326197000409593
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP073",
+      "kind": "frozen_model_integrity",
+      "result": {
+        "sha256": "d38f8db0f40e65aab78d8a0f2d07d26248c2024fe426e3265b1a0849d913525a"
+      },
+      "rss_peak_mib": 154.65234375,
+      "status": "PASS",
+      "wall_s": 0.003663632000098005
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP077",
+      "kind": "persist_restore_model",
+      "result": {
+        "domain": "Data",
+        "prediction": 0,
+        "roundtrip": "PASS"
+      },
+      "rss_peak_mib": 154.65234375,
+      "status": "PASS",
+      "wall_s": 0.018789211000694195
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP081",
+      "kind": "persist_restore_model",
+      "result": {
+        "domain": "EPS",
+        "prediction": 0,
+        "roundtrip": "PASS"
+      },
+      "rss_peak_mib": 154.65234375,
+      "status": "PASS",
+      "wall_s": 0.018161357000280987
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP085",
+      "kind": "process_restart_prediction",
+      "result": {
+        "domain": "ADCS",
+        "restart_prediction": 0
+      },
+      "rss_peak_mib": 154.65234375,
+      "status": "PASS",
+      "wall_s": 0.9997233460017014
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP089",
+      "kind": "process_restart_prediction",
+      "result": {
+        "domain": "Data_localization",
+        "restart_prediction": 0
+      },
+      "rss_peak_mib": 154.65234375,
+      "status": "PASS",
+      "wall_s": 0.929298632998325
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP093",
+      "kind": "independent_synthetic_design",
+      "result": {
+        "synthetic_design": "PASS",
+        "trial": 2,
+        "unqualified": true
+      },
+      "rss_peak_mib": 155.57421875,
+      "status": "PASS",
+      "wall_s": 0.03376960099922144
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP097",
+      "kind": "negative_release_boundary",
+      "result": {
+        "rejected": "HEALTHY_REFERENCE_UNCONFIRMED"
+      },
+      "rss_peak_mib": 155.69921875,
+      "status": "PASS",
+      "wall_s": 0.004688306999014458
+    }
+  ],
+  "failed": 0,
+  "passed": 25,
+  "plan_sha256": "f9c257b508aac42432a371b0bd54a36edc34dfb2c901ea1648424d0fd38a35e5",
+  "product_version": "0.7.0",
+  "qualified_ops": 25,
+  "schema": "phm.r60.stable.operation_results.v1",
+  "wall_s": 2.9420285639989743
+}

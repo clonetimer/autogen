@@ -1,0 +1,103 @@
+{
+  "artifacts": [
+    "wheel",
+    "sdist"
+  ],
+  "authorization": "USER_APPROVED_15_CELLS_2026_10_11",
+  "calibration_openings_allowed": 1,
+  "calibration_openings_used": 0,
+  "candidate_version": "0.7.0.dev13 (NOT RC/STABLE)",
+  "contract_id": "PHM_0_7_LIMITED_SIM_15_20261011_V2",
+  "deadlines_timezone": "Asia/Tokyo",
+  "deployment_qualification_status": "NONE_ISSUED",
+  "formal_stable": "0.6.0 (unchanged)",
+  "frozen_R56_zip_sha256": "ed923274260d6e17e84d17aaa9dea6f3adbd6f820e6b3d9614b67a1044b57f23",
+  "frozen_R57_zip_sha256": "cdaeb4e7c38a5fd70f4e03b8aac8f68d086e5504deb82050e28332fca5d9c9a0",
+  "frozen_R59_zip_sha256": "66c687c9eb9ecd55b5fc915cf69d837b2db0bd54c2e5448b577d2df5cc8486ea",
+  "full_historical_matrix_preserved": 23,
+  "historical_old_broad_cycle": "CLOSED_NO_RELEASE_RETAINED",
+  "if_any_claimed_cell_fails": "STOP_THIS_15_PROFILE_NO_RC_OR_STABLE; NO_POSTHOC_RESCOPING; PRESERVE_ALL_FAILURES",
+  "independent_calibration_and_sealed_must_be_new_unopened_worlds": true,
+  "legacy_12_cells_preserved_as_historical_evidence": true,
+  "milestones": {
+    "RC_review": "2026-10-21",
+    "Stable_final": "2026-10-25",
+    "scope_and_environment": "2026-10-13"
+  },
+  "model_selection": "Frozen R57 training-selected HYBRID_AUTO per domain; no evaluation-world model swaps; no fault truth at runtime",
+  "new_profile_not_retroactive": true,
+  "no_automatic_extension": true,
+  "no_hidden_task_routing": true,
+  "no_posthoc_cell_removal_after_sealed": true,
+  "old_16_profile": "CLOSED_NO_RELEASE_FOR_THIS_16_CELL_PROFILE",
+  "out_of_claim_unqualified_cells": [
+    "ADCS:weak_fault",
+    "EPS:weak_fault",
+    "Thermal:conventional",
+    "Thermal:cross_scenario",
+    "Thermal:intermittent_fault",
+    "Thermal:progressive_degradation",
+    "Thermal:weak_fault",
+    "Thermal_localization:multi_component_localization"
+  ],
+  "per_cell_independent_worlds": {
+    "fresh_development_reference_only": 20,
+    "independent_calibration": 20,
+    "minimum_scenario_families": 4,
+    "sealed_qualification_once": 40
+  },
+  "proposed_certification_cells": [
+    "ADCS:conventional",
+    "ADCS:cross_scenario",
+    "ADCS:intermittent_fault",
+    "ADCS:progressive_degradation",
+    "Data:conventional",
+    "Data:cross_scenario",
+    "Data:intermittent_fault",
+    "Data:progressive_degradation",
+    "Data:weak_fault",
+    "Data_localization:multi_component_localization",
+    "EPS:conventional",
+    "EPS:cross_scenario",
+    "EPS:intermittent_fault",
+    "EPS:progressive_degradation",
+    "EPS_localization:multi_component_localization"
+  ],
+  "qualification_thresholds": {
+    "healthy_known_fault_false_alarm_max": 0.1,
+    "overall_accuracy_min": 0.9,
+    "per_fault_recall_min": 0.8,
+    "unknown_fraction_max": 0.1,
+    "worst_family_accuracy_min": 0.8
+  },
+  "release_domain": "Linux x86_64 SAT/Basilisk simulation only; offline full-trajectory; no flight/causal-online/operational certification",
+  "remaining_calibration_attempts": 1,
+  "remaining_sealed_attempts": 1,
+  "required_gates": [
+    "integrate_r57_registry_to_new_wheel_sdist",
+    "source_full_regression_includes_existing_708",
+    "cp311_wheel_clean_full_no_skip",
+    "cp311_sdist_clean_full_no_skip",
+    "cp312_wheel_clean_full_no_skip",
+    "cp312_sdist_clean_full_no_skip",
+    "model_hash_and_lineage_freeze",
+    "no_data_lineage_leak",
+    "calibration_one_independent_batch",
+    "sealed_single_opening_after_freeze",
+    "all_15_cells_pass_unmodified_R54_numeric_thresholds",
+    "100_bounded_stable_operations",
+    "new_artifact_source_provenance_and_rollback",
+    "zero_blocker_high_severity"
+  ],
+  "runtime_observation_policy": "EXACT deployment header, finite monotone timestamps; if initial 20% health is unverified, do not assert diagnosis; declared task family is use-case metadata, never an observed fault truth discriminator",
+  "schema": "phm.r60.simulation_15_release_contract.v1",
+  "scope_basis": "R59 failed sixteen-cell calibration is OPENED and disqualified; authorized new fifteen-cell profile requires fresh calibration and new sealed worlds; no history scores reused as evidence",
+  "sealed_openings_allowed": 1,
+  "sealed_openings_used": 0,
+  "supported_runtimes": [
+    "CPython 3.11",
+    "CPython 3.12"
+  ],
+  "total_new_calibration_worlds": 300,
+  "total_new_sealed_worlds": 600
+}

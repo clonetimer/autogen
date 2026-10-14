@@ -1,0 +1,1390 @@
+{
+  "schema": "phm.robust-design.v1",
+  "window": 32,
+  "proposal_seed": 905021,
+  "initial_candidates": 4,
+  "mutations": 2,
+  "max_proposals": 80,
+  "grammar": {
+    "widths": [
+      8,
+      16,
+      24
+    ],
+    "max_depth": 2,
+    "kernels": [
+      3,
+      5
+    ],
+    "dilations": [
+      1,
+      2
+    ]
+  },
+  "seeds": [
+    11,
+    23,
+    37
+  ],
+  "training": {
+    "epochs": 40,
+    "batch_size": 48,
+    "learning_rate": 0.003,
+    "weight_decay": 0.0001,
+    "checkpoint_every": 5
+  },
+  "budget": {
+    "max_parameters": 16000,
+    "max_ensemble_parameters": 48000,
+    "max_trials": 18,
+    "max_trial_seconds": 150,
+    "max_neural_macs": 450000
+  },
+  "quality_policy": {
+    "min_raw_coverage": 0.4,
+    "min_physical_coverage": 0.25,
+    "max_branch_final_age_s": 3.0
+  },
+  "mechanism": {
+    "schema": "phm.robust-momentum.v1",
+    "groups": [
+      [
+        0,
+        3,
+        6
+      ],
+      [
+        1,
+        4,
+        7
+      ],
+      [
+        2,
+        5,
+        8
+      ]
+    ],
+    "inertia_bounds_kg_m2": [
+      [
+        0.0716197243913529,
+        0.08753521870054244
+      ],
+      [
+        0.0716197243913529,
+        0.08753521870054244
+      ],
+      [
+        0.0716197243913529,
+        0.08753521870054244
+      ]
+    ],
+    "nominal_limits_nm": [
+      0.2,
+      0.2,
+      0.2
+    ],
+    "source": {
+      "reference": "runtime_binding.json",
+      "sha256": "95d8b8060b4b549afdbfe276f6854a4fa727068a16ae59f46152c6c095fb43bd"
+    },
+    "assumptions": [
+      "Balanced fixed-axis rotors; gyro x/y/z already projected onto matching wheel axes.",
+      "Nominal friction is zero in inspected Basilisk factory; not a general normal friction model.",
+      "Trapezoid at 1s telemetry is approximate; solver and command updates occur at 0.2s.",
+      "Inertia bounds +-10% are hypothetical analyst sensitivity settings, NOT hardware tolerances.",
+      "Adjacent invalid intervals reset cumulative innovations; zeros with invalid masks are placeholders.",
+      "Counterfactual inertia multiplier changes diagnosis constants only, NOT spacecraft dynamics."
+    ],
+    "max_age_s": 3.0,
+    "sync_tolerance_s": 0.01,
+    "max_interval_s": 1.1,
+    "inertia_scope": "hypothetical_diagnostic_parameter_sensitivity_not_hardware_tolerance"
+  },
+  "train_profiles": [
+    {
+      "id": "clean",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "sensor_noise",
+      "noise_std": [
+        0.12,
+        0.12,
+        0.12,
+        0.0,
+        0.0,
+        0.0,
+        0.0003,
+        0.0003,
+        0.0003
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "random_missing_10pct",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "burst_missing_8",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 12,
+      "gap_length": 8,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "gyro_delay_2",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        2,
+        2
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    }
+  ],
+  "validation_profiles": [
+    {
+      "id": "clean",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "sensor_noise",
+      "noise_std": [
+        0.12,
+        0.12,
+        0.12,
+        0.0,
+        0.0,
+        0.0,
+        0.0003,
+        0.0003,
+        0.0003
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "random_missing_10pct",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "burst_missing_8",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 12,
+      "gap_length": 8,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "gyro_delay_2",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        2,
+        2
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "gyro_outage",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [
+        6,
+        7,
+        8
+      ],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "all_missing",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "safety_only"
+    }
+  ],
+  "evaluation_profiles": [
+    {
+      "id": "clean",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "sensor_noise",
+      "noise_std": [
+        0.12,
+        0.12,
+        0.12,
+        0.0,
+        0.0,
+        0.0,
+        0.0003,
+        0.0003,
+        0.0003
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "sensor_bias",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.4,
+        -0.4,
+        0.4,
+        0.0,
+        0.0,
+        0.0,
+        0.001,
+        -0.001,
+        0.001
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "gyro_delay_2",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        2,
+        2
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "random_missing_10pct",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "burst_missing_8",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 12,
+      "gap_length": 8,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "gyro_outage",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [
+        6,
+        7,
+        8
+      ],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "combined",
+      "noise_std": [
+        0.12,
+        0.12,
+        0.12,
+        0.0,
+        0.0,
+        0.0,
+        0.0003,
+        0.0003,
+        0.0003
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1
+      ],
+      "drop_probability": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "selection"
+    },
+    {
+      "id": "all_missing",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "safety_only"
+    },
+    {
+      "id": "tail_outage_6",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 26,
+      "gap_length": 6,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.0,
+      "role": "safety_only"
+    },
+    {
+      "id": "diagnostic_inertia_minus10",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 0.9,
+      "role": "evaluation_only"
+    },
+    {
+      "id": "diagnostic_inertia_plus10",
+      "noise_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bias": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "delay_steps": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "drop_probability": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gap_start": 0,
+      "gap_length": 0,
+      "drop_channels": [],
+      "diagnostic_inertia_multiplier": 1.1,
+      "role": "evaluation_only"
+    }
+  ],
+  "train_perturbation_seed": 105021,
+  "validation_perturbation_seed": 205021,
+  "evaluation_perturbation_seed": 305021,
+  "threshold": 0.6,
+  "evidence_scope": "hypothetical_measurement_stress_not_hardware_specification"
+}

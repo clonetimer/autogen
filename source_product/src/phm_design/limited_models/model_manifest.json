@@ -1,0 +1,107 @@
+{
+  "models": {
+    "ADCS": {
+      "file": "ADCS.joblib",
+      "original_r57_relative_path": "models/ADCS__hybrid_auto__57011/model_00001.joblib",
+      "program": {
+        "atoms": [
+          "transport"
+        ],
+        "augmentation": false,
+        "composition": "concat",
+        "depth": 5,
+        "healthy_weight": 1.0,
+        "learner": "linear",
+        "seed": 57011,
+        "strength": 1.0
+      },
+      "qualified": true,
+      "sha256": "97cfd75ddec8068305dd7ddea62cd81e48062427fe3644a3e0d15a7759fb86c7",
+      "source_revision": "R57_FROZEN_TRAINING_SELECTED",
+      "training_loss_only": 0.1685714285714286
+    },
+    "Data": {
+      "file": "Data.joblib",
+      "original_r57_relative_path": "models/Data__hybrid_auto__57017/model_00003.joblib",
+      "program": {
+        "atoms": [
+          "transport"
+        ],
+        "augmentation": false,
+        "composition": "concat",
+        "depth": 5,
+        "healthy_weight": 1.0,
+        "learner": "forest",
+        "seed": 57017,
+        "strength": 1.0
+      },
+      "qualified": true,
+      "sha256": "0d57ab63660b0d8d8137d2ae395e66242d1bf306c7b682f10c7bb230ee808a14",
+      "source_revision": "R57_FROZEN_TRAINING_SELECTED",
+      "training_loss_only": 0.013333333333333364
+    },
+    "Data_localization": {
+      "file": "Data_localization.joblib",
+      "original_r57_relative_path": "models/Data_localization__hybrid_auto__57011/model_00014.joblib",
+      "program": {
+        "atoms": [
+          "self_reference",
+          "transport"
+        ],
+        "augmentation": false,
+        "composition": "concat",
+        "depth": 5,
+        "healthy_weight": 1.0,
+        "learner": "extra",
+        "seed": 57011,
+        "strength": 1.0
+      },
+      "qualified": true,
+      "sha256": "3006511eed61a30b4095cd1f368c4e2776610ef8b770035bada54d3fc148260f",
+      "source_revision": "R57_FROZEN_TRAINING_SELECTED",
+      "training_loss_only": 0.013333333333333358
+    },
+    "EPS": {
+      "file": "EPS.joblib",
+      "original_r57_relative_path": "models/EPS__hybrid_auto__57017/model_00003.joblib",
+      "program": {
+        "atoms": [
+          "transport"
+        ],
+        "augmentation": false,
+        "composition": "concat",
+        "depth": 5,
+        "healthy_weight": 1.0,
+        "learner": "forest",
+        "seed": 57017,
+        "strength": 1.0
+      },
+      "qualified": true,
+      "sha256": "3ea4f9f144314337546dd93edc73900a4f250c94581114c235e840f6c9f8e90d",
+      "source_revision": "R57_FROZEN_TRAINING_SELECTED",
+      "training_loss_only": 0.022142857142857145
+    },
+    "EPS_localization": {
+      "file": "EPS_localization.joblib",
+      "original_r57_relative_path": "models/EPS_localization__hybrid_auto__57017/model_00018.joblib",
+      "program": {
+        "atoms": [
+          "transport"
+        ],
+        "augmentation": false,
+        "composition": "concat",
+        "depth": 5,
+        "healthy_weight": 1.0,
+        "learner": "forest",
+        "seed": 541252803,
+        "strength": 1.0
+      },
+      "qualified": true,
+      "sha256": "d38f8db0f40e65aab78d8a0f2d07d26248c2024fe426e3265b1a0849d913525a",
+      "source_revision": "R57_FROZEN_TRAINING_SELECTED",
+      "training_loss_only": 0.015208333333333362
+    }
+  },
+  "schema": "phm.limited_model_manifest.v1",
+  "state": "SIMULATION_DOMAIN_STABLE"
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "phm.native-nonadcs.v1",
+  "seed": 906033,
+  "groups_per_role": {
+    "train": 24,
+    "validation": 10,
+    "calibration": 8,
+    "test": 16
+  },
+  "domains": [
+    "eps",
+    "thermal",
+    "data"
+  ]
+}

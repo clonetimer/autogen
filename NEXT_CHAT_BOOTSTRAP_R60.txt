@@ -1,0 +1,4 @@
+接管PHM AutoDesign。正式发行版现为 phm-design 0.7.0，定位为Linux x86_64 CPython3.11/3.12 SAT/Basilisk仿真域、离线整段轨迹且确认初始健康段的有限支持Stable；不能将其说成硬件/在轨/在线安全合格。
+发行合同 PHM_0_7_LIMITED_SIM_15_20261011_V2；15项（ADCS常规/跨/间歇/渐进，EPS常规/跨/间歇/渐进，Data常规/跨/间歇/渐进/弱，EPS和Data双部件定位）。8项不认证：ADCS弱、EPS弱、Thermal五任务及双部件机理定位。R59旧16项失败与所有R52-R59失败历史保留。
+R60独立校准300世界980轨迹，15/15过；封存600世界1960轨迹，一次性开封15/15过；五模型权重不变。Stable四格（cp311/312 × wheel/sdist）各738 PASS，无失败跳过，Basilisk冒烟通过；100/100稳定性操作通过；3.12 sdist环境实测从0.7回滚0.6原始wheel通过。首次操作测试夹具缺失24/25记录保留，修复仅合成测试夹具、不改产品。
+源码、wheel/sdist、资格原生证据与全部日志在此发行包。先运行 VERIFY_R60_RELEASE.py 和 sha256sum -c MANIFEST_SHA256SUMS.txt，不重训、不重做封存。旧0.6仍提供回滚文件，未经用户同意不得改资格支持声明。新的自动设计模型默认DEVELOPMENT_ONLY，不能继承稳定版的15项资格。

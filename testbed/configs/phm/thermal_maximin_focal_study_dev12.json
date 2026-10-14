@@ -1,0 +1,84 @@
+{
+  "schema": "phm.dev12.thermal-maximin-focal-study.v1",
+  "status": "FROZEN_BEFORE_DATA_GENERATION",
+  "domain": "thermal",
+  "seeds": {
+    "development": 61061003,
+    "selection_a": 62061003,
+    "selection_b": 63061003,
+    "risk": 64061003,
+    "test": 65061003
+  },
+  "groups": {
+    "development": {
+      "train": 24,
+      "validation": 10,
+      "calibration": 0,
+      "test": 0
+    },
+    "selection_a": {
+      "train": 0,
+      "validation": 0,
+      "calibration": 10,
+      "test": 0
+    },
+    "selection_b": {
+      "train": 0,
+      "validation": 0,
+      "calibration": 10,
+      "test": 0
+    },
+    "risk": {
+      "train": 0,
+      "validation": 0,
+      "calibration": 40,
+      "test": 0
+    },
+    "test": {
+      "train": 0,
+      "validation": 0,
+      "calibration": 0,
+      "test": 24
+    }
+  },
+  "arms": {
+    "baseline_feedback_ce": {
+      "policy": "nonadcs_reference_dev3.json",
+      "proposal_strategy": "feedback",
+      "loss": "weighted_cross_entropy"
+    },
+    "advanced_feedback_ce": {
+      "policy": "reference_design_advanced_dev12.json",
+      "proposal_strategy": "feedback",
+      "loss": "weighted_cross_entropy"
+    },
+    "advanced_feedback_focal": {
+      "policy": "reference_design_advanced_focal_dev12.json",
+      "proposal_strategy": "feedback",
+      "loss": "class_balanced_focal"
+    },
+    "advanced_random_focal": {
+      "policy": "reference_design_advanced_focal_dev12.json",
+      "proposal_strategy": "random_control",
+      "loss": "class_balanced_focal"
+    }
+  },
+  "selection_rule": "maximin_class_recall",
+  "selection_order": [
+    "worst_class_recall",
+    "worst_environment_macro_f1",
+    "mean_macro_f1",
+    "worst_accepted_error_rate",
+    "minimum_accepted_correct_rate",
+    "complexity"
+  ],
+  "representation": "multicomponent_mechanism.v1",
+  "risk_policy": "selective_risk_dev7.json",
+  "constraints": [
+    "test campaign must not be generated before all arm/route/risk artifacts are frozen",
+    "all arms share identical development and selection case identities",
+    "published seeds 40061003 through 52061003 are regression-only and cannot tune this study",
+    "SOTA paper metrics are contextual references, not direct comparators"
+  ],
+  "production_qualified": false
+}

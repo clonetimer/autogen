@@ -1,0 +1,22 @@
+{
+  "schema_version": "sat-sim.astrograph-fault-dataset-factory.v3",
+  "campaign_id": "phm_rw_v03_composition_seed431027",
+  "base_seed": 431027,
+  "counts": {
+    "train": 24,
+    "validation": 8,
+    "test": 10
+  },
+  "fault_ids": [
+    "ADCS_RW_FRICTION_INCREASE",
+    "ADCS_RW_JAM",
+    "ADCS_RW_TORQUE_AUTHORITY_LOSS"
+  ],
+  "duration_s": 60,
+  "sample_s": 1,
+  "solver_step_s": 0.2,
+  "capability_id": "subsystem.adcs_unified_native.v1",
+  "simulation_backend": "basilisk",
+  "allow_test_proxy": false,
+  "output_root": "datasets/phm_rw_v03_native"
+}

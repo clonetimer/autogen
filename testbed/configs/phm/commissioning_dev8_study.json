@@ -1,0 +1,70 @@
+{
+  "schema": "phm.dev8.commissioning-study.v1",
+  "development_config": {
+    "schema": "phm.native-nonadcs.challenge.v2",
+    "seed": 31061003,
+    "groups_per_role": {"train": 18, "validation": 8, "calibration": 8, "test": 0},
+    "domains": ["eps", "thermal", "data"],
+    "challenge": {
+      "fault_fraction_by_role": {
+        "train": [0.08, 0.28], "validation": [0.06, 0.24], "calibration": [0.05, 0.22], "test": [0.08, 0.28]
+      },
+      "onset_fraction_by_role": {
+        "train": [0.35, 0.58], "validation": [0.40, 0.64], "calibration": [0.45, 0.70], "test": [0.35, 0.58]
+      },
+      "nuisance_scale_by_role": {
+        "train": [0.2, 1.0], "validation": [0.4, 1.2], "calibration": [0.6, 1.4], "test": [0.2, 1.0]
+      },
+      "boundary_cycles_by_role": {
+        "train": [1.8, 3.5], "validation": [1.6, 3.8], "calibration": [1.4, 4.0], "test": [1.8, 3.5]
+      }
+    }
+  },
+  "risk_config": {
+    "schema": "phm.native-nonadcs.challenge.v2",
+    "seed": 32061003,
+    "groups_per_role": {"train": 0, "validation": 0, "calibration": 30, "test": 0},
+    "domains": ["eps", "thermal", "data"],
+    "challenge": {
+      "fault_fraction_by_role": {
+        "train": [0.08, 0.28], "validation": [0.06, 0.24], "calibration": [0.04, 0.22], "test": [0.04, 0.22]
+      },
+      "onset_fraction_by_role": {
+        "train": [0.35, 0.58], "validation": [0.40, 0.64], "calibration": [0.45, 0.75], "test": [0.45, 0.75]
+      },
+      "nuisance_scale_by_role": {
+        "train": [0.2, 1.0], "validation": [0.4, 1.2], "calibration": [0.7, 1.5], "test": [0.7, 1.5]
+      },
+      "boundary_cycles_by_role": {
+        "train": [1.8, 3.5], "validation": [1.6, 3.8], "calibration": [1.4, 4.2], "test": [1.4, 4.2]
+      }
+    }
+  },
+  "test_config": {
+    "schema": "phm.native-nonadcs.challenge.v2",
+    "seed": 33061003,
+    "groups_per_role": {"train": 0, "validation": 0, "calibration": 0, "test": 18},
+    "domains": ["eps", "thermal", "data"],
+    "challenge": {
+      "fault_fraction_by_role": {
+        "train": [0.08, 0.28], "validation": [0.06, 0.24], "calibration": [0.04, 0.22], "test": [0.04, 0.20]
+      },
+      "onset_fraction_by_role": {
+        "train": [0.35, 0.58], "validation": [0.40, 0.64], "calibration": [0.45, 0.75], "test": [0.50, 0.75]
+      },
+      "nuisance_scale_by_role": {
+        "train": [0.2, 1.0], "validation": [0.4, 1.2], "calibration": [0.7, 1.5], "test": [0.8, 1.5]
+      },
+      "boundary_cycles_by_role": {
+        "train": [1.8, 3.5], "validation": [1.6, 3.8], "calibration": [1.4, 4.2], "test": [1.4, 4.2]
+      }
+    }
+  },
+  "published_seeds_no_future_tuning": [24061003, 27061003, 28061003, 29061003],
+  "notes": [
+    "commissioning runs are separate NOMINAL runs with same static nuisance but different phase/noise",
+    "commissioning profile contains only observed-telemetry-derived references",
+    "route calibration and risk calibration remain distinct roles",
+    "test seed is opened only after route and risk artifacts are frozen"
+  ]
+}

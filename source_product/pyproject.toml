@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools==82.0.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phm-design"
+version = "0.7.0"
+description = "Research-only multi-family compositional network design"
+requires-python = ">=3.11,<3.14"
+dependencies = ["torch==2.10.0", "numpy==2.3.5", "scikit-learn==1.8.0"]
+
+[project.optional-dependencies]
+dev = ["pytest==9.0.2"]
+simulation = ["bsk==2.11.0", "colorama==0.4.6", "sgp4==2.25"]
+automl = ["optuna==4.8.0"]
+
+[project.scripts]
+phm-design-platform = "phm_design.platform_cli:main"
+phm-design-limited = "phm_design.limited_cli:main"
+phm-design = "phm_design.__main__:main"
+phm-design-algorithm-dag = "phm_design.algorithm_dag_cli:main"
+phm-design-expert-dag = "phm_design.expert_dag_cli:main"
+phm-design-open = "phm_design.open_design_cli:main"
+phm-design-readiness = "phm_design.design_readiness_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests/phm_design"]
+
+[tool.setuptools.package-data]
+phm_design = ["limited_models/*.json", "limited_models/*.joblib"]

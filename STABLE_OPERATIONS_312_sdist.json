@@ -1,0 +1,313 @@
+{
+  "cell": "312_sdist",
+  "events": [
+    {
+      "cell": "312_sdist",
+      "id": "SOP004",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "ADCS",
+        "prediction": 0
+      },
+      "rss_peak_mib": 151.30078125,
+      "status": "PASS",
+      "wall_s": 0.9624226830001135
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP008",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "Data",
+        "prediction": 0
+      },
+      "rss_peak_mib": 151.80078125,
+      "status": "PASS",
+      "wall_s": 0.0069847009999648435
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP012",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "EPS",
+        "prediction": 0
+      },
+      "rss_peak_mib": 151.80078125,
+      "status": "PASS",
+      "wall_s": 0.005929770999500761
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP016",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "ADCS",
+        "prediction": 0
+      },
+      "rss_peak_mib": 151.80078125,
+      "status": "PASS",
+      "wall_s": 0.013330765001228428
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP020",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "Data",
+        "prediction": 0
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.007773077000820194
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP024",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "Data",
+        "row_count": 121
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.0005882999994355487
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP028",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "ADCS",
+        "row_count": 241
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.0013814680005452828
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP032",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "EPS_localization",
+        "row_count": 121
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.0007626209990121424
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP036",
+      "kind": "invalid_observation_contract",
+      "result": {
+        "message": "EXACT_DEPLOYMENT_FIELDS_REQUIRED",
+        "rejected": "ValueError"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.0007263799998327158
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP040",
+      "kind": "invalid_observation_contract",
+      "result": {
+        "message": "OBSERVATION_SHAPE",
+        "rejected": "ValueError"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.0005001659992558416
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP044",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "ADCS:progressive_degradation"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.00020908300029987004
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP048",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "Data:progressive_degradation"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.00018932800048787612
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP052",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "EPS:cross_scenario"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.00030274900018412154
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP056",
+      "kind": "scope_invalid",
+      "result": {
+        "rejected": "UNKNOWN_USE_CASE"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.0001257189996977104
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP060",
+      "kind": "scope_rejected",
+      "result": {
+        "authorized": false,
+        "case": "Thermal:cross_scenario"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 4.9320000471198e-05
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP064",
+      "kind": "scope_rejected",
+      "result": {
+        "authorized": false,
+        "case": "Thermal_localization:multi_component_localization"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 3.482899955997709e-05
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP068",
+      "kind": "frozen_model_integrity",
+      "result": {
+        "sha256": "d38f8db0f40e65aab78d8a0f2d07d26248c2024fe426e3265b1a0849d913525a"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.0030757069998799125
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP072",
+      "kind": "frozen_model_integrity",
+      "result": {
+        "sha256": "0d57ab63660b0d8d8137d2ae395e66242d1bf306c7b682f10c7bb230ee808a14"
+      },
+      "rss_peak_mib": 151.92578125,
+      "status": "PASS",
+      "wall_s": 0.0030132459996821126
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP076",
+      "kind": "persist_restore_model",
+      "result": {
+        "domain": "EPS",
+        "prediction": 0,
+        "roundtrip": "PASS"
+      },
+      "rss_peak_mib": 152.05078125,
+      "status": "PASS",
+      "wall_s": 0.015460489999895799
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP080",
+      "kind": "persist_restore_model",
+      "result": {
+        "domain": "ADCS",
+        "prediction": 0,
+        "roundtrip": "PASS"
+      },
+      "rss_peak_mib": 152.05078125,
+      "status": "PASS",
+      "wall_s": 0.025778072000321117
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP084",
+      "kind": "persist_restore_model",
+      "result": {
+        "domain": "Data_localization",
+        "prediction": 0,
+        "roundtrip": "PASS"
+      },
+      "rss_peak_mib": 152.17578125,
+      "status": "PASS",
+      "wall_s": 0.024654525001096772
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP088",
+      "kind": "process_restart_prediction",
+      "result": {
+        "domain": "EPS_localization",
+        "restart_prediction": 0
+      },
+      "rss_peak_mib": 152.17578125,
+      "status": "PASS",
+      "wall_s": 1.3445418449991848
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP092",
+      "kind": "independent_synthetic_design",
+      "result": {
+        "synthetic_design": "PASS",
+        "trial": 1,
+        "unqualified": true
+      },
+      "rss_peak_mib": 152.8125,
+      "status": "PASS",
+      "wall_s": 0.03608655300013197
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP096",
+      "kind": "independent_synthetic_design",
+      "result": {
+        "synthetic_design": "PASS",
+        "trial": 5,
+        "unqualified": true
+      },
+      "rss_peak_mib": 152.8125,
+      "status": "PASS",
+      "wall_s": 0.0283535420003318
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP100",
+      "kind": "negative_release_boundary",
+      "result": {
+        "rejected": "UNKNOWN_USE_CASE"
+      },
+      "rss_peak_mib": 152.8125,
+      "status": "PASS",
+      "wall_s": 0.00012150500151619781
+    }
+  ],
+  "failed": 0,
+  "passed": 25,
+  "plan_sha256": "f9c257b508aac42432a371b0bd54a36edc34dfb2c901ea1648424d0fd38a35e5",
+  "product_version": "0.7.0",
+  "qualified_ops": 25,
+  "schema": "phm.r60.stable.operation_results.v1",
+  "wall_s": 2.482867153999905
+}

@@ -1,0 +1,13 @@
+{
+  "bsk_version": "2.11.0",
+  "case_id": "r16_train_high_mass_low_heat_05_f0",
+  "fault_truth_for_audit_only": true,
+  "parameters_sha256": "d4b0b29a086b19f3141792e07e5be598b504c2a687cba6fdc373cd9a6ccb9c2b",
+  "plan_sha256": "82ab8e6ca73528505f0bf90190afbcb989fe1de25cc770c4a9b570788fb8b1dc",
+  "sensor_provenance": [
+    "Basilisk.SensorThermal node 0 output with independent virtual thermometer noise",
+    "Basilisk.SensorThermal node 1 output with independent virtual thermometer noise"
+  ],
+  "trace_sha256": "029c827c6b9afe99fb25e9589fa0a4c68eb88c843a2cf0712c4cafa8be7b734c",
+  "world_group": "82a03a0c04447be722c84314231ef055634db985d03b256a9c607d97903e3137"
+}

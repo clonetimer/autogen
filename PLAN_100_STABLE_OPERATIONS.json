@@ -1,0 +1,826 @@
+{
+  "contract_id": "PHM_0_7_LIMITED_SIM_15_20261011_V2",
+  "input_data": "R57_PREVIOUSLY_OPENED_FIXTURES_ONLY",
+  "no_qualification_data_access": true,
+  "operations": [
+    {
+      "case": "ADCS:conventional",
+      "cell": "311_wheel",
+      "id": "SOP001",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:cross_scenario",
+      "cell": "311_sdist",
+      "id": "SOP002",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:intermittent_fault",
+      "cell": "312_wheel",
+      "id": "SOP003",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:progressive_degradation",
+      "cell": "312_sdist",
+      "id": "SOP004",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:conventional",
+      "cell": "311_wheel",
+      "id": "SOP005",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:cross_scenario",
+      "cell": "311_sdist",
+      "id": "SOP006",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:intermittent_fault",
+      "cell": "312_wheel",
+      "id": "SOP007",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:progressive_degradation",
+      "cell": "312_sdist",
+      "id": "SOP008",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:weak_fault",
+      "cell": "311_wheel",
+      "id": "SOP009",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data_localization:multi_component_localization",
+      "cell": "311_sdist",
+      "id": "SOP010",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS:conventional",
+      "cell": "312_wheel",
+      "id": "SOP011",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS:cross_scenario",
+      "cell": "312_sdist",
+      "id": "SOP012",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS:intermittent_fault",
+      "cell": "311_wheel",
+      "id": "SOP013",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS:progressive_degradation",
+      "cell": "311_sdist",
+      "id": "SOP014",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS_localization:multi_component_localization",
+      "cell": "312_wheel",
+      "id": "SOP015",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:conventional",
+      "cell": "312_sdist",
+      "id": "SOP016",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:cross_scenario",
+      "cell": "311_wheel",
+      "id": "SOP017",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:intermittent_fault",
+      "cell": "311_sdist",
+      "id": "SOP018",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:progressive_degradation",
+      "cell": "312_wheel",
+      "id": "SOP019",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:conventional",
+      "cell": "312_sdist",
+      "id": "SOP020",
+      "kind": "supported_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "ADCS",
+      "id": "SOP021",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "EPS",
+      "id": "SOP022",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "Thermal",
+      "id": "SOP023",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "Data",
+      "id": "SOP024",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "EPS_localization",
+      "id": "SOP025",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "Thermal_localization",
+      "id": "SOP026",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "Data_localization",
+      "id": "SOP027",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "ADCS",
+      "id": "SOP028",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "EPS",
+      "id": "SOP029",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "Thermal",
+      "id": "SOP030",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "Data",
+      "id": "SOP031",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "EPS_localization",
+      "id": "SOP032",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "Thermal_localization",
+      "id": "SOP033",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "Data_localization",
+      "id": "SOP034",
+      "kind": "valid_observation_contract",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "ADCS",
+      "id": "SOP035",
+      "kind": "invalid_observation_contract",
+      "rss_limit_mib": 1536,
+      "variant": "extra_truth",
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "EPS",
+      "id": "SOP036",
+      "kind": "invalid_observation_contract",
+      "rss_limit_mib": 1536,
+      "variant": "missing_field",
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "Thermal",
+      "id": "SOP037",
+      "kind": "invalid_observation_contract",
+      "rss_limit_mib": 1536,
+      "variant": "nonfinite",
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "Data",
+      "id": "SOP038",
+      "kind": "invalid_observation_contract",
+      "rss_limit_mib": 1536,
+      "variant": "nonmonotone",
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "EPS_localization",
+      "id": "SOP039",
+      "kind": "invalid_observation_contract",
+      "rss_limit_mib": 1536,
+      "variant": "reverse_time",
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "Data_localization",
+      "id": "SOP040",
+      "kind": "invalid_observation_contract",
+      "rss_limit_mib": 1536,
+      "variant": "empty",
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:conventional",
+      "cell": "311_wheel",
+      "id": "SOP041",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:cross_scenario",
+      "cell": "311_sdist",
+      "id": "SOP042",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:intermittent_fault",
+      "cell": "312_wheel",
+      "id": "SOP043",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:progressive_degradation",
+      "cell": "312_sdist",
+      "id": "SOP044",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:conventional",
+      "cell": "311_wheel",
+      "id": "SOP045",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:cross_scenario",
+      "cell": "311_sdist",
+      "id": "SOP046",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:intermittent_fault",
+      "cell": "312_wheel",
+      "id": "SOP047",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:progressive_degradation",
+      "cell": "312_sdist",
+      "id": "SOP048",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data:weak_fault",
+      "cell": "311_wheel",
+      "id": "SOP049",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Data_localization:multi_component_localization",
+      "cell": "311_sdist",
+      "id": "SOP050",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS:conventional",
+      "cell": "312_wheel",
+      "id": "SOP051",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS:cross_scenario",
+      "cell": "312_sdist",
+      "id": "SOP052",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS:intermittent_fault",
+      "cell": "311_wheel",
+      "id": "SOP053",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS:progressive_degradation",
+      "cell": "311_sdist",
+      "id": "SOP054",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS_localization:multi_component_localization",
+      "cell": "312_wheel",
+      "id": "SOP055",
+      "kind": "scope_authorized",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:simulator_injected_fault_truth",
+      "cell": "312_sdist",
+      "id": "SOP056",
+      "kind": "scope_invalid",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "ADCS:weak_fault",
+      "cell": "311_wheel",
+      "id": "SOP057",
+      "kind": "scope_rejected",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "EPS:weak_fault",
+      "cell": "311_sdist",
+      "id": "SOP058",
+      "kind": "scope_rejected",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Thermal:conventional",
+      "cell": "312_wheel",
+      "id": "SOP059",
+      "kind": "scope_rejected",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Thermal:cross_scenario",
+      "cell": "312_sdist",
+      "id": "SOP060",
+      "kind": "scope_rejected",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Thermal:intermittent_fault",
+      "cell": "311_wheel",
+      "id": "SOP061",
+      "kind": "scope_rejected",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Thermal:progressive_degradation",
+      "cell": "311_sdist",
+      "id": "SOP062",
+      "kind": "scope_rejected",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Thermal:weak_fault",
+      "cell": "312_wheel",
+      "id": "SOP063",
+      "kind": "scope_rejected",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "case": "Thermal_localization:multi_component_localization",
+      "cell": "312_sdist",
+      "id": "SOP064",
+      "kind": "scope_rejected",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "ADCS",
+      "id": "SOP065",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "EPS",
+      "id": "SOP066",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "Data",
+      "id": "SOP067",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "EPS_localization",
+      "id": "SOP068",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "Data_localization",
+      "id": "SOP069",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "ADCS",
+      "id": "SOP070",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "EPS",
+      "id": "SOP071",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "Data",
+      "id": "SOP072",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "EPS_localization",
+      "id": "SOP073",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "Data_localization",
+      "id": "SOP074",
+      "kind": "frozen_model_integrity",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "ADCS",
+      "id": "SOP075",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "EPS",
+      "id": "SOP076",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "Data",
+      "id": "SOP077",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "EPS_localization",
+      "id": "SOP078",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "Data_localization",
+      "id": "SOP079",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "ADCS",
+      "id": "SOP080",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "EPS",
+      "id": "SOP081",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "Data",
+      "id": "SOP082",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "EPS_localization",
+      "id": "SOP083",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "Data_localization",
+      "id": "SOP084",
+      "kind": "persist_restore_model",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "ADCS",
+      "id": "SOP085",
+      "kind": "process_restart_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "EPS",
+      "id": "SOP086",
+      "kind": "process_restart_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "domain": "Data",
+      "id": "SOP087",
+      "kind": "process_restart_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "domain": "EPS_localization",
+      "id": "SOP088",
+      "kind": "process_restart_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "domain": "Data_localization",
+      "id": "SOP089",
+      "kind": "process_restart_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "domain": "ADCS",
+      "id": "SOP090",
+      "kind": "process_restart_prediction",
+      "rss_limit_mib": 1536,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP091",
+      "kind": "independent_synthetic_design",
+      "rss_limit_mib": 1536,
+      "trial": 0,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP092",
+      "kind": "independent_synthetic_design",
+      "rss_limit_mib": 1536,
+      "trial": 1,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP093",
+      "kind": "independent_synthetic_design",
+      "rss_limit_mib": 1536,
+      "trial": 2,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "id": "SOP094",
+      "kind": "independent_synthetic_design",
+      "rss_limit_mib": 1536,
+      "trial": 3,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP095",
+      "kind": "independent_synthetic_design",
+      "rss_limit_mib": 1536,
+      "trial": 4,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP096",
+      "kind": "independent_synthetic_design",
+      "rss_limit_mib": 1536,
+      "trial": 5,
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_wheel",
+      "id": "SOP097",
+      "kind": "negative_release_boundary",
+      "rss_limit_mib": 1536,
+      "variant": "healthy_prefix_missing",
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "311_sdist",
+      "id": "SOP098",
+      "kind": "negative_release_boundary",
+      "rss_limit_mib": 1536,
+      "variant": "domain_mismatch",
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP099",
+      "kind": "negative_release_boundary",
+      "rss_limit_mib": 1536,
+      "variant": "unbundled_model",
+      "wall_limit_s": 30
+    },
+    {
+      "cell": "312_sdist",
+      "id": "SOP100",
+      "kind": "negative_release_boundary",
+      "rss_limit_mib": 1536,
+      "variant": "unknown_case",
+      "wall_limit_s": 30
+    }
+  ],
+  "ops_per_environment": {
+    "311_sdist": 25,
+    "311_wheel": 25,
+    "312_sdist": 25,
+    "312_wheel": 25
+  },
+  "runtime_scope": [
+    "3.11",
+    "3.12"
+  ],
+  "schema": "phm.r60.stable.operations.v1",
+  "status": "PREDECLARED_BEFORE_EXECUTION",
+  "target_version": "0.7.0"
+}

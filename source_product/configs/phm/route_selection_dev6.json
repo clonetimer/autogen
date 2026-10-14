@@ -1,0 +1,13 @@
+{
+  "schema": "phm.route-policy.v2",
+  "recall_guard": "each_class",
+  "strict_improvement": "worst_environment_f1_or_minimum_recall",
+  "tie_preference": [
+    "reference",
+    "fixed",
+    "bounded",
+    "raw",
+    "unbounded"
+  ],
+  "score_threshold_source": "frozen_design"
+}

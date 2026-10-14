@@ -1,0 +1,13 @@
+{
+  "bsk_version": "2.11.0",
+  "case_id": "r16_train_intermediate_variable_sun_02_f2",
+  "fault_truth_for_audit_only": true,
+  "parameters_sha256": "2fec94c471405e6a884830b62620b2d9aa9c5d31b1e5e4046e4e8fbaaf2341b4",
+  "plan_sha256": "82ab8e6ca73528505f0bf90190afbcb989fe1de25cc770c4a9b570788fb8b1dc",
+  "sensor_provenance": [
+    "Basilisk.SensorThermal node 0 output with independent virtual thermometer noise",
+    "Basilisk.SensorThermal node 1 output with independent virtual thermometer noise"
+  ],
+  "trace_sha256": "067c737d3c6cbaf9e57cc7699bb1943989c958794ee155ffda007cbaa2a76e9a",
+  "world_group": "d5d53ab1c9683a7236431ecaa2f07c189e6dde6854ec7e02da1b5bc3613debe0"
+}

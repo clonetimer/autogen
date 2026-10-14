@@ -1,0 +1,223 @@
+{
+  "schema": "phm.dev6.study-spec.v1",
+  "development_config": {
+    "schema": "phm.native-nonadcs.challenge.v2",
+    "seed": 24061003,
+    "groups_per_role": {
+      "train": 18,
+      "validation": 8,
+      "calibration": 8,
+      "test": 0
+    },
+    "domains": [
+      "eps",
+      "thermal",
+      "data"
+    ],
+    "challenge": {
+      "fault_fraction_by_role": {
+        "train": [
+          0.1,
+          0.3
+        ],
+        "validation": [
+          0.08,
+          0.25
+        ],
+        "calibration": [
+          0.06,
+          0.22
+        ],
+        "test": [
+          0.1,
+          0.3
+        ]
+      },
+      "onset_fraction_by_role": {
+        "train": [
+          0.35,
+          0.55
+        ],
+        "validation": [
+          0.4,
+          0.62
+        ],
+        "calibration": [
+          0.45,
+          0.68
+        ],
+        "test": [
+          0.35,
+          0.55
+        ]
+      },
+      "nuisance_scale_by_role": {
+        "train": [
+          0.0,
+          0.7
+        ],
+        "validation": [
+          0.2,
+          1.0
+        ],
+        "calibration": [
+          0.5,
+          1.2
+        ],
+        "test": [
+          0.0,
+          0.7
+        ]
+      },
+      "boundary_cycles_by_role": {
+        "train": [
+          2.0,
+          3.2
+        ],
+        "validation": [
+          1.8,
+          3.5
+        ],
+        "calibration": [
+          1.6,
+          3.8
+        ],
+        "test": [
+          2.0,
+          3.2
+        ]
+      }
+    }
+  },
+  "route_policy": {
+    "schema": "phm.route-policy.v2",
+    "recall_guard": "each_class",
+    "strict_improvement": "worst_environment_f1_or_minimum_recall",
+    "tie_preference": [
+      "reference",
+      "fixed",
+      "bounded",
+      "raw",
+      "unbounded"
+    ],
+    "score_threshold_source": "frozen_design"
+  },
+  "test_groups": 12,
+  "test_cohorts": {
+    "iid": {
+      "fault_fraction_by_role": [
+        0.1,
+        0.3
+      ],
+      "onset_fraction_by_role": [
+        0.35,
+        0.55
+      ],
+      "nuisance_scale_by_role": [
+        0.0,
+        0.7
+      ],
+      "boundary_cycles_by_role": [
+        2.0,
+        3.2
+      ]
+    },
+    "weak_only": {
+      "fault_fraction_by_role": [
+        0.04,
+        0.2
+      ],
+      "onset_fraction_by_role": [
+        0.35,
+        0.55
+      ],
+      "nuisance_scale_by_role": [
+        0.0,
+        0.7
+      ],
+      "boundary_cycles_by_role": [
+        2.0,
+        3.2
+      ]
+    },
+    "late_only": {
+      "fault_fraction_by_role": [
+        0.1,
+        0.3
+      ],
+      "onset_fraction_by_role": [
+        0.5,
+        0.75
+      ],
+      "nuisance_scale_by_role": [
+        0.0,
+        0.7
+      ],
+      "boundary_cycles_by_role": [
+        2.0,
+        3.2
+      ]
+    },
+    "nuisance_only": {
+      "fault_fraction_by_role": [
+        0.1,
+        0.3
+      ],
+      "onset_fraction_by_role": [
+        0.35,
+        0.55
+      ],
+      "nuisance_scale_by_role": [
+        0.8,
+        1.5
+      ],
+      "boundary_cycles_by_role": [
+        2.0,
+        3.2
+      ]
+    },
+    "boundary_only": {
+      "fault_fraction_by_role": [
+        0.1,
+        0.3
+      ],
+      "onset_fraction_by_role": [
+        0.35,
+        0.55
+      ],
+      "nuisance_scale_by_role": [
+        0.0,
+        0.7
+      ],
+      "boundary_cycles_by_role": [
+        1.4,
+        4.2
+      ]
+    },
+    "combined": {
+      "fault_fraction_by_role": [
+        0.04,
+        0.2
+      ],
+      "onset_fraction_by_role": [
+        0.5,
+        0.75
+      ],
+      "nuisance_scale_by_role": [
+        0.8,
+        1.5
+      ],
+      "boundary_cycles_by_role": [
+        1.4,
+        4.2
+      ]
+    }
+  },
+  "limits": [
+    "single new campaign seed",
+    "test cohorts are paired, not independent replications",
+    "calibration role consumed for selection",
+    "test is generated only after all routes are frozen",
+    "ranges are research assumptions, not hardware tolerances"
+  ]
+}

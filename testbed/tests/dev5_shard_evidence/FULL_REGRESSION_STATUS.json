@@ -1,0 +1,77 @@
+{
+  "full_collect_count": 491,
+  "full_collect_unique": 491,
+  "full_node_set_sha256": "74adf077592cfbf8734b3a4f2155e2145a54d6bdea719fd0712a9ea53739434c",
+  "shards": [
+    {
+      "shard": 1,
+      "nodes": 62,
+      "returncode": 0,
+      "elapsed_s": 37.62,
+      "log": "tests/dev5_shard_evidence/shard_01.log",
+      "tail": "r,2);self.norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\ntests/phm_design/test_runtime_resource_planner_dev25.py::test_runtime_planner_preserves_fast_control\n  /mnt/data/phm-design-0.7.0.dev5/src/phm_design/literature_baselines.py:71: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True\n    self.encoder=nn.TransformerEncoder(layer,layers);self.norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n62 passed, 2 warnings in 31.99s"
+    },
+    {
+      "shard": 2,
+      "nodes": 62,
+      "returncode": 0,
+      "elapsed_s": 26.3,
+      "log": "tests/dev5_shard_evidence/shard_02.log",
+      "tail": "oder(layer,layers);self.norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\ntests/phm_design/test_runtime_resource_planner_dev25.py::test_runtime_plans_remain_distinct\n  /mnt/data/phm-design-0.7.0.dev5/src/phm_design/literature_baselines.py:84: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True\n    self.encoder=nn.TransformerEncoder(layer,2);self.norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n62 passed, 4 warnings in 20.64s"
+    },
+    {
+      "shard": 3,
+      "nodes": 62,
+      "returncode": 0,
+      "elapsed_s": 26.56,
+      "log": "tests/dev5_shard_evidence/shard_03.log",
+      "tail": "norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\ntests/phm_design/test_resource_planner_dev23.py::test_planner_returns_one_effective_control_per_policy_control\n  /mnt/data/phm-design-0.7.0.dev5/src/phm_design/literature_baselines.py:71: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True\n    self.encoder=nn.TransformerEncoder(layer,layers);self.norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n62 passed, 3 warnings in 21.21s"
+    },
+    {
+      "shard": 4,
+      "nodes": 61,
+      "returncode": 0,
+      "elapsed_s": 33.71,
+      "log": "tests/dev5_shard_evidence/shard_04.log",
+      "tail": "rm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\ntests/phm_design/test_grid_res3d_dev13.py::test_grid_policy_validates_and_generator_uses_grid_only_on_global_branches\n  /mnt/data/phm-design-0.7.0.dev5/src/phm_design/literature_baselines.py:84: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True\n    self.encoder=nn.TransformerEncoder(layer,2);self.norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n61 passed, 2 warnings in 26.60s"
+    },
+    {
+      "shard": 5,
+      "nodes": 61,
+      "returncode": 0,
+      "elapsed_s": 23.38,
+      "log": "tests/dev5_shard_evidence/shard_05.log",
+      "tail": ".............................................................            [100%]\n61 passed in 16.84s"
+    },
+    {
+      "shard": 6,
+      "nodes": 61,
+      "returncode": 0,
+      "elapsed_s": 37.17,
+      "log": "tests/dev5_shard_evidence/shard_06.log",
+      "tail": ".............................................................            [100%]\n61 passed in 28.76s"
+    },
+    {
+      "shard": 7,
+      "nodes": 61,
+      "returncode": 0,
+      "elapsed_s": 24.35,
+      "log": "tests/dev5_shard_evidence/shard_07.log",
+      "tail": "norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\ntests/phm_design/test_literature_baselines_dev12.py::test_literature_controls_are_registered_and_under_dev12_budget\n  /mnt/data/phm-design-0.7.0.dev5/src/phm_design/literature_baselines.py:84: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True\n    self.encoder=nn.TransformerEncoder(layer,2);self.norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n61 passed, 2 warnings in 20.04s"
+    },
+    {
+      "shard": 8,
+      "nodes": 61,
+      "returncode": 0,
+      "elapsed_s": 40.63,
+      "log": "tests/dev5_shard_evidence/shard_08.log",
+      "tail": "n.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\ntests/phm_design/test_literature_baselines_dev12.py::test_advanced_dev12_policy_enables_attention_tcn_and_strong_controls\n  /mnt/data/phm-design-0.7.0.dev5/src/phm_design/literature_baselines.py:84: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True\n    self.encoder=nn.TransformerEncoder(layer,2);self.norm=nn.LayerNorm(d_model);self.head=nn.Linear(d_model,classes)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n61 passed, 2 warnings in 34.77s"
+    }
+  ],
+  "node_coverage": {
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0
+  },
+  "overall_pass": true
+}

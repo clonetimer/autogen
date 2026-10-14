@@ -1,0 +1,9 @@
+{
+  "source_zip_sha256": "66c687c9eb9ecd55b5fc915cf69d837b2db0bd54c2e5448b577d2df5cc8486ea",
+  "failed_cell": "Thermal:conventional",
+  "calibration_worlds": 320,
+  "passed": 15,
+  "total": 16,
+  "status": "CLOSED_NO_RELEASE",
+  "old_evidence_immutable": true
+}

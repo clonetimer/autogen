@@ -1,0 +1,99 @@
+{
+  "schema": "phm.search.v1",
+  "window": 32,
+  "candidates": [
+    {
+      "family": "mlp",
+      "parameters": {
+        "widths": [
+          32
+        ],
+        "representation": "raw"
+      }
+    },
+    {
+      "family": "mlp",
+      "parameters": {
+        "widths": [
+          64,
+          32
+        ],
+        "representation": "raw"
+      }
+    },
+    {
+      "family": "mlp",
+      "parameters": {
+        "widths": [
+          32
+        ],
+        "representation": "statistics"
+      }
+    },
+    {
+      "family": "mlp",
+      "parameters": {
+        "widths": [
+          64,
+          32
+        ],
+        "representation": "statistics"
+      }
+    },
+    {
+      "family": "cnn1d",
+      "parameters": {
+        "widths": [
+          16
+        ],
+        "kernel": 3
+      }
+    },
+    {
+      "family": "cnn1d",
+      "parameters": {
+        "widths": [
+          16,
+          32
+        ],
+        "kernel": 5
+      }
+    },
+    {
+      "family": "gru",
+      "parameters": {
+        "hidden": 16,
+        "layers": 1
+      }
+    },
+    {
+      "family": "gru",
+      "parameters": {
+        "hidden": 32,
+        "layers": 2
+      }
+    }
+  ],
+  "seeds": [
+    11,
+    23,
+    37
+  ],
+  "training": {
+    "epochs": 100,
+    "batch_size": 24,
+    "learning_rate": 0.003,
+    "weight_decay": 0.001,
+    "patience": 15
+  },
+  "budget": {
+    "max_parameters_per_model": 200000,
+    "max_ensemble_parameters": 600000,
+    "max_trials": 24,
+    "max_trial_seconds": 60
+  },
+  "selection": "mean_seed_validation_macro_f1",
+  "abstention": {
+    "min_uncalibrated_score": 0.6
+  }
+}

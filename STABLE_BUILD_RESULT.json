@@ -1,0 +1,9 @@
+{
+  "tier": "STABLE",
+  "version": "0.7.0",
+  "artifact_hashes": {
+    "phm_design-0.7.0-py3-none-any.whl": "2e7fe56c193f62be4847cd60aad5cc0f03dc752e0ad2461846dc70a1dd0e55cc",
+    "phm_design-0.7.0.tar.gz": "9f78b78caed4e2e1f33f32edd811c2f2e9806e8e159b1de2607a40c0f2a68ff2"
+  },
+  "certificate_sha256": "dc7b45b57edb18cc68a95c198adc2eda83379da3f2cbe1d2175bad3a78f254ea"
+}

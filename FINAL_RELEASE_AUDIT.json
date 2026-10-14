@@ -1,0 +1,79 @@
+{
+  "schema": "phm.r60.stable.final_audit.v1",
+  "release": "0.7.0",
+  "decision": "PASS_SIMULATION_DOMAIN_STABLE",
+  "contract_id": "PHM_0_7_LIMITED_SIM_15_20261011_V2",
+  "qualified_cells": 15,
+  "not_qualified_cells": 8,
+  "calibration": {
+    "worlds": 300,
+    "trajectories": 980,
+    "passed": 15,
+    "failed": 0,
+    "same_models_no_refit": true
+  },
+  "sealed": {
+    "worlds": 600,
+    "trajectories": 1960,
+    "passed": 15,
+    "failed": 0,
+    "same_models_no_refit": true
+  },
+  "rc_test_matrix": "four environments, 738 each (historical locked logs)",
+  "stable_test_matrix": {
+    "311_wheel": {
+      "full_tests_pass": 738,
+      "failed": 0,
+      "skipped": 0,
+      "stable_operations": 25,
+      "basilisk_smoke": "PASS",
+      "pip_check": "PASS"
+    },
+    "311_sdist": {
+      "full_tests_pass": 738,
+      "failed": 0,
+      "skipped": 0,
+      "stable_operations": 25,
+      "basilisk_smoke": "PASS",
+      "pip_check": "PASS"
+    },
+    "312_wheel": {
+      "full_tests_pass": 738,
+      "failed": 0,
+      "skipped": 0,
+      "stable_operations": 25,
+      "basilisk_smoke": "PASS",
+      "pip_check": "PASS"
+    },
+    "312_sdist": {
+      "full_tests_pass": 738,
+      "failed": 0,
+      "skipped": 0,
+      "stable_operations": 25,
+      "basilisk_smoke": "PASS",
+      "pip_check": "PASS"
+    }
+  },
+  "stable_operations_unique": 100,
+  "rollback": "PASS_0.7.0_TO_0.6.0",
+  "previous_stable_0.6_retained": true,
+  "core_changes_dev13_to_rc": [
+    "phm_design/__init__.py",
+    "phm_design/limited_models/model_manifest.json",
+    "phm_design/limited_models/qualification_certificate.json",
+    "phm_design/limited_models/scope_contract.json",
+    "phm_design/platform_limited.py"
+  ],
+  "core_changes_rc_to_stable": [
+    "phm_design/__init__.py",
+    "phm_design/limited_models/model_manifest.json",
+    "phm_design/limited_models/scope_contract.json"
+  ],
+  "not_certified": [
+    "real flight",
+    "physical hardware",
+    "causal online diagnosis",
+    "out-of-claim eight cells"
+  ],
+  "checks_passed": 10821
+}

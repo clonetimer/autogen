@@ -1,0 +1,1 @@
+{"runtime": "3.12.15 (main, Oct  3 2026, 01:03:07) [Clang 22.1.3 ]", "product": "0.7.0rc1", "source": "/mnt/data/PHM_R60_LIMITED_15_20261011/release_validation/RC/clean_envs/312_sdist/lib/python3.12/site-packages/phm_design/__init__.py", "contract": "PHM_0_7_LIMITED_SIM_15_20261011_V2", "models": 5, "inherited_scientific_site": false, "basilisk": "PASS", "tier": "RC"}

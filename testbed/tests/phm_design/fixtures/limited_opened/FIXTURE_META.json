@@ -1,0 +1,38 @@
+{
+  "ADCS": {
+    "task": "conventional",
+    "original_observation_sha256": "26a04671dc4bacdc85275d6b1480585655a585aae4068d5a4a9f4ce58da95da7",
+    "fixture_sha256": "26a04671dc4bacdc85275d6b1480585655a585aae4068d5a4a9f4ce58da95da7",
+    "source": "OPENED_R57_DEVELOPMENT_NOT_FRESH"
+  },
+  "EPS": {
+    "task": "conventional",
+    "original_observation_sha256": "cc510bcf5804b73fef92b2b28c3f3e93a96d7c1e3e97765ef4fc68c33f2238a8",
+    "fixture_sha256": "cc510bcf5804b73fef92b2b28c3f3e93a96d7c1e3e97765ef4fc68c33f2238a8",
+    "source": "OPENED_R57_DEVELOPMENT_NOT_FRESH"
+  },
+  "Thermal": {
+    "task": "conventional",
+    "original_observation_sha256": "70e710b7e6679ee87a9da78123f011d2036ae3596259bf7ffcba3658d897aa3b",
+    "fixture_sha256": "70e710b7e6679ee87a9da78123f011d2036ae3596259bf7ffcba3658d897aa3b",
+    "source": "OPENED_R57_DEVELOPMENT_NOT_FRESH"
+  },
+  "Data": {
+    "task": "conventional",
+    "original_observation_sha256": "e451858b01ec957a9a3678cf938ff23c1dba1da6405cc8af990d704110f8b03e",
+    "fixture_sha256": "e451858b01ec957a9a3678cf938ff23c1dba1da6405cc8af990d704110f8b03e",
+    "source": "OPENED_R57_DEVELOPMENT_NOT_FRESH"
+  },
+  "EPS_localization": {
+    "task": "multi_component_localization",
+    "original_observation_sha256": "278383eb2f22769ab3862db0cf625279ddd6b708384e04dab50a496944da256a",
+    "fixture_sha256": "278383eb2f22769ab3862db0cf625279ddd6b708384e04dab50a496944da256a",
+    "source": "OPENED_R57_DEVELOPMENT_NOT_FRESH"
+  },
+  "Data_localization": {
+    "task": "multi_component_localization",
+    "original_observation_sha256": "b09a88b7de43777b7c9397424a940ffe9f16ec607e54337dca12cba5df53c0de",
+    "fixture_sha256": "b09a88b7de43777b7c9397424a940ffe9f16ec607e54337dca12cba5df53c0de",
+    "source": "OPENED_R57_DEVELOPMENT_NOT_FRESH"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "phm.dev12.sota-informed-thermal-study.v1",
+  "development_seed": 51061003,
+  "final_test_seed": 52061003,
+  "domains": [
+    "thermal"
+  ],
+  "development_groups": {
+    "train": 24,
+    "validation": 10,
+    "calibration": 0,
+    "test": 0
+  },
+  "test_groups": {
+    "train": 0,
+    "validation": 0,
+    "calibration": 0,
+    "test": 24
+  },
+  "representation": "multicomponent_mechanism.v1",
+  "legacy_policy": "configs/phm/nonadcs_reference_dev3.json",
+  "advanced_policy": "configs/phm/sota_informed_thermal_dev12.json",
+  "literature_controls": [
+    "Grid3DRes_50k",
+    "Transformer_50k",
+    "MultiScaleConvTransformer_50k"
+  ],
+  "policy_frozen_before_generation": true,
+  "test_used_for_policy_selection": false,
+  "production_qualified": false
+}

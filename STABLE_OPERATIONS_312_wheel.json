@@ -1,0 +1,314 @@
+{
+  "cell": "312_wheel",
+  "events": [
+    {
+      "cell": "312_wheel",
+      "id": "SOP003",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "ADCS",
+        "prediction": 0
+      },
+      "rss_peak_mib": 148.09375,
+      "status": "PASS",
+      "wall_s": 0.8762182139998913
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP007",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "Data",
+        "prediction": 0
+      },
+      "rss_peak_mib": 148.46875,
+      "status": "PASS",
+      "wall_s": 0.00795728500088444
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP011",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "EPS",
+        "prediction": 0
+      },
+      "rss_peak_mib": 148.46875,
+      "status": "PASS",
+      "wall_s": 0.00620403000175429
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP015",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "EPS_localization",
+        "prediction": 0
+      },
+      "rss_peak_mib": 148.59375,
+      "status": "PASS",
+      "wall_s": 0.008069608000369044
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP019",
+      "kind": "supported_prediction",
+      "result": {
+        "domain": "ADCS",
+        "prediction": 0
+      },
+      "rss_peak_mib": 148.59375,
+      "status": "PASS",
+      "wall_s": 0.014092723000430851
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP023",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "Thermal",
+        "row_count": 181
+      },
+      "rss_peak_mib": 148.59375,
+      "status": "PASS",
+      "wall_s": 0.0008029800010262989
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP027",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "Data_localization",
+        "row_count": 121
+      },
+      "rss_peak_mib": 148.59375,
+      "status": "PASS",
+      "wall_s": 0.00042029699943668675
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP031",
+      "kind": "valid_observation_contract",
+      "result": {
+        "domain": "Data",
+        "row_count": 121
+      },
+      "rss_peak_mib": 148.59375,
+      "status": "PASS",
+      "wall_s": 0.00027817400041385554
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP035",
+      "kind": "invalid_observation_contract",
+      "result": {
+        "message": "EXACT_DEPLOYMENT_FIELDS_REQUIRED",
+        "rejected": "ValueError"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.0014285620000009658
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP039",
+      "kind": "invalid_observation_contract",
+      "result": {
+        "message": "TIME_NOT_STRICTLY_INCREASING",
+        "rejected": "ValueError"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.0014346340012707515
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP043",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "ADCS:intermittent_fault"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.0002328470000065863
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP047",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "Data:intermittent_fault"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.0001469369999540504
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP051",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "EPS:conventional"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.0001418270003341604
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP055",
+      "kind": "scope_authorized",
+      "result": {
+        "authorized": true,
+        "case": "EPS_localization:multi_component_localization"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.0001903850006783614
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP059",
+      "kind": "scope_rejected",
+      "result": {
+        "authorized": false,
+        "case": "Thermal:conventional"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 3.4310998671571724e-05
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP063",
+      "kind": "scope_rejected",
+      "result": {
+        "authorized": false,
+        "case": "Thermal:weak_fault"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 3.082599869230762e-05
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP067",
+      "kind": "frozen_model_integrity",
+      "result": {
+        "sha256": "0d57ab63660b0d8d8137d2ae395e66242d1bf306c7b682f10c7bb230ee808a14"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.003017672999703791
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP071",
+      "kind": "frozen_model_integrity",
+      "result": {
+        "sha256": "3ea4f9f144314337546dd93edc73900a4f250c94581114c235e840f6c9f8e90d"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.0029075830007059267
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP075",
+      "kind": "persist_restore_model",
+      "result": {
+        "domain": "ADCS",
+        "prediction": 0,
+        "roundtrip": "PASS"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.024130576999596087
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP079",
+      "kind": "persist_restore_model",
+      "result": {
+        "domain": "Data_localization",
+        "prediction": 0,
+        "roundtrip": "PASS"
+      },
+      "rss_peak_mib": 148.71875,
+      "status": "PASS",
+      "wall_s": 0.0266310050010361
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP083",
+      "kind": "persist_restore_model",
+      "result": {
+        "domain": "EPS_localization",
+        "prediction": 0,
+        "roundtrip": "PASS"
+      },
+      "rss_peak_mib": 148.84375,
+      "status": "PASS",
+      "wall_s": 0.01865847499902884
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP087",
+      "kind": "process_restart_prediction",
+      "result": {
+        "domain": "Data",
+        "restart_prediction": 0
+      },
+      "rss_peak_mib": 148.84375,
+      "status": "PASS",
+      "wall_s": 0.9466050530008943
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP091",
+      "kind": "independent_synthetic_design",
+      "result": {
+        "synthetic_design": "PASS",
+        "trial": 0,
+        "unqualified": true
+      },
+      "rss_peak_mib": 149.7890625,
+      "status": "PASS",
+      "wall_s": 0.032658915999491
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP095",
+      "kind": "independent_synthetic_design",
+      "result": {
+        "synthetic_design": "PASS",
+        "trial": 4,
+        "unqualified": true
+      },
+      "rss_peak_mib": 149.7890625,
+      "status": "PASS",
+      "wall_s": 0.03277526300007594
+    },
+    {
+      "cell": "312_wheel",
+      "id": "SOP099",
+      "kind": "negative_release_boundary",
+      "result": {
+        "rejected": "NO_TRAINING_SELECTED_BUNDLED_MODEL_FOR_DOMAIN"
+      },
+      "rss_peak_mib": 149.7890625,
+      "status": "PASS",
+      "wall_s": 0.00012224800047988538
+    }
+  ],
+  "failed": 0,
+  "passed": 25,
+  "plan_sha256": "f9c257b508aac42432a371b0bd54a36edc34dfb2c901ea1648424d0fd38a35e5",
+  "product_version": "0.7.0",
+  "qualified_ops": 25,
+  "schema": "phm.r60.stable.operation_results.v1",
+  "wall_s": 2.005572995998591
+}

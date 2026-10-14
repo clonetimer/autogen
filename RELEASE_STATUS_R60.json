@@ -1,0 +1,107 @@
+{
+  "schema": "phm.autodesign.r60.stable.release_state.v1",
+  "release_date": "2026-10-11",
+  "contract_id": "PHM_0_7_LIMITED_SIM_15_20261011_V2",
+  "product": "phm-design",
+  "formal_stable_version": "0.7.0",
+  "status": "RELEASED_SIMULATION_DOMAIN_LIMITED_STABLE",
+  "publication_status": "DELIVERED_AS_LOCAL_ARTIFACTS_NOT_PYPI_UPLOAD",
+  "supersedes_original_0_6_for_claimed_simulation_use_cases": true,
+  "previous_stable_0_6_wheel_frozen_and_rollback_verified": true,
+  "calibration": {
+    "worlds": 300,
+    "trajectories": 980,
+    "passed": 15,
+    "failed": 0,
+    "same_models_no_refit": true
+  },
+  "sealed": {
+    "worlds": 600,
+    "trajectories": 1960,
+    "passed": 15,
+    "failed": 0,
+    "same_models_no_refit": true
+  },
+  "verified_stable_test_matrix": {
+    "311_wheel": {
+      "full_tests_pass": 738,
+      "failed": 0,
+      "skipped": 0,
+      "stable_operations": 25,
+      "basilisk_smoke": "PASS",
+      "pip_check": "PASS"
+    },
+    "311_sdist": {
+      "full_tests_pass": 738,
+      "failed": 0,
+      "skipped": 0,
+      "stable_operations": 25,
+      "basilisk_smoke": "PASS",
+      "pip_check": "PASS"
+    },
+    "312_wheel": {
+      "full_tests_pass": 738,
+      "failed": 0,
+      "skipped": 0,
+      "stable_operations": 25,
+      "basilisk_smoke": "PASS",
+      "pip_check": "PASS"
+    },
+    "312_sdist": {
+      "full_tests_pass": 738,
+      "failed": 0,
+      "skipped": 0,
+      "stable_operations": 25,
+      "basilisk_smoke": "PASS",
+      "pip_check": "PASS"
+    }
+  },
+  "frozen_stable_operations_pass": 100,
+  "installed_rollback": "0.7.0->0.6.0 PASS",
+  "rc_artifacts_retained": true,
+  "claimed_cells": [
+    "ADCS:conventional",
+    "ADCS:cross_scenario",
+    "ADCS:intermittent_fault",
+    "ADCS:progressive_degradation",
+    "Data:conventional",
+    "Data:cross_scenario",
+    "Data:intermittent_fault",
+    "Data:progressive_degradation",
+    "Data:weak_fault",
+    "Data_localization:multi_component_localization",
+    "EPS:conventional",
+    "EPS:cross_scenario",
+    "EPS:intermittent_fault",
+    "EPS:progressive_degradation",
+    "EPS_localization:multi_component_localization"
+  ],
+  "out_of_claim_cells": [
+    "ADCS:weak_fault",
+    "EPS:weak_fault",
+    "Thermal:conventional",
+    "Thermal:cross_scenario",
+    "Thermal:intermittent_fault",
+    "Thermal:progressive_degradation",
+    "Thermal:weak_fault",
+    "Thermal_localization:multi_component_localization"
+  ],
+  "supported_environment": {
+    "os": "Linux x86_64",
+    "python": [
+      "3.11",
+      "3.12"
+    ],
+    "basilisk": "2.11.0",
+    "mode": "simulation-domain offline full trajectory with known healthy-prefix"
+  },
+  "non_supported_claims": [
+    "in-orbit hardware",
+    "causal streaming",
+    "general non-satellite domains",
+    "eight unqualified cells"
+  ],
+  "known_failure_log_retained": true,
+  "remaining_release_blockers": [],
+  "future_algorithm_design_results_are_development_only_until_new_qualification": true
+}

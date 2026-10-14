@@ -1,0 +1,70 @@
+{
+  "calibration_passed": 15,
+  "calibration_worlds": 300,
+  "claimed_cells": [
+    "ADCS:conventional",
+    "ADCS:cross_scenario",
+    "ADCS:intermittent_fault",
+    "ADCS:progressive_degradation",
+    "Data:conventional",
+    "Data:cross_scenario",
+    "Data:intermittent_fault",
+    "Data:progressive_degradation",
+    "Data:weak_fault",
+    "Data_localization:multi_component_localization",
+    "EPS:conventional",
+    "EPS:cross_scenario",
+    "EPS:intermittent_fault",
+    "EPS:progressive_degradation",
+    "EPS_localization:multi_component_localization"
+  ],
+  "contract_id": "PHM_0_7_LIMITED_SIM_15_20261011_V2",
+  "development_artifact_hashes": {
+    "calibration_freeze": "5fb5e2d179519100295f294baad96d055d718cb7c1cba4b6416b3f132ab74044",
+    "calibration_scores": "ee7074a6e5e397952323ccbd3b0866cb03315608b5d915b56e3c6c6a08f7d744",
+    "dev13_contract": "2ec02d98f55424c48c99e7aeba4109ecf0b4a5f0e1db168f23a03c2a17ed4750",
+    "dev13_sdist": "0992357225eea64fb396ba3094a349e4caf4541cc2cef8d0b5cebb5d685821c7",
+    "dev13_wheel": "10b9a4e47e4e2b94c931f298994d2e59aad2eb183a0ca8f83c69addfb11441f8",
+    "sealed_freeze": "20ab1e316fd302fa33d0c4f1983c72f6dcd8632eb161601b5177aac504e0f955",
+    "sealed_plan": "84981cda6a66385fe76c01e7f7dd3fb7f75f4c73b9febaccdd6f07c9bcc6c87b",
+    "sealed_scores": "c3442f319686622717298cbc5d8e36579373d1baba9c4ae5881ceb4c45ce7939"
+  },
+  "domain": "Basilisk 2.11.0 / Linux x86_64 / offline full-trajectory / trusted initial healthy segment",
+  "frozen_models_sha256": {
+    "ADCS": "97cfd75ddec8068305dd7ddea62cd81e48062427fe3644a3e0d15a7759fb86c7",
+    "Data": "0d57ab63660b0d8d8137d2ae395e66242d1bf306c7b682f10c7bb230ee808a14",
+    "Data_localization": "3006511eed61a30b4095cd1f368c4e2776610ef8b770035bada54d3fc148260f",
+    "EPS": "3ea4f9f144314337546dd93edc73900a4f250c94581114c235e840f6c9f8e90d",
+    "EPS_localization": "d38f8db0f40e65aab78d8a0f2d07d26248c2024fe426e3265b1a0849d913525a"
+  },
+  "historical_R59_failure_preserved": true,
+  "issued_diagnostic_scope": "SIMULATION_DOMAIN_ONLY",
+  "no_qualification_data_model_refit": true,
+  "numerical_thresholds": {
+    "healthy_known_fault_false_alarm_max": 0.1,
+    "overall_accuracy_min": 0.9,
+    "per_fault_recall_min": 0.8,
+    "unknown_fraction_max": 0.1,
+    "worst_family_accuracy_min": 0.8
+  },
+  "out_of_scope": "not on-orbit, not causal streaming, not hardware safety certificate",
+  "product_matrix": {
+    "311_sdist": "68b12750393dd6a86aa30822d19466a4c0eab3cbefbecc512a60e33796b76523",
+    "311_wheel": "47a5804cc031b42c3717ed36d04f44efcd51922527ae47faac9e3c4c79822f59",
+    "312_sdist": "12d4126f791f2801146b500a1e470852fd3ee4800b6e499771677c647c14e6a4",
+    "312_wheel": "871af1bdbe60971fba40a5df6c4aa0020f8f050ad53729c12824e1546694189a"
+  },
+  "schema": "phm.simulation.qualification.certificate.v1",
+  "sealed_passed": 15,
+  "sealed_worlds": 600,
+  "unqualified_cells": [
+    "ADCS:weak_fault",
+    "EPS:weak_fault",
+    "Thermal:conventional",
+    "Thermal:cross_scenario",
+    "Thermal:intermittent_fault",
+    "Thermal:progressive_degradation",
+    "Thermal:weak_fault",
+    "Thermal_localization:multi_component_localization"
+  ]
+}

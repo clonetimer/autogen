@@ -1,0 +1,10 @@
+{
+  "calibration_or_blind_opened": false,
+  "fault_nominal_pairs": 36,
+  "independent_world_groups": 18,
+  "no_model_training_here": true,
+  "schema": "phm.r16.native-physical-audit.v1",
+  "simulations": 54,
+  "source_plan_sha256": "82ab8e6ca73528505f0bf90190afbcb989fe1de25cc770c4a9b570788fb8b1dc",
+  "status": "TRAIN_DATA_PHYSICAL_PAIR_PASS_NOT_DIAGNOSTIC_QUALIFICATION"
+}

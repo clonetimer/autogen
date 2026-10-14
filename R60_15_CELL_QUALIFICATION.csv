@@ -1,0 +1,16 @@
+cell,calibration_worlds,calibration_correct,calibration_trajectories,calibration_healthy_false_alarms,calibration_min_recall,sealed_worlds,sealed_correct,sealed_trajectories,sealed_healthy_false_alarms,sealed_min_recall,sealed_worst_family_accuracy,qualification
+ADCS:conventional,20,60,60,0,1.0,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+ADCS:cross_scenario,20,59,60,0,0.95,40,115,120,3,0.95,0.9333333333333333,SIMULATION_DOMAIN_STABLE_0.7.0
+ADCS:intermittent_fault,20,59,60,0,0.95,40,117,120,0,0.925,0.9333333333333333,SIMULATION_DOMAIN_STABLE_0.7.0
+ADCS:progressive_degradation,20,60,60,0,1.0,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+Data:conventional,20,60,60,0,1.0,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+Data:cross_scenario,20,60,60,0,1.0,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+Data:intermittent_fault,20,59,60,0,0.95,40,119,120,0,0.975,0.9666666666666667,SIMULATION_DOMAIN_STABLE_0.7.0
+Data:progressive_degradation,20,60,60,0,1.0,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+Data:weak_fault,20,60,60,0,1.0,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+Data_localization:multi_component_localization,20,100,100,0,1.0,40,200,200,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+EPS:conventional,20,59,60,0,0.95,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+EPS:cross_scenario,20,60,60,0,1.0,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+EPS:intermittent_fault,20,60,60,0,1.0,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+EPS:progressive_degradation,20,60,60,0,1.0,40,120,120,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
+EPS_localization:multi_component_localization,20,100,100,0,1.0,40,200,200,0,1.0,1.0,SIMULATION_DOMAIN_STABLE_0.7.0
