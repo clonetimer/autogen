@@ -4,7 +4,7 @@
 >
 > **Research-only / NOT for flight safety.** This is a research-grade multi-family compositional network design toolkit for Prognostics and Health Management (PHM). It must **not** be used for real spacecraft flight-safety decisions or online real-time closed-loop control. See [Safety & Scope](#safety--scope).
 
-PHM AutoDesign designs and qualifies multi-family compositional diagnostic networks, targeting the spacecraft (SAT / Basilisk simulation) domain. The `0.7.0` line is a **development candidate**; the frozen **`0.6.0 Stable`** remains the only formally released stable version.
+PHM AutoDesign designs and qualifies multi-family compositional diagnostic networks, targeting the spacecraft (SAT / Basilisk simulation) domain. The frozen **`0.7.0 Stable`** release has limited qualification for 15 specified SAT/Basilisk simulation-domain offline diagnostic cases under `RELEASE_DECISION_R60.md`; `0.6.0` is retained as a rollback artifact.
 
 ## Package
 
@@ -32,7 +32,7 @@ For the released wheel/sdist, see `artifacts/` and [README_RELEASE_R60.md](READM
 ## Safety & Scope
 
 - **Do not use for real flight-safety decisions or online closed-loop control.** Support is limited to offline discrimination over whole-trajectory data within supported simulation distributions.
-- `0.7.0` is a development candidate — **not** an RC or Stable release. A newly trained `design` model is `DEVELOPMENT_ONLY` and does **not** automatically inherit the bundled 15-cell diagnostic qualification.
+- `0.7.0` is a **limited simulation-domain Stable** release, not certification for real flight-safety decisions, online diagnosis, or arbitrary datasets. A newly trained `design` model is `DEVELOPMENT_ONLY` and does **not** automatically inherit the bundled 15-cell diagnostic qualification.
 - Do not re-label past failed evaluation worlds as new blind tests, and do not expand Stable support scope without fresh independent training / calibration / sealing evidence.
 
 ## Repository layout
