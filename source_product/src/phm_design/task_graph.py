@@ -136,14 +136,20 @@ def _train_indices(y, head: str):
     return np.arange(len(y)) if head == 'detection' else np.flatnonzero(y != 0)
 
 
-def _fit_head(head, spec, matrix, labels, y, subset, seed):
+def _fit_head(head, spec, matrix, labels, y, subset, seed, training_environments=None):
     idx = _train_indices(y[subset], head)
     training_rows = subset[idx]
     train_y = labels[head][training_rows]
     if len(training_rows) == 0 or set(train_y.tolist()) != {0, 1}:
         raise ValueError('GRAPH_HEAD_MISSING_CLASS:' + head)
     f, l = spec
-    return TaskCandidateRegistry().build(f, l, seed).fit(matrix[f][training_rows], train_y)
+    candidate = TaskCandidateRegistry().build(f, l, seed)
+    if l.startswith('dg_'):
+        if training_environments is None or len(training_environments) != len(y):
+            raise ValueError('DG_REQUIRES_VERIFIED_TRAINING_ENVIRONMENTS')
+        return candidate.fit(matrix[f][training_rows], train_y,
+                             domain_groups=np.asarray(training_environments)[training_rows])
+    return candidate.fit(matrix[f][training_rows], train_y)
 
 
 def _get_head_proba(model, matrix, spec, query_rows):
@@ -205,7 +211,7 @@ def _choose_head(head, choices, matrix, labels, y, groups, eligible_rows, seed,
                     'world_disjoint': True,
                     'environment_disjoint': env is not None,
                 })
-                m = _fit_head(head, spec, matrix, labels, y, idx[tr], seed)
+                m = _fit_head(head, spec, matrix, labels, y, idx[tr], seed, environment_families)
                 oof[va] = _get_head_proba(m, matrix, spec, idx[va])
             if not np.isfinite(oof).all():
                 raise ValueError('INCOMPLETE_INNER_OOF')
@@ -468,6 +474,13 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
     if not isinstance(gates, TaskGraphGate) or not isinstance(policy, TaskGraphPolicy):
         raise ValueError('INVALID_GRAPH_POLICY_TYPE')
     specs = _specs(candidate_specs)
+    neural_domain_candidates = sorted({learner for options in specs.values()
+                                       for _, learner in options if learner.startswith('dg_')})
+    if neural_domain_candidates and (training_lineage is None or
+                                     environment_families is None or
+                                     selection_mode != 'worst_environment' or
+                                     outer_split_mode != 'leave_environment_family_out'):
+        raise ValueError('DG_REQUIRES_VERIFIED_ENVIRONMENT_EXCLUSIVE_SEARCH')
     y = np.asarray(labels, dtype=int)
     if not np.array_equal(y, np.asarray(labels)) or set(y.tolist()) != set(range(len(ontology.labels))):
         raise ValueError('FULL_ONTOLOGY_CLASS_SUPPORT_REQUIRED')
@@ -504,7 +517,7 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
                 choice, trials = _choose_head(head, specs[head], matrix, targets, y, g, tr,
                                               seed + head_num, environment_families,
                                               selection_mode, head_evidence_policy, fault_strength_strata)
-                model = _fit_head(head, choice, matrix, targets, y, tr, seed + head_num)
+                model = _fit_head(head, choice, matrix, targets, y, tr, seed + head_num, environment_families)
                 outer_oof[head][va] = _get_head_proba(model, matrix, choice, va)
                 details['head_selections'][head] = {'candidate': list(choice), 'trials': trials}
             except Exception as e:
@@ -547,6 +560,8 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
              'unique_training_rows': n, 'group_fold_intersection': 0,
              'observation_fields': list(schema),
              'candidate_specs': {h: [list(s) for s in specs[h]] for h in _HEADS},
+             'neural_domain_generalization_candidates': neural_domain_candidates,
+             'neural_domain_metadata_used_as_features': False,
              'head_evidence_policy': vars(head_evidence_policy).copy() if head_evidence_policy else None,
              'fault_strength_strata_role': ('TRAIN_DESIGN_SCREEN_ONLY'
                                               if fault_strength_strata is not None else None),
@@ -577,7 +592,7 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
                                           head_evidence_policy, fault_strength_strata)
             final_selection[head] = choice
             final_trials[head] = trials
-            fitted[head] = _fit_head(head, choice, matrix, targets, y, all_rows, seed + i)
+            fitted[head] = _fit_head(head, choice, matrix, targets, y, all_rows, seed + i, environment_families)
     except Exception as e:
         audit.update({'decision': 'REJECT_FINAL_HEAD_FIT', 'model_delivered': False,
                       'final_fit_error': type(e).__name__ + ': ' + str(e),

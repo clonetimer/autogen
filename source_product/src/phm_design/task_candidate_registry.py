@@ -25,6 +25,11 @@ _LEARNERS = {
     'torch_cnn1d': ('torch_cpu', 'sequence'),
     'torch_gru': ('torch_cpu', 'sequence'),
     'torch_transformer': ('torch_cpu', 'sequence'),
+    'torch_tcn': ('torch_cpu', 'sequence'),
+    'dg_cnn1d': ('torch_cpu_dg', 'sequence'),
+    'dg_gru': ('torch_cpu_dg', 'sequence'),
+    'dg_transformer': ('torch_cpu_dg', 'sequence'),
+    'dg_tcn': ('torch_cpu_dg', 'sequence'),
 }
 
 
@@ -54,6 +59,9 @@ class TaskCandidateRegistry:
             return make_pipeline(StandardScaler(), LogisticRegression(C=1., max_iter=800, random_state=seed))
         if record.learner == 'extra':
             return ExtraTreesClassifier(n_estimators=48, min_samples_leaf=1, n_jobs=1, random_state=seed)
+        if record.backend == 'torch_cpu_dg':
+            from .neural_domain_generalization import DGSequenceEstimator
+            return DGSequenceEstimator(record.learner, seed)
         return TorchTaskEstimator(record.learner, seed)
 
 
@@ -97,7 +105,7 @@ class TorchTaskEstimator:
     """
     def __init__(self, learner: str, seed: int, *, epochs: int = 8,
                  batch_size: int = 16, max_parameters: int = 200_000):
-        if learner not in {'torch_cnn1d', 'torch_gru', 'torch_transformer'}:
+        if learner not in {'torch_cnn1d', 'torch_gru', 'torch_transformer', 'torch_tcn'}:
             raise ValueError('UNREGISTERED_TORCH_TASK_MODEL')
         if type(seed) is not int or not 0 <= seed < 2**32:
             raise ValueError('INVALID_TORCH_TASK_SEED')
@@ -118,6 +126,9 @@ class TorchTaskEstimator:
         from .models import Shape, default_registry
         from .literature_baselines import build_transformer_ts
         shape = Shape(steps, channels, classes)
+        if self.learner == 'torch_tcn':
+            from .neural_architectures import ResidualDilatedTCN
+            return ResidualDilatedTCN(channels, classes)
         if self.learner == 'torch_transformer':
             return build_transformer_ts(shape, {'d_model': 16, 'heads': 2, 'layers': 1})
         registry = default_registry()
