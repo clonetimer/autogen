@@ -1,0 +1,26 @@
+name: PHM lineage preflight (development)
+on:
+  pull_request:
+    paths:
+      - 'source_product/**'
+      - '.github/workflows/phm-autodesign-lineage-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lineage:
+    name: "Lineage negative controls / Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install pytest numpy scikit-learn
+      - run: python -m pytest -q source_product/tests/phm_design/test_r74_environment_coherence.py source_product/tests/phm_design/test_r72_robust_design_policy.py
+        env:
+          PYTHONPATH: source_product/src

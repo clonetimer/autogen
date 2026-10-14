@@ -1,0 +1,31 @@
+{
+  "schema": "phm.r67.phase-cross-isoenergy-thermal-dev.v1",
+  "research_phase": "DEVELOPMENT_PILOT_ONLY",
+  "qualification": "NOT_EVALUATED",
+  "open_calibration_or_blind_worlds": false,
+  "model_training": false,
+  "world_ids": ["r67-thermal-phase-dev-001", "r67-thermal-phase-dev-002", "r67-thermal-phase-dev-003", "r67-thermal-phase-dev-004"],
+  "arms": {"X": "r67_phase_a0_b3_isoenergy", "Y": "r67_phase_a3_b0_isoenergy", "C": "r67_constant_isoenergy"},
+  "simulation": {
+    "domain": "thermal", "bsk": "2.11.0", "native_module": "Basilisk.simulation.sensorThermal.SensorThermal",
+    "duration_s": 14400, "solver_s": 2, "sample_s": 20, "onset_s": 7200,
+    "fault_labels": [0,1,2,3,4], "same_physical_world_across_arms": true,
+    "min_nominal_temperature_k": 250.0, "max_nominal_temperature_k": 450.0,
+    "excitation": {"segment_s": 2400, "multipliers": [0.5,1.5,1.0,1.5,0.5,1.0],
+      "component_phase_shifts_X": [0,3], "component_phase_shifts_Y": [3,0],
+      "expected_each_half_normalized_energy_watt_seconds": 7200.0,
+      "independent_of_fault_truth": true}
+  },
+  "evaluation": {
+    "development_only": true, "blind_worlds_opened": 0, "no_training_or_model_selection": true,
+    "no_qualification_claim": true, "paired_same_noise_oracle_separate": true,
+    "independent_observation_noise": true,
+    "deployment_fields": ["time_s","illumination","heat_a_command_w","heat_b_command_w","temperature_a_k","temperature_b_k"],
+    "primary_metric": "per_component_world_paired_phase3_minus_phase0_scaled_residual_fraction",
+    "phase_materiality_absolute": 0.02, "min_same_direction_worlds_out_of_4": 3,
+    "unit_of_independence": "physical_world_id",
+    "require_both_components_opposite_sign_for_r66_asymmetry_attribution": true,
+    "constant_control": "descriptive_only_not_a_pass_replacement",
+    "no_pooled_8_pair_inference": true
+  }
+}

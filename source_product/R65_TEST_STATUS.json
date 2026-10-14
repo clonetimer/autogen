@@ -1,0 +1,32 @@
+{
+  "schema": "phm.r65.test-status.v1",
+  "version": "0.8.0.dev6",
+  "research_experiment_status": "DEVELOPMENT_PILOT_ONLY",
+  "native_physics": "Basilisk 2.11.0 SensorThermal",
+  "development_physical_worlds": 4,
+  "paired_oracle_trajectories": 40,
+  "independent_noise_observation_trajectories": 40,
+  "sample_rows_each": 181,
+  "native_dev_evidence_sha256_verified_files": 83,
+  "full_native_installed_suite": {
+    "python": "3.13.5",
+    "pass": 776,
+    "fail": 0,
+    "skip": 0,
+    "warnings": 15,
+    "duration_seconds": 83.44
+  },
+  "targeted_r65_r64_r63_suite": {
+    "pass": 25,
+    "fail": 0
+  },
+  "wheel_sdist_built": true,
+  "wheel_installed_version": "0.8.0.dev6",
+  "legacy_model_qualified_on_dev6": false,
+  "complete_pip_check": "FAIL_MISSING_SGP4_AND_PILLOW_VERSION_INCOMPATIBLE",
+  "python311_312_full_rc_matrix": "NOT_RUN",
+  "new_qualification_cells": 0,
+  "holdout_worlds_opened": 0,
+  "new_trained_models": 0,
+  "github_remote_push": "NOT_DONE"
+}

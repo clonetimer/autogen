@@ -1,0 +1,80 @@
+{
+  "arms": {
+    "A": "legacy_two_level",
+    "B": "slow_thermal_plateaus_r66"
+  },
+  "evaluation": {
+    "blind_worlds_opened": 0,
+    "deployment_fields": [
+      "time_s",
+      "illumination",
+      "heat_a_command_w",
+      "heat_b_command_w",
+      "temperature_a_k",
+      "temperature_b_k"
+    ],
+    "development_only": true,
+    "exploratory_success_threshold_absolute": 0.02,
+    "independent_observation_noise": true,
+    "min_temperature_span_increase_k": 5.0,
+    "no_qualification_claim": true,
+    "no_training_or_model_selection": true,
+    "paired_same_noise_oracle_separate": true,
+    "primary_metric": "median_scaled_residual_fraction_B_minus_A",
+    "reference_oracle_only": [
+      "postfault_mechanism_pearson",
+      "postfault_scaled_residual_fraction",
+      "prefault_nominal_temperature_span_k",
+      "postfault_nominal_temperature_span_k",
+      "postfault_constant_vs_t4_condition_number",
+      "temperatures_safe"
+    ],
+    "support_threshold_pairs_positive": 6,
+    "unit_of_independence": "physical_world_id"
+  },
+  "model_training": false,
+  "open_calibration_or_blind_worlds": false,
+  "qualification": "NOT_EVALUATED",
+  "research_phase": "DEVELOPMENT_PILOT_ONLY",
+  "schema": "phm.r66.timescale-dev.v1",
+  "simulation": {
+    "bsk": "2.11.0",
+    "domain": "thermal",
+    "duration_s": 14400,
+    "excitation": {
+      "component_b_shift_segments": 3,
+      "independent_of_fault_truth": true,
+      "multipliers": [
+        0.5,
+        1.7,
+        0.55,
+        1.8,
+        0.6,
+        1.65
+      ],
+      "segment_s": 2400
+    },
+    "fault_labels": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "max_nominal_temperature_k": 450.0,
+    "measurement_sigma_k": 0.1,
+    "min_nominal_temperature_k": 250.0,
+    "native_module": "Basilisk.simulation.sensorThermal.SensorThermal",
+    "onset_s": 7200,
+    "onset_set_for_development_only": true,
+    "same_physical_world_across_arms": true,
+    "sample_s": 20,
+    "solver_s": 2
+  },
+  "world_ids": [
+    "r66-thermal-timescale-dev-001",
+    "r66-thermal-timescale-dev-002",
+    "r66-thermal-timescale-dev-003",
+    "r66-thermal-timescale-dev-004"
+  ]
+}

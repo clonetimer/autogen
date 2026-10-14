@@ -1,4 +1,4 @@
-"""Explicit SIMULATION DEVELOPMENT candidate CLI; not an RC or Stable claim."""
+"""Active package scope and frozen legacy model access; qualification is version-bound."""
 import argparse, json
 from .platform_limited import contract, allowed_use_case, predict_bundle, design_extended
 

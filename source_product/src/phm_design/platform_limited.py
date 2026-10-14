@@ -12,19 +12,49 @@ import numpy as np
 from .platform_features import spec
 from .platform_features_r57 import registry
 from .open_design_fit import predict,design,TrainingExample
+from . import __version__
 
 RESOURCES=files("phm_design").joinpath("limited_models")
 
-def contract():
+def _release_contract():
+    """Read immutable 0.7 contract as historical evidence, not a current claim."""
     return json.loads(RESOURCES.joinpath("scope_contract.json").read_text())
+
+
+def contract():
+    """Return the *active package* scope, with the frozen certificate provenance.
+
+    An embedded 0.7 certificate is not an 0.8 development qualification.
+    Stable's bytes are never rewritten and its historical contract stays intact.
+    """
+    historical = _release_contract()
+    active = __version__ == historical['release_version']
+    return {**historical,
+            'bundled_legacy_release_version': historical['release_version'],
+            'bundled_legacy_release_tier': historical['release_tier'],
+            'active_package_version': __version__,
+            'release_version': __version__,
+            'release_tier': historical['release_tier'] if active else 'DEVELOPMENT',
+            'deployment_qualification_status': (
+                historical['deployment_qualification_status'] if active else 'DEVELOPMENT_NOT_QUALIFIED'),
+            'qualification_applies_to_current_package': active,
+            'current_package_qualified_cells': (historical['proposed_certification_cells'] if active else []),
+            'bundled_legacy_certificate_only': not active}
+
 
 def allowed_use_case(case):
     profile=contract()
     if case in profile['proposed_certification_cells']:
-        _checked_release_certificate()
-        return {'case':case,'status':'SIMULATION_DOMAIN_RELEASE_QUALIFIED','release_tier':contract()['release_tier'],'simulation_only':True}
+        _checked_release_certificate()  # authenticate legacy provenance, not active qualification
+        if profile['qualification_applies_to_current_package']:
+            return {'case':case,'status':'SIMULATION_DOMAIN_RELEASE_QUALIFIED',
+                    'release_tier':profile['release_tier'],'simulation_only':True,'qualified':True}
+        return {'case':case,'status':'LEGACY_MODEL_DEVELOPMENT_ONLY',
+                'release_tier':'DEVELOPMENT','simulation_only':True,'qualified':False,
+                'bundled_release_version':profile['bundled_legacy_release_version'],
+                'active_package_version':__version__}
     if case in profile['out_of_claim_unqualified_cells']:
-        return {'case':case,'status':'OUT_OF_CLAIM_NOT_QUALIFIED','simulation_only':True}
+        return {'case':case,'status':'OUT_OF_CLAIM_NOT_QUALIFIED','simulation_only':True,'qualified':False}
     raise ValueError('UNKNOWN_USE_CASE')
 
 def model_manifest():
@@ -53,14 +83,22 @@ def rows_from_csv(path,domain):
 def predict_bundle(domain,case,observations,*,healthy_prefix_confirmed):
     if case.split(':',1)[0]!=domain:raise ValueError('USE_CASE_DOMAIN_MISMATCH')
     scope=allowed_use_case(case)
-    if scope['status']!='SIMULATION_DOMAIN_RELEASE_QUALIFIED':raise ValueError('OUT_OF_CLAIM_USE_CASE')
+    if scope['status'] not in ('SIMULATION_DOMAIN_RELEASE_QUALIFIED','LEGACY_MODEL_DEVELOPMENT_ONLY'):
+        raise ValueError('OUT_OF_CLAIM_USE_CASE')
     model=open_bundled(domain)
     a=rows_from_csv(observations,domain)
     result=predict(model,a,registry(domain),healthy_prefix_confirmed=healthy_prefix_confirmed)
+    active=scope['qualified']
     if result['status']!='UNKNOWN' and result['prediction'] is not None and result['prediction']>=0:
-        result={**result,'qualified':True,'status':'SIMULATION_DOMAIN_QUALIFIED_PREDICTION'}
+        result={**result,'qualified':active,
+                'status':'SIMULATION_DOMAIN_QUALIFIED_PREDICTION' if active else 'LEGACY_MODEL_RESEARCH_PREDICTION'}
+    else:
+        result={**result,'qualified':False}
     return {'use_case':case,'scope_status':scope['status'],
-            'qualification':scope['release_tier']+'_SIMULATION_ONLY','model_domain':domain,**result}
+            'qualification':scope['release_tier']+'_SIMULATION_ONLY' if active else 'DEVELOPMENT_ONLY_LEGACY_0_7_MODEL',
+            'active_package_version':__version__,
+            'bundled_release_version':contract()['bundled_legacy_release_version'],
+            'model_domain':domain,**result}
 
 def design_extended(dataset,output,*,max_trials=24):
     source=Path(dataset).resolve()
@@ -86,9 +124,9 @@ def _checked_release_certificate():
     import hashlib,json
     p=RESOURCES.joinpath('qualification_certificate.json')
     data=p.read_bytes()
-    if hashlib.sha256(data).hexdigest()!=contract()['qualification_certificate_sha256']:
+    if hashlib.sha256(data).hexdigest()!=_release_contract()['qualification_certificate_sha256']:
         raise ValueError('RELEASE_QUALIFICATION_CERTIFICATE_TAMPERED')
     cert=json.loads(data)
-    if cert.get('contract_id')!=contract()['contract_id'] or cert.get('calibration_passed')!=15 or cert.get('sealed_passed')!=15:
+    if cert.get('contract_id')!=_release_contract()['contract_id'] or cert.get('calibration_passed')!=15 or cert.get('sealed_passed')!=15:
         raise ValueError('RELEASE_QUALIFICATION_CERTIFICATE_INVALID')
     return cert

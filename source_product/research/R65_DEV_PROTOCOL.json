@@ -1,0 +1,51 @@
+{
+  "schema": "phm.r65.excitation-dev-protocol.v1",
+  "research_phase": "DEVELOPMENT_PILOT_ONLY",
+  "qualification_status": "NOT_EVALUATED",
+  "open_blind_worlds": false,
+  "world_ids": [
+    "r65-thermal-dev-pilot-001",
+    "r65-thermal-dev-pilot-002",
+    "r65-thermal-dev-pilot-003",
+    "r65-thermal-dev-pilot-004"
+  ],
+  "arms": {
+    "A": "legacy_two_level",
+    "B": "multilevel_step_r65"
+  },
+  "simulation": {
+    "domain": "thermal",
+    "bsk": "2.11.0",
+    "native_module": "Basilisk.simulation.sensorThermal.SensorThermal",
+    "sample_s": 20,
+    "solver_s": 2,
+    "duration_s": 3600,
+    "world_seed_generation": "sat_multicomponent.parameters(world_id,thermal)",
+    "fault_labels": [0,1,2,3,4],
+    "noise_sigma_k": 0.1,
+    "same_physics_across_arms": true,
+    "excitation": {
+      "segment_s": 220,
+      "multipliers": [0.55,1.50,0.75,1.75,0.65,1.25,0.90,1.60],
+      "component_b_phase_shift_segments": 3,
+      "fault_onset_independent_commands": true
+    }
+  },
+  "evaluation": {
+    "only_research_oracle_physics_metrics": true,
+    "metrics": [
+      "pre_fault_command_levels", "pre_fault_nominal_temperature_span_K",
+      "post_fault_mechanism_pearson", "post_fault_scale_fitted_residual",
+      "post_fault_condition_number_constant_vs_T4",
+      "post_fault_cross_component_change_max_K"
+    ],
+    "deployment_observations_only": [
+      "time_s", "illumination", "heat_a_command_w", "heat_b_command_w",
+      "temperature_a_k", "temperature_b_k"
+    ],
+    "independent_noise_by_arm_world_label": true,
+    "paired_noise_for_research_oracle_only": true,
+    "no_model_training": true,
+    "no_qualification_or_holdout": true
+  }
+}

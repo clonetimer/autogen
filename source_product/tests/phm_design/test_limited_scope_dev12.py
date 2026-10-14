@@ -16,11 +16,14 @@ def test_authorization_new_contract_not_original_old_cycle():
     assert len(c['proposed_certification_cells'])==15
     assert len(c['out_of_claim_unqualified_cells'])==8
     assert not (set(c['proposed_certification_cells'])&set(c['out_of_claim_unqualified_cells']))
-    assert c['deployment_qualification_status']=='SIMULATION_DOMAIN_'+c['release_tier']
+    assert c['deployment_qualification_status']=='DEVELOPMENT_NOT_QUALIFIED'
+    assert c['qualification_applies_to_current_package'] is False
 
 def test_formal_stable_not_promoted():
     c=contract();assert c['formal_stable'].startswith('0.7.0') and c['previous_formal_stable'].startswith('0.6.0')
     assert c['candidate_version']=='0.7.0'
+    assert c['active_package_version']==__import__('phm_design').__version__
+    assert c['bundled_legacy_release_version']=='0.7.0'
 
 def test_unsupported_cannot_be_declared_supported():
     for s in contract()['out_of_claim_unqualified_cells']:
@@ -40,9 +43,9 @@ def test_six_selected_models_have_hashes_and_development_markers():
 def test_real_opened_r57_trajectory_installed_prediction(domain):
     case=domain+':'+('multi_component_localization' if domain.endswith('_localization') else 'conventional')
     result=predict_bundle(domain,case,FIXTURES/(domain+'.csv'),healthy_prefix_confirmed=True)
-    assert result['scope_status']=='SIMULATION_DOMAIN_RELEASE_QUALIFIED'
-    assert result['qualification']=='STABLE_SIMULATION_ONLY'
-    assert result['qualified'] is True
+    assert result['scope_status']=='LEGACY_MODEL_DEVELOPMENT_ONLY'
+    assert result['qualification']=='DEVELOPMENT_ONLY_LEGACY_0_7_MODEL'
+    assert result['qualified'] is False
     assert isinstance(result['prediction'],int)
 
 @pytest.mark.parametrize('domain',DOMAINS)

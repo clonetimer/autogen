@@ -1,0 +1,347 @@
+{
+  "candidate_results": [
+    {
+      "candidate": {
+        "architecture": "direct",
+        "feature": "temporal",
+        "learner": "linear"
+      },
+      "cpu_s": 0.079191,
+      "inner_fusion_weights": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.3,
+        "average_decision_loss": 0.7999999999999999,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.0,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 1.03,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "factorized",
+        "feature": "temporal",
+        "learner": "linear"
+      },
+      "cpu_s": 0.081665,
+      "inner_fusion_weights": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.25,
+        "average_decision_loss": 0.85,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.0,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 1.08,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "fusion",
+        "feature": "temporal",
+        "learner": "linear"
+      },
+      "cpu_s": 0.323737,
+      "inner_fusion_weights": [
+        0.75,
+        0.5,
+        0.25,
+        1.0
+      ],
+      "oof": {
+        "accuracy": 0.275,
+        "average_decision_loss": 0.825,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.0,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 1.055,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "direct",
+        "feature": "temporal",
+        "learner": "extra"
+      },
+      "cpu_s": 0.600215,
+      "inner_fusion_weights": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.275,
+        "average_decision_loss": 0.825,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.125,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 1.03625,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "factorized",
+        "feature": "temporal",
+        "learner": "extra"
+      },
+      "cpu_s": 0.59953,
+      "inner_fusion_weights": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.35,
+        "average_decision_loss": 0.75,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.125,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 0.9612499999999999,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "fusion",
+        "feature": "temporal",
+        "learner": "extra"
+      },
+      "cpu_s": 2.669407,
+      "inner_fusion_weights": [
+        0.5,
+        0.5,
+        1.0,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.3,
+        "average_decision_loss": 0.7999999999999999,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.125,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 1.01125,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "direct",
+        "feature": "physical",
+        "learner": "linear"
+      },
+      "cpu_s": 0.135633,
+      "inner_fusion_weights": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.3,
+        "average_decision_loss": 0.7999999999999999,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.0,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 1.03,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "factorized",
+        "feature": "physical",
+        "learner": "linear"
+      },
+      "cpu_s": 0.119107,
+      "inner_fusion_weights": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.3,
+        "average_decision_loss": 0.7999999999999999,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.0,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 1.03,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "fusion",
+        "feature": "physical",
+        "learner": "linear"
+      },
+      "cpu_s": 0.559866,
+      "inner_fusion_weights": [
+        0.5,
+        0.75,
+        1.0,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.3,
+        "average_decision_loss": 0.7999999999999999,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.0,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 1.03,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "direct",
+        "feature": "physical",
+        "learner": "extra"
+      },
+      "cpu_s": 0.658675,
+      "inner_fusion_weights": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.325,
+        "average_decision_loss": 0.775,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.0,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 1.0050000000000001,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "factorized",
+        "feature": "physical",
+        "learner": "extra"
+      },
+      "cpu_s": 0.578569,
+      "inner_fusion_weights": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.4,
+        "average_decision_loss": 0.6749999999999999,
+        "healthy_false_alarm_rate": 0.375,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.25,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 0.8674999999999999,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": {
+        "architecture": "fusion",
+        "feature": "physical",
+        "learner": "extra"
+      },
+      "cpu_s": 2.295192,
+      "inner_fusion_weights": [
+        0.25,
+        1.0,
+        0.75,
+        0.5
+      ],
+      "oof": {
+        "accuracy": 0.35,
+        "average_decision_loss": 0.75,
+        "healthy_false_alarm_rate": 0.5,
+        "independent_worlds": 8,
+        "worst_fault_recall": 0.0,
+        "worst_world_accuracy": 0.2
+      },
+      "selection_loss": 0.98,
+      "status": "COMPLETE"
+    }
+  ],
+  "classifier_sees_simulation_truth": false,
+  "design_cpu_s": 9.071297514,
+  "final_fusion_weight": 0.5,
+  "group_fold_intersection": 0,
+  "independent_training_worlds": 8,
+  "method": "grouped_nested_oof_task_architecture_competition",
+  "model_sha256": "1b78b877e9363dda5fc6df2752f69bb170ca97afd79570a3abf18fe34b3ae917",
+  "not_deployment_qualified": true,
+  "pareto_candidates": [
+    {
+      "architecture": "factorized",
+      "feature": "physical",
+      "learner": "extra"
+    }
+  ],
+  "schema": "phm.0.8.task-design.v1",
+  "selected_threshold": 0.3021448206018518,
+  "selected_train_only": {
+    "architecture": "factorized",
+    "feature": "physical",
+    "learner": "extra"
+  },
+  "selection_oof": {
+    "accuracy": 0.4,
+    "average_decision_loss": 0.6749999999999999,
+    "healthy_false_alarm_rate": 0.375,
+    "independent_worlds": 8,
+    "worst_fault_recall": 0.25,
+    "worst_world_accuracy": 0.2
+  },
+  "stage": "DEVELOPMENT_ONLY",
+  "threshold_options": [
+    {
+      "cost": 0.6749999999999999,
+      "threshold": 0.0,
+      "unknown_fraction": 0.0
+    },
+    {
+      "cost": 0.7,
+      "threshold": 0.29599609375,
+      "unknown_fraction": 0.05
+    },
+    {
+      "cost": 0.7,
+      "threshold": 0.29825484664351853,
+      "unknown_fraction": 0.1
+    },
+    {
+      "cost": 0.65,
+      "threshold": 0.3021448206018518,
+      "unknown_fraction": 0.15
+    }
+  ],
+  "threshold_trained_without_evaluation": true,
+  "unique_training_rows": 40
+}

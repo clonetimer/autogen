@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phm-design"
-version = "0.7.0"
+version = "0.8.0.dev13"
 description = "Research-only multi-family compositional network design"
 requires-python = ">=3.11,<3.14"
 dependencies = ["torch==2.10.0", "numpy==2.3.5", "scikit-learn==1.8.0"]
@@ -22,6 +22,7 @@ phm-design-algorithm-dag = "phm_design.algorithm_dag_cli:main"
 phm-design-expert-dag = "phm_design.expert_dag_cli:main"
 phm-design-open = "phm_design.open_design_cli:main"
 phm-design-readiness = "phm_design.design_readiness_cli:main"
+phm-design-thermal-audit = "phm_design.thermal_identifiability:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
