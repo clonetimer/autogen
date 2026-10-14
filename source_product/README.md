@@ -1,8 +1,10 @@
-# PHM AutoDesign 0.8.0.dev12 — R72 Design Safety Research
+# PHM AutoDesign 0.8.0.dev13 — R74 Design Safety Research
 
 **DEVELOPMENT ONLY.** This development branch is based on the complete R69 0.8.0.dev10 codebase; it does not change or extend the 0.7.0 Stable certification. CUDA training and actual GPU hardware validation remain outside this change. R70 interim work is not included because it has no fully verified integrated handoff.
 
-## R72: leakage-aware automatic design
+## R72–R74: leakage-aware automatic design
+
+R74 additionally rejects synthetic environment splits that relabel the same generation family or canonical base-physics configuration under different environment-family identifiers. This is a metadata-consistency gate, not independent authentication of physical worlds or a new diagnostic qualification.
 
 - `phm_design.leakage_control.WorldLineage` describes a physical-generation family independently of split name, with canonical physical configuration, environment family and optional observation digests.
 - `inspect_partition` / `validate_manifest_separation` fail on cross-role base-physics, generation-family or exact-observation collisions. Repeated healthy/fault trajectories within a single physical world are allowed within the **same role**.
