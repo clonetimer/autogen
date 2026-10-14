@@ -32,3 +32,4 @@ jobs:
           tests/phm_design/test_r72_leakage_and_robust_search.py
           tests/phm_design/test_r72_robust_design_policy.py
           tests/phm_design/test_r69_task_graph.py
+          tests/phm_design/test_r75_environment_exclusive_search.py
