@@ -4,6 +4,9 @@ on:
     paths:
       - "source_product/src/phm_design/leakage_control.py"
       - "source_product/tests/phm_design/test_r74_environment_coherence.py"
+      - "source_product/tests/phm_design/test_r72_robust_design_policy.py"
+      - "source_product/src/phm_design/open_design_fit.py"
+      - "source_product/src/phm_design/robust_design_policy.py"
       - ".github/workflows/phm-autodesign-lineage-preflight.yml"
   workflow_dispatch:
 permissions:
@@ -21,7 +24,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python -m pip install pytest
-      - run: python -m pytest -q source_product/tests/phm_design/test_r74_environment_coherence.py
+      - run: python -m pip install pytest numpy scikit-learn
+      - run: python -m pytest -q source_product/tests/phm_design/test_r74_environment_coherence.py source_product/tests/phm_design/test_r72_robust_design_policy.py
         env:
           PYTHONPATH: source_product/src
