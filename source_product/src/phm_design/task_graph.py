@@ -443,6 +443,8 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
             raise ValueError('INVALID_HEAD_EVIDENCE_POLICY')
         if selection_mode != 'worst_environment':
             raise ValueError('HEAD_EVIDENCE_REQUIRES_ENVIRONMENT_EXCLUSIVE_SELECTION')
+        if outer_split_mode != 'leave_environment_family_out':
+            raise ValueError('HEAD_EVIDENCE_REQUIRES_OUTER_ENVIRONMENT_HOLDOUT')
         if training_lineage is None:
             raise ValueError('HEAD_EVIDENCE_REQUIRES_VERIFIED_LINEAGE')
         if fault_strength_strata is not None and len(fault_strength_strata) != n:
