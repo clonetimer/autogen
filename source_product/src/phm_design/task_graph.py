@@ -13,7 +13,7 @@ from typing import Mapping, Sequence
 import time
 
 import numpy as np
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import GroupKFold, LeaveOneGroupOut
 
 from .open_design import ObservationSpec
 from .platform_features import FIELDS
@@ -157,24 +157,43 @@ def _choose_head(head, choices, matrix, labels, y, groups, eligible_rows, seed,
     subset_groups = groups[idx]
     if len(set(subset_groups)) < 3:
         raise ValueError('INSUFFICIENT_INNER_HEAD_WORLDS:' + head)
-    splits = list(GroupKFold(n_splits=3).split(idx, groups=subset_groups))
     if selection_mode not in ("mean", "worst_environment"):
         raise ValueError('INVALID_SELECTION_MODE')
+    env = None
     if selection_mode == 'worst_environment':
         if environment_families is None:
             raise ValueError('ENVIRONMENT_FAMILIES_REQUIRED')
+        # R75: a training fold must NEVER include the environment family whose
+        # loss is being used for robust candidate ranking. A world-only
+        # GroupKFold previously mixed source and held-out environments.
         env = np.asarray(environment_families)[idx]
         if len(set(env)) < 2:
             raise ValueError('MULTIPLE_ENVIRONMENT_FAMILIES_REQUIRED')
+        splits = list(LeaveOneGroupOut().split(idx, groups=env))
+        inner_validation_mode = 'leave_one_environment_family_out'
+    else:
+        splits = list(GroupKFold(n_splits=3).split(idx, groups=subset_groups))
+        inner_validation_mode = 'grouped_world_3fold'
     candidates = []
     champion = None
     for spec in choices:
         start = time.process_time()
         try:
             oof = np.full((len(idx), 2), np.nan, dtype=float)
+            inner_fold_history = []
             for tr, va in splits:
                 if set(groups[idx[tr]]) & set(groups[idx[va]]):
                     raise AssertionError('GRAPH_INNER_WORLD_LEAKAGE')
+                if env is not None and set(env[tr]) & set(env[va]):
+                    raise AssertionError('GRAPH_INNER_ENVIRONMENT_LEAKAGE')
+                inner_fold_history.append({
+                    'train_world_count': len(set(groups[idx[tr]])),
+                    'heldout_world_count': len(set(groups[idx[va]])),
+                    'train_environment_families': sorted(set(env[tr])) if env is not None else None,
+                    'heldout_environment_families': sorted(set(env[va])) if env is not None else None,
+                    'world_disjoint': True,
+                    'environment_disjoint': env is not None,
+                })
                 m = _fit_head(head, spec, matrix, labels, y, idx[tr], seed)
                 oof[va] = _get_head_proba(m, matrix, spec, idx[va])
             if not np.isfinite(oof).all():
@@ -213,34 +232,18 @@ def _choose_head(head, choices, matrix, labels, y, groups, eligible_rows, seed,
             record = {'feature': spec[0], 'learner': spec[1],
                       'backend': TaskCandidateRegistry().describe(*spec).backend,
                       'status': 'COMPLETE', 'inner_group_oof_loss': loss,
+                      'inner_validation_mode': inner_validation_mode,
+                      'inner_fold_history': inner_fold_history,
                       'inner_metrics': metric}
             rank = ((worst_environment_loss, loss, *spec) if selection_mode == "worst_environment"
                     else (loss, *spec))
             if champion is None or rank < champion[0]:
                 champion = (rank, spec)
         except Exception as err:
-            worst_environment_loss = None
-            if selection_mode == 'worst_environment':
-                # A group must not be credited for absent classes. Domain groups
-                # without both detection labels are infeasible for detection.
-                environment_losses = {}
-                for family in sorted(set(env)):
-                    rows = env == family
-                    if head == 'detection':
-                        healthy = rows & (true == 0)
-                        faults = rows & (true == 1)
-                        if not healthy.any() or not faults.any():
-                            raise ValueError('ENVIRONMENT_DETECTION_CLASS_MISSING')
-                        family_loss = (1 - np.mean(pred[faults] == 1) +
-                                       np.mean(pred[healthy] == 1)) / 2
-                    else:
-                        if not rows.any() or set(true[rows]) != {0, 1}:
-                            raise ValueError('ENVIRONMENT_HEAD_CLASS_MISSING')
-                        family_loss = np.mean(pred[rows] != true[rows])
-                    environment_losses[str(family)] = float(family_loss)
-                worst_environment_loss = max(environment_losses.values())
-                metric['environment_losses'] = environment_losses
+            # Preserve the original candidate failure; never recompute an
+            # environment score from an uninitialized or partial OOF array.
             record = {'feature': spec[0], 'learner': spec[1], 'status': 'FAILED',
+                      'inner_validation_mode': inner_validation_mode,
                       'reason': type(err).__name__ + ': ' + str(err)}
         record['cpu_s'] = round(time.process_time() - start, 6)
         candidates.append(record)
@@ -276,8 +279,14 @@ def _scores(y, groups, ontology, pf, pc, pm, gates):
     d = pf.argmax(axis=1)
     c = pc.argmax(axis=1)
     m = pm.argmax(axis=1)
-    detected = (fault == 1) & (d == 1)
-    correctly_located = detected & (c == component)
+    # Confidence rejects also count as stage nonacceptance. Without this,
+    # aggressive gates can look like perfect localization while returning
+    # UNKNOWN on precisely the weak, ambiguous fault trajectories.
+    passed_detection = (d == 1) & (pf.max(axis=1) >= gates.detector_min_confidence)
+    passed_localization = passed_detection & (pc.max(axis=1) >= gates.localization_min_confidence)
+    passed_mechanism = passed_localization & (pm.max(axis=1) >= gates.mechanism_min_confidence)
+    detected = (fault == 1) & passed_detection
+    correctly_located = detected & passed_localization & (c == component)
     final = np.array([_gate(ontology, pf[i], pc[i], pm[i], gates)[0]
                       for i in range(len(y))], dtype=int)
     correct = final == y
@@ -285,16 +294,28 @@ def _scores(y, groups, ontology, pf, pc, pm, gates):
     per_fault = {str(ontology.labels[k]): float(np.mean(correct[y == k]))
                  for k in range(1, len(ontology.labels))}
     return {
-        'detection_fault_recall': float(np.mean(d[fault == 1] == 1)),
-        'detection_healthy_false_alarm_rate': float(np.mean(d[fault == 0] == 1)),
-        'localization_conditional_accuracy': (float(np.mean(c[detected] == component[detected]))
-                                               if detected.any() else None),
+        'detection_fault_recall': float(np.mean(passed_detection[fault == 1])),
+        'detection_healthy_false_alarm_rate': float(np.mean(passed_detection[fault == 0])),
+        'detection_pre_gate_fault_recall': float(np.mean(d[fault == 1] == 1)),
+        'detection_healthy_nonacceptance_rate': float(np.mean(final[fault == 0] != 0)),
+        'localization_conditional_accuracy': (float(np.mean(
+            passed_localization[detected] & (c[detected] == component[detected])))
+            if detected.any() else None),
         'localization_conditional_support': int(detected.sum()),
-        'mechanism_conditional_accuracy': (float(np.mean(m[correctly_located] == mechanism[correctly_located]))
+        'mechanism_conditional_accuracy': (float(np.mean(passed_mechanism[correctly_located] &
+                                            (m[correctly_located] == mechanism[correctly_located])))
                                             if correctly_located.any() else None),
         'mechanism_conditional_support': int(correctly_located.sum()),
         'localization_oracle_detection_accuracy': float(np.mean(c[fault == 1] == component[fault == 1])),
         'mechanism_oracle_detection_accuracy': float(np.mean(m[fault == 1] == mechanism[fault == 1])),
+        # On ALL actual fault trajectories: failed upstream detection remains
+        # a failure, rather than silently dropping the hardest weak faults.
+        'localization_all_faults_joint_accuracy': float(np.mean(
+            passed_localization[fault == 1] & (c[fault == 1] == component[fault == 1]))),
+        'mechanism_all_faults_joint_accuracy': float(np.mean(
+            passed_mechanism[fault == 1] & (c[fault == 1] == component[fault == 1]) &
+            (m[fault == 1] == mechanism[fault == 1]))),
+        'all_faults_denominator': int((fault == 1).sum()),
         'end_to_end_accuracy': float(np.mean(correct)),
         'end_to_end_healthy_false_alarm_rate': float(np.mean(final[fault == 0] > 0)),
         'end_to_end_worst_fault_recall': min(per_fault.values()),
@@ -462,7 +483,7 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
     metrics = _scores(y, g, ontology, *(outer_oof[h] for h in _HEADS), gates)
     acceptance = policy.evaluate(metrics)
     audit = {'schema': 'phm.0.8.task-graph.v1', 'stage': 'DEVELOPMENT_ONLY',
-             'method': 'nested_world_group_oof_per_head_selection_then_fixed_cascade_gate',
+             'method': 'nested_outer_group_oof_with_environment_exclusive_inner_selection',
              'selection_mode': selection_mode,
              'outer_split_mode': outer_split_mode,
              'provenance_receipt': receipt,
@@ -479,6 +500,7 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
              'predictor_uses_labels_world_ids_or_truth': False,
              'sealed_or_calibration_worlds_used': False,
              'limitations': ['five_class_two_component_two_mechanism_ontology',
+                             'inner_design_validation_adaptively_reused_not_sealed',
                              'offline_complete_trajectories_only', 'cpu_opt_in_torch',
                              'training_world_screen_not_independent_release_qualification']}
     if not acceptance['eligible']:
