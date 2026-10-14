@@ -269,11 +269,27 @@ def design(examples,spec,classes,healthy_label,*,max_trials=16,registry=None,
         p=planner.propose()
         try:
             m,rows,folds=evaluate_program(examples,spec,classes,healthy_label,p,registry,cache,validation_families=validation_families)
-            planner.observe(p,m['robust_class_errors']);loss=risk.loss(m['robust_class_errors'])
-            attempts.append({'program':asdict(p),'metrics':m,'folds':folds,'loss':loss,'status':'COMPLETE'})
-            if best is None or loss<best[0]:best=(loss,p)
+            planner.observe(p,m['robust_class_errors'])
+            acceptance = robust_policy.evaluate(m, list(classes), healthy_label) if robust_policy else None
+            loss = (acceptance['robust_selection_loss'] if acceptance and 'robust_selection_loss' in acceptance
+                    else risk.loss(m['robust_class_errors']))
+            attempts.append({'program':asdict(p),'metrics':m,'folds':folds,'loss':loss,
+                             'status':'COMPLETE' if not acceptance or acceptance['eligible'] else 'REJECTED_BY_POLICY',
+                             'acceptance':acceptance})
+            if (acceptance is None or acceptance['eligible']) and (best is None or loss<best[0]):
+                best=(loss,p)
         except Exception as e:attempts.append({'program':asdict(p),'status':'FAILED','error':repr(e)})
-    if best is None:raise RuntimeError('NO_VALID_PROGRAM')
+    if best is None:
+        if robust_policy is not None:
+            raise RobustDesignRejected({'schema':'phm.robust-design.audit.v1',
+                'decision':'REJECT_ALL_CANDIDATES', 'model_delivered':False,
+                'training_lineage_receipt':receipt, 'attempts':attempts,
+                'independent_qualification':False,
+                'training_world_design_screen_only':True})
+        raise RuntimeError('NO_VALID_PROGRAM')
     model=refit(examples,spec,classes,healthy_label,best[1],registry,cache)
     return model,{'attempts':attempts,'pareto_archive':planner.archive(),'proposals':planner.proposals,
-        'risk_preference':asdict(risk),'selection_only':True,'release_qualified':False}
+        'risk_preference':asdict(risk),'selection_only':True,'release_qualified':False,
+        'robust_policy':asdict(robust_policy) if robust_policy else None,
+        'training_lineage_receipt':receipt,
+        'independent_qualification':False}
