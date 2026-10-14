@@ -4,7 +4,7 @@ Validation scores are selection-only. Physical worlds, not observation variants,
 are the split unit. Feature scalers and classifiers are fitted inside each fold.
 """
 from __future__ import annotations
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, replace
 import warnings
 import hashlib
 from numbers import Integral
@@ -21,6 +21,8 @@ from sklearn.base import BaseEstimator,ClassifierMixin
 from sklearn.model_selection import GroupKFold
 from sklearn.metrics import f1_score
 from .open_design import Program,ObservationSpec,FeatureRegistry,RiskPreference,FeedbackPlanner
+from .robust_design_policy import RobustDesignPolicy, RobustDesignRejected
+from .leakage_control import WorldLineage, authorize_design
 
 
 @dataclass
@@ -142,7 +144,8 @@ def metrics(y,p,groups,classes,healthy_label):
         'healthy_unknown':int(np.sum((y==healthy_label)&~np.isin(p,classes))),
         'healthy_nonacceptances':int(np.sum((y==healthy_label)&(p!=healthy_label))),
         'unknown':int(np.sum(~np.isin(p,classes))),'worlds':len(pergroup),'world_macro_f1':pergroup,
-        'worst_world_macro_f1':min(pergroup.values())}
+        'worst_world_macro_f1':min(pergroup.values()),
+        'class_support':{str(c):int(np.sum(y==c)) for c in classes}}
 
 
 def evaluate_program(examples,spec,classes,healthy_label,program,registry,cache,*,validation_families=None):
@@ -212,10 +215,53 @@ def predict(model,values,registry,*,healthy_prefix_confirmed=False):
     except ValueError as e:return {'prediction':-1,'status':'UNKNOWN','reason':str(e),'qualified':False}
 
 
-def design(examples,spec,classes,healthy_label,*,max_trials=16,registry=None,mode='adaptive',risk=RiskPreference(),seed=48019,validation_families=None):
+def design(examples,spec,classes,healthy_label,*,max_trials=16,registry=None,
+           mode='adaptive',risk=RiskPreference(),seed=48019,validation_families=None,
+           robust_policy: RobustDesignPolicy | None = None,
+           training_lineage: list[WorldLineage] | None = None,
+           feedback_used_for_design: bool = False):
     """Small in-process API; production hard CPU enforcement belongs to a supervisor."""
     from .open_design import generic_registry
     if max_trials<1:raise ValueError('INVALID_TRIAL_LIMIT')
+    if feedback_used_for_design:
+        raise ValueError('FINAL_FEEDBACK_TAINTED_DESIGN')
+    receipt = None
+    if training_lineage is not None and robust_policy is None:
+        if len(training_lineage) != len(examples):
+            raise ValueError('TRAINING_LINEAGE_LENGTH_MISMATCH')
+        receipt = authorize_design(training_lineage)
+        if any(rec.world_id != e.group for rec, e in zip(training_lineage, examples)):
+            raise ValueError('TRAINING_LINEAGE_GROUP_MISMATCH')
+        if validation_families is not None:
+            family_by_world = {}
+            for rec in training_lineage:
+                previous = family_by_world.setdefault(rec.world_id, rec.environment_family)
+                if previous != rec.environment_family:
+                    raise ValueError('INCONSISTENT_ENVIRONMENT_LINEAGE')
+            if validation_families != family_by_world:
+                raise ValueError('ENVIRONMENT_PROVENANCE_MISMATCH')
+    if robust_policy is not None:
+        if not isinstance(robust_policy, RobustDesignPolicy):
+            raise ValueError('INVALID_ROBUST_POLICY_TYPE')
+        if training_lineage is None or len(training_lineage) != len(examples):
+            raise ValueError('ROBUST_SEARCH_REQUIRES_VERIFIED_LINEAGE')
+        receipt = authorize_design(training_lineage)
+        if any(rec.world_id != e.group for rec, e in zip(training_lineage,examples)):
+            raise ValueError('TRAINING_LINEAGE_GROUP_MISMATCH')
+        original_map = {}
+        for rec in training_lineage:
+            original_map.setdefault(rec.world_id, rec.environment_family)
+            if original_map[rec.world_id] != rec.environment_family:
+                raise ValueError('INCONSISTENT_ENVIRONMENT_LINEAGE')
+        if validation_families is not None and validation_families != original_map:
+            raise ValueError('ENVIRONMENT_PROVENANCE_MISMATCH')
+        family_map = {}
+        for rec in training_lineage:
+            previous = family_map.setdefault(rec.generation_family_id,rec.environment_family)
+            if previous != rec.environment_family:
+                raise ValueError('GENERATION_FAMILY_CROSSES_ENVIRONMENTS')
+        examples = [replace(e, group=rec.generation_family_id) for e,rec in zip(examples,training_lineage)]
+        validation_families = family_map
     validate_training(examples,spec,classes)
     registry=registry or generic_registry();seeds=[Program((a,),l) for a,l in zip(registry.names,('linear','extra','svm'))]
     planner=FeedbackPlanner(registry.names,mode=mode,seeds=seeds,risk=risk,seed=seed);cache={};attempts=[];best=None
