@@ -104,3 +104,49 @@ def test_nested_candidate_rejected_without_altering_predictor_or_granting_qualif
     assert trials[0]['head_evidence']['not_independent_qualification']
     assert any(x['reason']=='ENVIRONMENT_FAULT_RECALL'
                for x in trials[0]['head_evidence']['failed_gates'])
+
+
+def test_end_to_end_stratum_screen_counts_unknown_and_missed_faults():
+    y, env = _binary_three_env()
+    # Only positive labels are actual faults. Declared strata must be in all environments.
+    strength = np.array(['NOMINAL' if value == 0 else ('weak' if i % 8 < 6 else 'strong')
+                         for i,value in enumerate(y)], dtype=object)
+    pred = y.copy()
+    pred[12:14] = -1  # All weak faults in the middle environment are UNKNOWN.
+    policy = HeadEvidencePolicy(expected_fault_strata=('weak','strong'),
+                                require_fault_strength_strata=True,
+                                min_per_fault_stratum=2)
+    result = policy.evaluate_end_to_end_strata(
+        truth=y, decisions=pred, environments=env, fault_strata=strength)
+    assert not result['eligible']
+    assert result['unknown_counts_as_failure']
+    assert any(x['reason'] == 'END_TO_END_FAULT_STRATUM_RECALL' and x['stratum']=='weak'
+               for x in result['failed_gates'])
+    # The same perfect downstream predictions would not redeem a missed upstream fault.
+
+
+def test_full_pipeline_missing_weak_support_is_never_accepted():
+    y, env = _binary_three_env()
+    strength = np.array(['NOMINAL' if x == 0 else 'strong' for x in y],dtype=object)
+    p = HeadEvidencePolicy(expected_fault_strata=('weak','strong'),
+                           require_fault_strength_strata=True)
+    r = p.evaluate_end_to_end_strata(truth=y,decisions=y,
+                                    environments=env,fault_strata=strength)
+    assert not r['eligible']
+    assert any(x['reason']=='INSUFFICIENT_END_TO_END_STRATUM_SUPPORT' and
+               x['stratum']=='weak' for x in r['failed_gates'])
+
+
+def test_head_evidence_requires_genuine_held_out_environment_in_outer_screen():
+    from phm_design.task_graph import design_task_graph
+    from phm_design.platform_features import FIELDS
+    with pytest.raises(ValueError,match='HEAD_EVIDENCE_REQUIRES_OUTER_ENVIRONMENT_HOLDOUT'):
+        design_task_graph(
+            domain='Thermal_localization',
+            observations=[None]*20, fields=FIELDS['Thermal_localization'],
+            labels=[0]*20, world_ids=['fake']*20, roles=['design_train']*20,
+            healthy_prefix_confirmed=[True]*20,
+            training_lineage=[], selection_mode='worst_environment',
+            environment_families=['env']*20,
+            outer_split_mode='world_group',
+            head_evidence_policy=HeadEvidencePolicy())
