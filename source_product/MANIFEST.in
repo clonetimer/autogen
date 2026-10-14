@@ -1,5 +1,9 @@
 include README.md
+include README_R67.md
 include paired_observation_audit.py
 recursive-include tests *.py *.json *.csv
 recursive-include configs *.json
 recursive-include scripts *.py *.sh
+
+# R65 frozen reproducibility protocol and development-only native pilot
+recursive-include research *.py *.json *.md

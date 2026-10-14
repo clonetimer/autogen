@@ -132,9 +132,23 @@ def load_runtime():
       solar=simpleSolarPanel,battery=simpleBattery,thermal=sensorThermal,storage=simpleStorageUnit)
 
 
-def run_native(domain,p,label,*,solver_s=None):
+def run_native(domain,p,label,*,solver_s=None,thermal_excitation=None,thermal_duration_s=None):
     s=FAMILIES[domain]
+    if thermal_duration_s is not None:
+        if (domain != "thermal" or type(thermal_duration_s) is not int
+                or thermal_duration_s < 3600 or thermal_duration_s > 28800
+                or thermal_duration_s % s["sample_s"]):
+            raise ValueError("R66_INVALID_THERMAL_DURATION")
+        if (type(p.get("onset_s")) is not int or not 0 < p["onset_s"] < thermal_duration_s):
+            raise ValueError("R66_ONSET_OUTSIDE_DURATION")
     if domain not in FAMILIES or type(label) is not int or not 0<=label<len(s["classes"]):raise ValueError("UNKNOWN_DOMAIN_OR_LABEL")
+    if thermal_excitation is not None:
+        if domain != "thermal": raise ValueError("R65_EXCITATION_ONLY_THERMAL")
+        from ..thermal_excitation_r65 import BASELINE,EXPERIMENT
+        from ..thermal_excitation_r66 import SLOW
+        from ..thermal_excitation_r67 import PROFILES as R67_PROFILES
+        if thermal_excitation not in (BASELINE,EXPERIMENT,SLOW,*R67_PROFILES):
+            raise ValueError("R65_UNKNOWN_EXCITATION_PROFILE")
     B=load_runtime();step=s["solver_s"] if solver_s is None else solver_s
     if type(step) is not int or step<=0 or s["sample_s"]%step:raise ValueError("INVALID_NATIVE_STEP")
     sim=B.sim.SimBaseClass();proc=sim.CreateNewProcess("multicomponent")
@@ -176,7 +190,7 @@ def run_native(domain,p,label,*,solver_s=None):
 
     readers=[port.addSubscriber() for port in ports]
     observations=[];truth=[];times=[];noise=random.Random(p["measurement_seed"]);sample=s["sample_s"]
-    for now in range(0,s["duration_s"]+1,sample):
+    for now in range(0,(thermal_duration_s if thermal_duration_s is not None else s["duration_s"])+1,sample):
         left=max(0,now-sample);active=(label!=0 and left>=p["onset_s"])
         phase=2*math.pi*left/p["boundary_period_s"]+p["phase"]
         light=float(math.sin(phase)>-.25);contact=float(math.cos(phase+.7)>.25)
@@ -196,7 +210,20 @@ def run_native(domain,p,label,*,solver_s=None):
             for i,k in enumerate(("a","b")):
                 t=thermals[i];t.sensorArea=p[f"thermal_{k}_area_m2"];t.sensorAbsorptivity=p[f"thermal_{k}_absorptivity"]
                 t.sensorMass=p[f"thermal_{k}_mass_kg"];t.sensorSpecificHeat=890.;t.T_0=p[f"thermal_{k}_initial_k"]-273.15
-                cmd=p[f"heat_{k}_w"]*(1+.25*float(math.sin(left/(115+15*i))>0));commands.append(cmd)
+                if thermal_excitation is None:
+                    # Retain original R62/R64 trajectory path exactly.
+                    cmd=p[f"heat_{k}_w"]*(1+.25*float(math.sin(left/(115+15*i))>0))
+                else:
+                    if thermal_excitation == "slow_thermal_plateaus_r66":
+                        from ..thermal_excitation_r66 import commanded_heat as r66_command
+                        cmd=r66_command(p[f"heat_{k}_w"],left,i)
+                    elif thermal_excitation in R67_PROFILES:
+                        from ..thermal_excitation_r67 import commanded_heat as r67_command
+                        cmd=r67_command(p[f"heat_{k}_w"],left,i,thermal_excitation)
+                    else:
+                        from ..thermal_excitation_r65 import commanded_heat
+                        cmd=commanded_heat(p[f"heat_{k}_w"],left,i,thermal_excitation)
+                commands.append(cmd)
                 emiss_loss=(label==1+i and active);t.sensorEmissivity=p[f"thermal_{k}_emissivity"]*(p["remaining_fraction"] if emiss_loss else 1)
                 extra=(label==3+i and active);t.sensorPowerDraw=cmd+(p[f"extra_heat_{k}_w"] if extra else 0.)
         else:

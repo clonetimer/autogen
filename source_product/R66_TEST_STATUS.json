@@ -1,0 +1,37 @@
+{
+  "active_package_deployment_qualification": "DEVELOPMENT_NOT_QUALIFIED",
+  "basilisk": "2.11.0",
+  "blind_worlds_opened": 0,
+  "dev_worlds": 4,
+  "experiment": {
+    "component_pairs": 8,
+    "exploratory_physics_thresholds_met": false,
+    "median_prefault_temperature_span_delta_k": 5.823363338607265,
+    "median_scaled_residual_delta_B_minus_A": 0.0012636374974995118,
+    "note": "descriptive same-noise oracle counterfactual comparison, NOT diagnostic performance or qualified confidence interval",
+    "positive_component_pairs": 4
+  },
+  "full_native_pytest": {
+    "failed": 0,
+    "passed": 786,
+    "seconds": 65.0,
+    "skipped": 0,
+    "warnings": 15
+  },
+  "model_training_performed": false,
+  "native_trajectories": 80,
+  "new_diagnostic_qualifications": 0,
+  "phase": "R66",
+  "protocol_sha256": "5474315bc5f2c34dcf90da05f6cb271decdffee4db95130a4aa6b9340c02d3da",
+  "python": "3.13.5",
+  "sdist_built": true,
+  "sdist_rebuilt_wheel": true,
+  "unclosed": [
+    "CPython 3.11/3.12 x wheel/sdist release matrix not rerun",
+    "Host pip check fails: sgp4 missing; Pillow 12.3.0 incompatible with bsk 2.11.0 and moviepy 2.2.1",
+    "No independent diagnostic evaluation or new qualification"
+  ],
+  "version": "0.8.0.dev7",
+  "wheel_built": true,
+  "wheel_install_verified": true
+}

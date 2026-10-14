@@ -1,15 +1,22 @@
-"""R68 task-design candidate registry; development-only CPU PyTorch bridge.
+"""R68 opt-in task-design candidate registry with a common estimator contract.
 
-Training labels, world IDs, fault onset and simulator truth never enter features.
+This is a research-only bridge between grouped-OOF task selection and the
+existing versioned PyTorch network families. It does NOT retrofit the separate
+open_design search entry, enable CUDA, or authorize deployment qualification.
+No training labels, world IDs, fault onset or simulated truth enter features.
 """
 from __future__ import annotations
 from dataclasses import dataclass
 from contextlib import contextmanager
+from typing import Sequence
 import numpy as np
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+
+# Import torch lazily to keep the registry metadata query lightweight.
+# All torch training is explicitly CPU-only in R68.
 
 SEQ_SAMPLES = 48
 _LEARNERS = {
@@ -20,6 +27,7 @@ _LEARNERS = {
     'torch_transformer': ('torch_cpu', 'sequence'),
 }
 
+
 @dataclass(frozen=True)
 class TaskCandidateDefinition:
     learner: str
@@ -28,8 +36,9 @@ class TaskCandidateDefinition:
     feature: str
     version: str = 'r68-v1'
 
+
 class TaskCandidateRegistry:
-    """Explicit allowlist; does not execute caller-specified imports."""
+    """Explicit allowlist; prevents arbitrary imports or executable search specs."""
     def describe(self, feature: str, learner: str) -> TaskCandidateDefinition:
         if not isinstance(feature, str) or not isinstance(learner, str) or learner not in _LEARNERS:
             raise ValueError('UNREGISTERED_TASK_CANDIDATE')
@@ -47,8 +56,14 @@ class TaskCandidateRegistry:
             return ExtraTreesClassifier(n_estimators=48, min_samples_leaf=1, n_jobs=1, random_state=seed)
         return TorchTaskEstimator(record.learner, seed)
 
+
 def deployment_sequence(values: np.ndarray, samples: int = SEQ_SAMPLES) -> np.ndarray:
-    """Time-grid interpolation of deployment-observed channels only."""
+    """Interpolate deployment-observed sensor values on a per-trajectory time grid.
+
+    The zero-index time column supplies *only* interpolation coordinates. No
+    healthy counterfactual, onset, class or world metadata is ever consulted.
+    Normalization is deliberately postponed to fit() of the training fold.
+    """
     arr = np.asarray(values, dtype=np.float64)
     if arr.ndim != 2 or arr.shape[1] < 3 or len(arr) < 4:
         raise ValueError('INVALID_SEQUENCE_OBSERVATIONS')
@@ -59,10 +74,12 @@ def deployment_sequence(values: np.ndarray, samples: int = SEQ_SAMPLES) -> np.nd
     grid = np.linspace(arr[0, 0], arr[-1, 0], samples)
     return np.stack([np.interp(grid, arr[:, 0], arr[:, j]) for j in range(1, arr.shape[1])], axis=1)
 
+
 @contextmanager
 def _cpu_training_context(seed: int):
     import torch
     old_threads = torch.get_num_threads()
+    # No CUDA access or global RNG alteration, for deterministic CPU baselines.
     try:
         torch.set_num_threads(1)
         with torch.random.fork_rng(devices=[]):
@@ -71,8 +88,13 @@ def _cpu_training_context(seed: int):
     finally:
         torch.set_num_threads(old_threads)
 
+
 class TorchTaskEstimator:
-    """CPU-only sequence classifier with training-fold-only normalization."""
+    """Small CPU Torch sequence classifier exposing sklearn-like fit/proba.
+
+    Preprocessing is fitted on the *current training partition only*. The
+    enclosing TaskDesign still owns GroupKFold and feasibility evaluation.
+    """
     def __init__(self, learner: str, seed: int, *, epochs: int = 8,
                  batch_size: int = 16, max_parameters: int = 200_000):
         if learner not in {'torch_cnn1d', 'torch_gru', 'torch_transformer'}:
@@ -81,8 +103,11 @@ class TorchTaskEstimator:
             raise ValueError('INVALID_TORCH_TASK_SEED')
         if type(epochs) is not int or not 1 <= epochs <= 200:
             raise ValueError('INVALID_TORCH_EPOCHS')
-        self.learner, self.seed, self.epochs = learner, seed, epochs
-        self.batch_size, self.max_parameters = batch_size, max_parameters
+        self.learner = learner
+        self.seed = seed
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.max_parameters = max_parameters
         self.classes_ = None
         self.model_ = None
         self.mean_ = None

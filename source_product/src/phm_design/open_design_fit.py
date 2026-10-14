@@ -226,6 +226,9 @@ def design(examples,spec,classes,healthy_label,*,max_trials=16,registry=None,
     if feedback_used_for_design:
         raise ValueError('FINAL_FEEDBACK_TAINTED_DESIGN')
     receipt = None
+    # A supplied provenance manifest is a security-relevant contract even
+    # when the caller uses the legacy average-risk search. Never silently
+    # ignore a protected role just because robust_policy was omitted.
     if training_lineage is not None and robust_policy is None:
         if len(training_lineage) != len(examples):
             raise ValueError('TRAINING_LINEAGE_LENGTH_MISMATCH')
@@ -235,8 +238,8 @@ def design(examples,spec,classes,healthy_label,*,max_trials=16,registry=None,
         if validation_families is not None:
             family_by_world = {}
             for rec in training_lineage:
-                previous = family_by_world.setdefault(rec.world_id, rec.environment_family)
-                if previous != rec.environment_family:
+                old = family_by_world.setdefault(rec.world_id, rec.environment_family)
+                if old != rec.environment_family:
                     raise ValueError('INCONSISTENT_ENVIRONMENT_LINEAGE')
             if validation_families != family_by_world:
                 raise ValueError('ENVIRONMENT_PROVENANCE_MISMATCH')
@@ -246,7 +249,7 @@ def design(examples,spec,classes,healthy_label,*,max_trials=16,registry=None,
         if training_lineage is None or len(training_lineage) != len(examples):
             raise ValueError('ROBUST_SEARCH_REQUIRES_VERIFIED_LINEAGE')
         receipt = authorize_design(training_lineage)
-        if any(rec.world_id != e.group for rec, e in zip(training_lineage,examples)):
+        if any(rec.world_id != e.group for rec,e in zip(training_lineage,examples)):
             raise ValueError('TRAINING_LINEAGE_GROUP_MISMATCH')
         original_map = {}
         for rec in training_lineage:
@@ -257,10 +260,11 @@ def design(examples,spec,classes,healthy_label,*,max_trials=16,registry=None,
             raise ValueError('ENVIRONMENT_PROVENANCE_MISMATCH')
         family_map = {}
         for rec in training_lineage:
-            previous = family_map.setdefault(rec.generation_family_id,rec.environment_family)
-            if previous != rec.environment_family:
+            prev = family_map.setdefault(rec.generation_family_id,rec.environment_family)
+            if prev != rec.environment_family:
                 raise ValueError('GENERATION_FAMILY_CROSSES_ENVIRONMENTS')
-        examples = [replace(e, group=rec.generation_family_id) for e,rec in zip(examples,training_lineage)]
+        examples = [replace(e, group=rec.generation_family_id)
+                    for e,rec in zip(examples,training_lineage)]
         validation_families = family_map
     validate_training(examples,spec,classes)
     registry=registry or generic_registry();seeds=[Program((a,),l) for a,l in zip(registry.names,('linear','extra','svm'))]

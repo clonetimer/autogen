@@ -1,0 +1,34 @@
+name: PHM AutoDesign Dev Guard
+on:
+  pull_request:
+    paths:
+      - 'source_product/**'
+      - '.github/workflows/phm-autodesign-dev-guard.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lineage-and-task-graph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12']
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev]'
+      - name: Synthetic-only leakage and task graph guards
+        run: >-
+          python -m pytest -q
+          tests/phm_design/test_r74_environment_coherence.py
+          tests/phm_design/test_r72_leakage_and_robust_search.py
+          tests/phm_design/test_r72_robust_design_policy.py
+          tests/phm_design/test_r69_task_graph.py

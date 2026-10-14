@@ -55,6 +55,7 @@ def test_robust_search_disallows_revealed_feedback_and_missing_provenance():
 
 
 def test_legacy_average_search_does_not_ignore_supplied_final_lineage():
+    """Providing provenance must never disable the role gate by omitting policy."""
     spec, examples, lineage = synthetic_case()
     bad = list(lineage)
     r = bad[0]
