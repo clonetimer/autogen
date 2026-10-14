@@ -2,12 +2,8 @@ name: PHM lineage preflight (development)
 on:
   pull_request:
     paths:
-      - "source_product/src/phm_design/leakage_control.py"
-      - "source_product/tests/phm_design/test_r74_environment_coherence.py"
-      - "source_product/tests/phm_design/test_r72_robust_design_policy.py"
-      - "source_product/src/phm_design/open_design_fit.py"
-      - "source_product/src/phm_design/robust_design_policy.py"
-      - ".github/workflows/phm-autodesign-lineage-preflight.yml"
+      - 'source_product/**'
+      - '.github/workflows/phm-autodesign-lineage-preflight.yml'
   workflow_dispatch:
 permissions:
   contents: read
