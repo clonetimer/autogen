@@ -23,6 +23,7 @@ from .task_candidate_registry import TorchTaskEstimator, _cpu_training_context
 class DGTrainingPolicy:
     epochs: int = 12
     batch_per_environment: int = 12
+    steps_per_epoch: int = 4
     learning_rate: float = 0.003
     group_step_size: float = 0.2
     weight_decay: float = 0.01
@@ -34,14 +35,14 @@ class DGTrainingPolicy:
     max_training_environments: int = 32
 
     def __post_init__(self):
-        for name in ('epochs', 'batch_per_environment', 'min_training_environments',
+        for name in ('epochs', 'batch_per_environment', 'steps_per_epoch', 'min_training_environments',
                      'max_training_environments'):
             value = getattr(self, name)
             if type(value) is not int or value < 1:
                 raise ValueError('INVALID_DG_TRAINING_POLICY:' + name)
         if self.min_training_environments < 2 or self.max_training_environments < self.min_training_environments:
             raise ValueError('INVALID_DG_TRAINING_ENVIRONMENT_BUDGET')
-        if self.epochs > 200 or self.batch_per_environment > 128:
+        if self.epochs > 200 or self.batch_per_environment > 128 or self.steps_per_epoch > 64:
             raise ValueError('DG_TRAINING_RESOURCE_LIMIT')
         for name in ('learning_rate', 'group_step_size', 'weight_decay',
                      'noise_std', 'gain_std', 'offset_std', 'consistency_weight'):
@@ -134,47 +135,49 @@ class DGSequenceEstimator(TorchTaskEstimator):
             history = []
             for _ in range(self.policy.epochs):
                 model.train()
-                losses = []
-                for class_buckets in group_indices:
-                    # Draw balanced source-environment AND class samples. This
-                    # prevents abundant nominal trajectories drowning out weak
-                    # fault gradients. All draws come only from this train fold.
-                    count = self.policy.batch_per_environment // len(class_buckets)
-                    if count < 1:
-                        raise ValueError('DG_BATCH_TOO_SMALL_FOR_CLASSES')
-                    selected = [rng.choice(bucket, size=count, replace=len(bucket) < count)
-                                for bucket in class_buckets]
-                    chosen = rng.permutation(np.concatenate(selected))
-                    clean_x = tx[chosen]
-                    aug_x = _channelsafe_perturb(clean_x, self.policy)
-                    logits = model(aug_x)
-                    group_loss = torch.nn.functional.cross_entropy(logits, ty[chosen])
-                    if self.policy.consistency_weight:
-                        with torch.no_grad():
-                            clean_probs = torch.softmax(model(clean_x), dim=1)
-                        consistency = torch.nn.functional.kl_div(
-                            torch.log_softmax(logits, dim=1), clean_probs, reduction='batchmean')
-                        group_loss += self.policy.consistency_weight * consistency
-                    losses.append(group_loss)
-                stacked = torch.stack(losses)
-                if not torch.isfinite(stacked).all():
-                    raise ValueError('NONFINITE_DG_ENVIRONMENT_LOSS')
-                with torch.no_grad():
-                    log_weights += self.policy.group_step_size * stacked.detach()
-                    log_weights -= torch.logsumexp(log_weights, dim=0)
-                    weights = torch.softmax(log_weights, dim=0)
-                loss = (weights * stacked).sum()
-                opt.zero_grad(set_to_none=True)
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 5., error_if_nonfinite=True)
-                opt.step()
-                history.append(float(max(v.item() for v in stacked)))
+                for _step in range(self.policy.steps_per_epoch):
+                    losses = []
+                    for class_buckets in group_indices:
+                        # Draw balanced source-environment AND class samples. This
+                        # prevents abundant nominal trajectories drowning out weak
+                        # fault gradients. All draws come only from this train fold.
+                        count = self.policy.batch_per_environment // len(class_buckets)
+                        if count < 1:
+                            raise ValueError('DG_BATCH_TOO_SMALL_FOR_CLASSES')
+                        selected = [rng.choice(bucket, size=count, replace=len(bucket) < count)
+                                    for bucket in class_buckets]
+                        chosen = rng.permutation(np.concatenate(selected))
+                        clean_x = tx[chosen]
+                        aug_x = _channelsafe_perturb(clean_x, self.policy)
+                        logits = model(aug_x)
+                        group_loss = torch.nn.functional.cross_entropy(logits, ty[chosen])
+                        if self.policy.consistency_weight:
+                            with torch.no_grad():
+                                clean_probs = torch.softmax(model(clean_x), dim=1)
+                            consistency = torch.nn.functional.kl_div(
+                                torch.log_softmax(logits, dim=1), clean_probs, reduction='batchmean')
+                            group_loss += self.policy.consistency_weight * consistency
+                        losses.append(group_loss)
+                    stacked = torch.stack(losses)
+                    if not torch.isfinite(stacked).all():
+                        raise ValueError('NONFINITE_DG_ENVIRONMENT_LOSS')
+                    with torch.no_grad():
+                        log_weights += self.policy.group_step_size * stacked.detach()
+                        log_weights -= torch.logsumexp(log_weights, dim=0)
+                        weights = torch.softmax(log_weights, dim=0)
+                    loss = (weights * stacked).sum()
+                    opt.zero_grad(set_to_none=True)
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 5., error_if_nonfinite=True)
+                    opt.step()
+                    history.append(float(max(v.item() for v in stacked)))
             model.eval()
         self.model_ = model
         self.train_environments_ = tuple(names)
         self.domain_weights_ = {g: float(v) for g, v in zip(names, weights.tolist())}
         self.training_ = {'backend': 'torch_cpu', 'objective': 'group_dro',
                           'model': self.dg_name, 'epochs': self.policy.epochs,
+                          'optimizer_steps': self.policy.epochs * self.policy.steps_per_epoch,
                           'parameter_count': nparameters, 'normalization': 'training_partition_only',
                           'augmentation': 'training_partition_only',
                           'sampling': 'environment_and_class_balanced',
