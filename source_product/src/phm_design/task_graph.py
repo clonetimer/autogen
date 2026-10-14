@@ -20,6 +20,7 @@ from .platform_features import FIELDS
 from .task_architectures import TaskOntology, TaskDesignRejected, _proba, _transform
 from .task_candidate_registry import TaskCandidateRegistry
 from .leakage_control import WorldLineage, authorize_design
+from .task_head_evidence import HeadEvidencePolicy
 
 _HEADS = ('detection', 'localization', 'mechanism')
 _DEFAULT_SPECS = (('temporal', 'linear'), ('physical', 'extra'))
@@ -150,7 +151,8 @@ def _get_head_proba(model, matrix, spec, query_rows):
 
 
 def _choose_head(head, choices, matrix, labels, y, groups, eligible_rows, seed,
-                 environment_families=None, selection_mode="mean"):
+                 environment_families=None, selection_mode="mean",
+                 head_evidence_policy=None, fault_strength_strata=None):
     """Choose one head *within* the supplied training worlds only."""
     actual = _train_indices(y[eligible_rows], head)
     idx = eligible_rows[actual]
@@ -160,6 +162,15 @@ def _choose_head(head, choices, matrix, labels, y, groups, eligible_rows, seed,
     if selection_mode not in ("mean", "worst_environment"):
         raise ValueError('INVALID_SELECTION_MODE')
     env = None
+    if head_evidence_policy is not None:
+        if not isinstance(head_evidence_policy, HeadEvidencePolicy):
+            raise ValueError('INVALID_HEAD_EVIDENCE_POLICY')
+        if selection_mode != 'worst_environment':
+            raise ValueError('HEAD_EVIDENCE_REQUIRES_ENVIRONMENT_EXCLUSIVE_SELECTION')
+        if head == 'detection' and head_evidence_policy.require_fault_strength_strata and fault_strength_strata is None:
+            raise ValueError('FAULT_STRENGTH_STRATA_REQUIRED')
+        if fault_strength_strata is not None and len(fault_strength_strata) != len(y):
+            raise ValueError('FAULT_STRENGTH_STRATA_LENGTH_MISMATCH')
     if selection_mode == 'worst_environment':
         if environment_families is None:
             raise ValueError('ENVIRONMENT_FAMILIES_REQUIRED')
@@ -229,15 +240,25 @@ def _choose_head(head, choices, matrix, labels, y, groups, eligible_rows, seed,
                     environment_losses[str(family)] = float(family_loss)
                 worst_environment_loss = max(environment_losses.values())
                 metric['environment_losses'] = environment_losses
+            head_evidence = (head_evidence_policy.evaluate(
+                head=head, truth=true, prediction=pred, environments=env,
+                fault_strata=(np.asarray(fault_strength_strata)[idx]
+                              if head == 'detection' and fault_strength_strata is not None
+                              else None))
+                if head_evidence_policy is not None else None)
+            eligible = head_evidence is None or head_evidence['eligible']
             record = {'feature': spec[0], 'learner': spec[1],
                       'backend': TaskCandidateRegistry().describe(*spec).backend,
-                      'status': 'COMPLETE', 'inner_group_oof_loss': loss,
+                      'status': 'COMPLETE' if eligible else 'REJECTED_BY_HEAD_EVIDENCE',
+                      'inner_group_oof_loss': loss,
                       'inner_validation_mode': inner_validation_mode,
                       'inner_fold_history': inner_fold_history,
                       'inner_metrics': metric}
+            if head_evidence is not None:
+                record['head_evidence'] = head_evidence
             rank = ((worst_environment_loss, loss, *spec) if selection_mode == "worst_environment"
                     else (loss, *spec))
-            if champion is None or rank < champion[0]:
+            if eligible and (champion is None or rank < champion[0]):
                 champion = (rank, spec)
         except Exception as err:
             # Preserve the original candidate failure; never recompute an
@@ -376,6 +397,8 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
                       outer_split_mode: str = 'world_group',
                       training_lineage: Sequence[WorldLineage] | None = None,
                       feedback_used_for_design: bool = False,
+                      head_evidence_policy: HeadEvidencePolicy | None = None,
+                      fault_strength_strata: Sequence[str] | None = None,
                       gate: TaskGraphGate | None = None,
                       acceptance_policy: TaskGraphPolicy | None = None,
                       seed: int = 6901) -> TaskGraphArtifact:
@@ -415,6 +438,21 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
             raise ValueError('ENVIRONMENT_FAMILIES_REQUIRED')
     if feedback_used_for_design:
         raise ValueError('FINAL_FEEDBACK_TAINTED_DESIGN')
+    if fault_strength_strata is not None and head_evidence_policy is None:
+        raise ValueError('FAULT_STRENGTH_STRATA_REQUIRES_EVIDENCE_POLICY')
+    if head_evidence_policy is not None:
+        if not isinstance(head_evidence_policy, HeadEvidencePolicy):
+            raise ValueError('INVALID_HEAD_EVIDENCE_POLICY')
+        if selection_mode != 'worst_environment':
+            raise ValueError('HEAD_EVIDENCE_REQUIRES_ENVIRONMENT_EXCLUSIVE_SELECTION')
+        if outer_split_mode != 'leave_environment_family_out':
+            raise ValueError('HEAD_EVIDENCE_REQUIRES_OUTER_ENVIRONMENT_HOLDOUT')
+        if training_lineage is None:
+            raise ValueError('HEAD_EVIDENCE_REQUIRES_VERIFIED_LINEAGE')
+        if fault_strength_strata is not None and len(fault_strength_strata) != n:
+            raise ValueError('FAULT_STRENGTH_STRATA_LENGTH_MISMATCH')
+        if head_evidence_policy.require_fault_strength_strata and fault_strength_strata is None:
+            raise ValueError('FAULT_STRENGTH_STRATA_REQUIRED')
     receipt = None
     if training_lineage is not None:
         if len(training_lineage) != n:
@@ -465,7 +503,7 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
             try:
                 choice, trials = _choose_head(head, specs[head], matrix, targets, y, g, tr,
                                               seed + head_num, environment_families,
-                                              selection_mode)
+                                              selection_mode, head_evidence_policy, fault_strength_strata)
                 model = _fit_head(head, choice, matrix, targets, y, tr, seed + head_num)
                 outer_oof[head][va] = _get_head_proba(model, matrix, choice, va)
                 details['head_selections'][head] = {'candidate': list(choice), 'trials': trials}
@@ -482,6 +520,21 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
         raise AssertionError('INCOMPLETE_GRAPH_OUTER_OOF')
     metrics = _scores(y, g, ontology, *(outer_oof[h] for h in _HEADS), gates)
     acceptance = policy.evaluate(metrics)
+    strength_acceptance = None
+    if head_evidence_policy is not None and fault_strength_strata is not None:
+        final_oof = np.asarray([
+            _gate(ontology, outer_oof['detection'][i],
+                  outer_oof['localization'][i], outer_oof['mechanism'][i], gates)[0]
+            for i in range(n)], dtype=int)
+        strength_acceptance = head_evidence_policy.evaluate_end_to_end_strata(
+            truth=y, decisions=final_oof,
+            environments=environment_families,
+            fault_strata=fault_strength_strata)
+        if not strength_acceptance['eligible']:
+            acceptance['eligible'] = False
+            acceptance['failed_gates'].append({
+                'metric': 'end_to_end_fault_strength_strata',
+                'reason': 'NOT_ALL_PREDECLARED_STRATA_SATISFY_JOINT_FAULT_RECALL'})
     audit = {'schema': 'phm.0.8.task-graph.v1', 'stage': 'DEVELOPMENT_ONLY',
              'method': 'nested_outer_group_oof_with_environment_exclusive_inner_selection',
              'selection_mode': selection_mode,
@@ -494,9 +547,14 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
              'unique_training_rows': n, 'group_fold_intersection': 0,
              'observation_fields': list(schema),
              'candidate_specs': {h: [list(s) for s in specs[h]] for h in _HEADS},
+             'head_evidence_policy': vars(head_evidence_policy).copy() if head_evidence_policy else None,
+             'fault_strength_strata_role': ('TRAIN_DESIGN_SCREEN_ONLY'
+                                              if fault_strength_strata is not None else None),
+             'fault_strength_strata_deployment_feature': False,
              'gate': vars(gates).copy(), 'acceptance_policy': vars(policy).copy(),
              'outer_fold_history': folds_audit, 'nested_outer_oof_metrics': metrics,
-             'acceptance': acceptance, 'not_deployment_qualified': True,
+             'acceptance': acceptance, 'strength_acceptance': strength_acceptance,
+             'not_deployment_qualified': True,
              'predictor_uses_labels_world_ids_or_truth': False,
              'sealed_or_calibration_worlds_used': False,
              'limitations': ['five_class_two_component_two_mechanism_ontology',
@@ -515,7 +573,8 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
     try:
         for i, head in enumerate(_HEADS):
             choice, trials = _choose_head(head, specs[head], matrix, targets, y, g, all_rows,
-                                          seed + i, environment_families, selection_mode)
+                                          seed + i, environment_families, selection_mode,
+                                          head_evidence_policy, fault_strength_strata)
             final_selection[head] = choice
             final_trials[head] = trials
             fitted[head] = _fit_head(head, choice, matrix, targets, y, all_rows, seed + i)

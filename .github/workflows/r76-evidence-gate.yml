@@ -1,0 +1,31 @@
+name: R76 lightweight evidence gate
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/task_head_evidence.py'
+      - 'source_product/src/phm_design/task_graph.py'
+      - 'source_product/tests/phm_design/test_r76_head_evidence.py'
+      - '.github/workflows/r76-evidence-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-evidence:
+    name: "Weak-fault negative controls / Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Minimal CPU-only test dependencies
+        run: python -m pip install 'pytest==9.0.2' 'numpy==2.3.5' 'scikit-learn==1.8.0'
+      - name: Verify weak-fault head evidence without sealed data
+        run: python -m pytest -q source_product/tests/phm_design/test_r76_head_evidence.py
+        env:
+          PYTHONPATH: source_product/src
