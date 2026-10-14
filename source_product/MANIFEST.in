@@ -1,5 +1,6 @@
 include README.md
 include README_R67.md
+include README_R75.md
 include paired_observation_audit.py
 recursive-include tests *.py *.json *.csv
 recursive-include configs *.json
