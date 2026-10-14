@@ -21,6 +21,7 @@ class HeadEvidencePolicy:
     downstream_accuracy_min: float = 0.80
     downstream_worst_class_recall_min: float = 0.80
     require_fault_strength_strata: bool = False
+    expected_fault_strata: tuple[str, ...] = ()
     min_per_fault_stratum: int = 2
     fault_stratum_recall_min: float = 0.80
 
@@ -39,6 +40,12 @@ class HeadEvidencePolicy:
                 raise ValueError('INVALID_HEAD_EVIDENCE_POLICY:' + name)
         if type(self.require_fault_strength_strata) is not bool:
             raise ValueError('INVALID_HEAD_EVIDENCE_POLICY:require_fault_strength_strata')
+        if not isinstance(self.expected_fault_strata, tuple) or any(
+                type(v) is not str or not v.strip() for v in self.expected_fault_strata
+        ) or len(self.expected_fault_strata) != len(set(self.expected_fault_strata)):
+            raise ValueError('INVALID_HEAD_EVIDENCE_POLICY:expected_fault_strata')
+        if self.require_fault_strength_strata and not self.expected_fault_strata:
+            raise ValueError('EXPLICIT_FAULT_STRENGTH_STRATA_REQUIRED')
 
     def evaluate(self, *, head: str, truth: Sequence[int], prediction: Sequence[int],
                  environments: Sequence[str], fault_strata: Sequence[str] | None = None) -> dict:
@@ -109,8 +116,14 @@ class HeadEvidencePolicy:
                     raise ValueError('INVALID_FAULT_STRENGTH_STRATUM')
                 # Evaluate every explicitly declared fault stratum, not only
                 # whichever subset gives the candidate its highest recall.
+                found = set(strata[y == 1].tolist())
+                if self.expected_fault_strata and not found.issubset(set(self.expected_fault_strata)):
+                    failed.append({'reason': 'UNDECLARED_FAULT_STRENGTH_STRATA',
+                                   'observed': sorted(found - set(self.expected_fault_strata))})
                 for family in uniques:
-                    for level in sorted(set(strata[(env == family) & (y == 1)].tolist())):
+                    expected = (self.expected_fault_strata or
+                                tuple(sorted(set(strata[(env == family) & (y == 1)].tolist()))))
+                    for level in expected:
                         mask = (env == family) & (y == 1) & (strata == level)
                         count = int(mask.sum())
                         key = family + ':' + level
