@@ -148,3 +148,52 @@ class HeadEvidencePolicy:
                 'fault_strata': by_stratum,
                 'evidence': 'TRAIN_ONLY_INNER_ENVIRONMENT_OOF',
                 'not_independent_qualification': True}
+
+    def evaluate_end_to_end_strata(self, *, truth: Sequence[int], decisions: Sequence[int],
+                                  environments: Sequence[str], fault_strata: Sequence[str]) -> dict:
+        """All-fault weak-stratum gate AFTER detector, locator and mechanism gates.
+
+        UNKNOWN (-1) and false NOMINAL are failures. This uses only the
+        design TRAIN outer-OOF predictions, never a revealed FINAL cohort.
+        """
+        y, p, env, strata = (np.asarray(truth), np.asarray(decisions),
+                            np.asarray(environments), np.asarray(fault_strata))
+        if (any(x.ndim != 1 for x in (y, p, env, strata)) or
+                not len(y) or len({len(x) for x in (y, p, env, strata)}) != 1):
+            raise ValueError('END_TO_END_STRATUM_LENGTH_MISMATCH')
+        if not np.issubdtype(y.dtype, np.integer) or (y < 0).any():
+            raise ValueError('INVALID_END_TO_END_TRUTH')
+        if not np.issubdtype(p.dtype, np.integer) or (p < -1).any():
+            raise ValueError('INVALID_END_TO_END_DECISION')
+        if any(not isinstance(v, str) or not v.strip() for v in env.tolist()+strata.tolist()):
+            raise ValueError('INVALID_END_TO_END_STRATUM_METADATA')
+        levels = (self.expected_fault_strata or
+                  tuple(sorted(set(strata[y != 0].tolist()))))
+        failures, report = [], {}
+        if not levels:
+            failures.append({'reason': 'NO_FAULT_STRENGTH_STRATA'})
+        observed = set(strata[y != 0].tolist())
+        if self.expected_fault_strata and not observed.issubset(set(levels)):
+            failures.append({'reason': 'UNDECLARED_FAULT_STRENGTH_STRATA',
+                             'observed': sorted(observed - set(levels))})
+        for family in sorted(set(env.tolist())):
+            for level in levels:
+                mask = (env == family) & (y != 0) & (strata == level)
+                count = int(mask.sum())
+                key = family + ':' + level
+                row = {'fault_support': count}
+                if count < self.min_per_fault_stratum:
+                    failures.append({'reason': 'INSUFFICIENT_END_TO_END_STRATUM_SUPPORT',
+                                     'environment': family, 'stratum': level,
+                                     'observed': count, 'required': self.min_per_fault_stratum})
+                else:
+                    recall = float(np.mean(y[mask] == p[mask]))
+                    row['joint_fault_recall'] = recall
+                    if recall < self.fault_stratum_recall_min:
+                        failures.append({'reason': 'END_TO_END_FAULT_STRATUM_RECALL',
+                                         'environment': family, 'stratum': level,
+                                         'observed': recall, 'required': self.fault_stratum_recall_min})
+                report[key] = row
+        return {'eligible': not failures, 'failed_gates': failures, 'per_environment_stratum': report,
+                'evidence': 'TRAIN_ONLY_OUTER_ENVIRONMENT_OOF',
+                'unknown_counts_as_failure': True, 'not_independent_qualification': True}
