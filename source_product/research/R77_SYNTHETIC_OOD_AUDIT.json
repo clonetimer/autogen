@@ -1,0 +1,93 @@
+{
+  "aggregate_mean_accuracy": {
+    "ERM_TCN": 1.0,
+    "GroupDRO_TCN": 1.0
+  },
+  "candidate_results": [
+    {
+      "ERM_TCN": {
+        "accuracy": 1.0,
+        "fault_recall": 1.0,
+        "healthy_false_alarm_rate": 0.0,
+        "samples": 128
+      },
+      "GroupDRO_TCN": {
+        "accuracy": 1.0,
+        "fault_recall": 1.0,
+        "healthy_false_alarm_rate": 0.0,
+        "samples": 128
+      },
+      "seed": 17
+    },
+    {
+      "ERM_TCN": {
+        "accuracy": 1.0,
+        "fault_recall": 1.0,
+        "healthy_false_alarm_rate": 0.0,
+        "samples": 128
+      },
+      "GroupDRO_TCN": {
+        "accuracy": 1.0,
+        "fault_recall": 1.0,
+        "healthy_false_alarm_rate": 0.0,
+        "samples": 128
+      },
+      "seed": 23
+    },
+    {
+      "ERM_TCN": {
+        "accuracy": 1.0,
+        "fault_recall": 1.0,
+        "healthy_false_alarm_rate": 0.0,
+        "samples": 128
+      },
+      "GroupDRO_TCN": {
+        "accuracy": 1.0,
+        "fault_recall": 1.0,
+        "healthy_false_alarm_rate": 0.0,
+        "samples": 128
+      },
+      "seed": 41
+    }
+  ],
+  "no_post_holdout_retuning": true,
+  "not_independent_qualification": true,
+  "protocol": {
+    "candidates": [
+      "torch_tcn_erm",
+      "dg_tcn_groupdro"
+    ],
+    "dev_stress_environment": {
+      "heldout_e": -0.65
+    },
+    "fault_amplitude": 0.22,
+    "feature_channels": [
+      "weak_temporal_signature",
+      "spurious_environment_correlate",
+      "domain_baseline"
+    ],
+    "holdout_role": "DEVELOPMENT_STRESS_ONLY",
+    "holdout_samples_per_class": 64,
+    "id": "r77-synthetic-source-shift-probe-v1",
+    "qualification": false,
+    "samples_per_trajectory": 48,
+    "seeds": [
+      17,
+      23,
+      41
+    ],
+    "sensor_noise": 0.075,
+    "source_environments": {
+      "source_a": 0.6,
+      "source_b": 0.35,
+      "source_c": -0.12,
+      "source_d": -0.28
+    },
+    "train_samples_per_class_per_source": 24,
+    "training_optimizer_updates_approx": {
+      "dg_tcn_groupdro": 48,
+      "torch_tcn_erm": 48
+    }
+  },
+  "protocol_sha256": "2a838601d07fe1473f02fd148fa5903f19c1f16db4a202c5cdc8aba948bad19b"
+}
