@@ -14,6 +14,7 @@ from phm_design.open_design import (
     temporal_bins, random_temporal_kernels,
 )
 from phm_design.industrial.taskspec import TaskSpecRejected, compile_task_spec
+from phm_design.industrial.artifact_io import load_trusted_artifact
 from phm_design.industrial.design_engine import (
     DesignAcceptance, IndustrialDesignRejected, run_design, _features,
 )
@@ -87,11 +88,29 @@ def test_combined_program_runs_real_fold_fits_and_deployment_without_labels(tmp_
     artifact.export(tmp_path / "feature_program_model")
     audit = json.loads((tmp_path / "feature_program_model" / "audit.json").read_text())
     assert audit["feature_program_sha256"] == program_digest(artifact.trial.feature)
-    assert audit["selected_trial_sha256"] if "selected_trial_sha256" in audit else (
-        audit["trial_selection_audit"]["selected_trial_sha256"])
+    assert len(audit["trial_selection_audit"]["selected_trial_sha256"]) == 64
     assert audit["candidate_grid_sha256"] == artifact.audit["candidate_grid_sha256"]
     assert audit["training_manifest_sha256"] == artifact.audit["training_manifest_sha256"]
     assert audit["independent_qualification"] is False
+    with pytest.raises(ValueError, match="EXPLICIT_TRUST_REQUIRED"):
+        load_trusted_artifact(tmp_path / "feature_program_model")
+    restored = load_trusted_artifact(tmp_path / "feature_program_model",
+                                     trust_pickle=True)
+    assert restored.predict(rows[1]["measurements"]) == artifact.predict(
+        rows[1]["measurements"])
+    artifact_folder = tmp_path / "feature_program_model"
+    manifest_path = artifact_folder / "audit.json"
+    before = manifest_path.read_text()
+    altered = json.loads(before)
+    altered["candidate_grid_sha256"] = "0" * 64
+    manifest_path.write_text(json.dumps(altered))
+    with pytest.raises(ValueError, match="ARTIFACT_AUDIT_HASH_MISMATCH"):
+        load_trusted_artifact(artifact_folder, trust_pickle=True)
+    manifest_path.write_text(before)
+    with (artifact_folder / "model.joblib").open("ab") as handle:
+        handle.write(b"altered")
+    with pytest.raises(ValueError, match="ARTIFACT_MODEL_HASH_MISMATCH"):
+        load_trusted_artifact(artifact_folder, trust_pickle=True)
 
 
 def test_factorized_models_take_exact_same_composed_features_and_budget():
