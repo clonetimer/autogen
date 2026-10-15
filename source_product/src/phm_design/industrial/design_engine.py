@@ -22,6 +22,7 @@ from .taskspec import (
 )
 from .calibration import CalibrationRejected, fit_temperature_selective
 from .feature_program import decode_program, execute_program, program_digest
+from .availability_features import execute_available, atom_dimensions
 from ..open_design import temporal_bins, random_temporal_kernels
 from ..task_candidate_registry import TaskCandidateRegistry, deployment_sequence
 
@@ -34,6 +35,8 @@ class TrialSpec:
     learner: str
     seed: int
     topology: str = "direct"
+    composition: str = "concat"
+    availability_bindings: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -92,6 +95,20 @@ def _candidate(spec: Mapping, seed: int) -> TrialSpec:
         feature_identifier = None
     if topology not in ("direct", "factorized"):
         raise TaskSpecRejected("UNREGISTERED_R81_TOPOLOGY")
+    composition = spec.get("composition", "concat")
+    bindings = ()
+    if composition in ("available_stack", "available_average"):
+        if (feature_identifier is None or topology != "direct" or
+                backbone != "linear" or objective != "ERM"):
+            raise TaskSpecRejected("UNSUPPORTED_AVAILABLE_TRIAL")
+        raw_bindings = spec.get("availability_bindings")
+        if (not isinstance(raw_bindings, list) or
+                len(raw_bindings) != len(decode_program(feature_identifier))):
+            raise TaskSpecRejected("INVALID_AVAILABLE_TRIAL_BINDINGS")
+        bindings = tuple((binding["atom"], binding["sensor_index"],
+                          binding["validity_index"]) for binding in raw_bindings)
+    elif composition != "concat" or "availability_bindings" in spec:
+        raise TaskSpecRejected("UNKNOWN_TRIAL_COMPOSITION")
     mapping = {
         "cnn1d": "cnn1d", "tcn": "tcn", "gru": "gru",
         "transformer": "transformer",
@@ -107,7 +124,8 @@ def _candidate(spec: Mapping, seed: int) -> TrialSpec:
             feature = feature_identifier
         if feature is None:
             raise TaskSpecRejected("INVALID_TABULAR_REPRESENTATION")
-        return TrialSpec(backbone, objective, feature, "linear", seed, topology)
+        return TrialSpec(backbone, objective, feature, "linear", seed, topology,
+                         composition, bindings)
     if backbone == "tree":
         if objective != "ERM":
             raise TaskSpecRejected("INVALID_NONNEURAL_OBJECTIVE")
@@ -131,7 +149,11 @@ def _candidate(spec: Mapping, seed: int) -> TrialSpec:
                      prefix + mapping[backbone], seed, topology)
 
 
-def _features(array: np.ndarray, mode: str) -> np.ndarray:
+def _features(array: np.ndarray, mode: str, bindings=()) -> np.ndarray:
+    if bindings:
+        if not mode.startswith("program:"):
+            raise ValueError("AVAILABILITY_REQUIRES_REGISTERED_PROGRAM")
+        return execute_available(array, bindings)
     if mode.startswith("program:"):
         return execute_program(array, mode)
     if mode == "temporal":
@@ -147,6 +169,14 @@ def _features(array: np.ndarray, mode: str) -> np.ndarray:
 
 
 def _fitted(candidate: TrialSpec, train_x, train_y, domains, ontology=None):
+    if candidate.composition in ("available_stack", "available_average"):
+        from ..open_design import Program
+        from ..open_design_availability import AvailableComponentEnsemble
+        atoms = decode_program(candidate.feature)
+        program = Program(atoms, "linear", composition=candidate.composition)
+        model = AvailableComponentEnsemble(
+            program, tuple(atom_dimensions(a) for a in atoms))
+        return model.fit(train_x, train_y, groups=np.asarray(domains))
     if candidate.topology == "factorized":
         if ontology is None:
             raise TaskSpecRejected("FACTORIZED_ONTOLOGY_REQUIRED")
@@ -176,6 +206,15 @@ def _fitted(candidate: TrialSpec, train_x, train_y, domains, ontology=None):
     return model.fit(train_x, train_y)
 
 
+def _charged_fit_cost(trial: TrialSpec, ontology: Mapping) -> int:
+    if trial.composition in ("available_stack", "available_average"):
+        # 3 grouped inner folds per atom, full refits, and one meta fit.
+        # Charge upfront even when a branch lacks support.
+        return 4 * len(trial.availability_bindings) + 1
+    return (1 if trial.topology == "direct" else
+            _factorized_fit_cost(ontology))
+
+
 def _factorized_fit_cost(ontology: Mapping) -> int:
     attrs = ontology["class_attributes"]
     components = {row["component"] for row in attrs.values()}
@@ -197,6 +236,17 @@ def _probabilities(model, features, expected_classes: int) -> np.ndarray:
 
 
 def _predict_indices(model, features, expected_classes: int) -> np.ndarray:
+    if hasattr(model, "predict_with_confidence"):
+        classes = np.asarray(model.classes_)
+        if (len(classes) != expected_classes or
+                set(classes.tolist()) != set(range(expected_classes))):
+            raise ValueError("AVAILABILITY_ONTOLOGY_CLASS_MISMATCH")
+        preds, confidence = model.predict_with_confidence(features)
+        if (len(preds) != len(features) or len(confidence) != len(features) or
+                not np.isfinite(confidence).all() or
+                not np.isin(preds, [-1, *range(expected_classes)]).all()):
+            raise ValueError("INVALID_AVAILABLE_PREDICTION")
+        return np.asarray(preds, dtype=int)
     return np.argmax(_probabilities(model, features, expected_classes), axis=1)
 
 
@@ -270,13 +320,21 @@ class IndustrialDesignArtifact:
         field_order = ([self.plan["feature_contract"]["time_field"]]
                        + self.plan["feature_contract"]["ordered_channel_names"])
         sequence = np.asarray([[r[field] for field in field_order] for r in rows])
-        feature = _features(sequence, self.trial.feature)
-        probabilities = _probabilities(
-            self.model, feature[None, ...], len(self.plan["ontology"]["labels"]))
+        feature = _features(sequence, self.trial.feature,
+                            self.trial.availability_bindings)
         labels = self.plan["ontology"]["labels"]
-        if self.calibrator is not None:
+        if self.trial.composition in ("available_stack", "available_average"):
+            indices, confidence = self.model.predict_with_confidence(feature[None, ...])
+            decision = [{"class_index": int(indices[0]),
+                         "confidence": float(confidence[0]),
+                         "abstained": bool(indices[0] == -1)}]
+        elif self.calibrator is not None:
+            probabilities = _probabilities(
+                self.model, feature[None, ...], len(labels))
             decision = self.calibrator.decisions(probabilities)
         else:
+            probabilities = _probabilities(
+                self.model, feature[None, ...], len(labels))
             decision = [{"class_index": int(np.argmax(row)),
                          "confidence": float(max(row)), "abstained": False}
                         for row in probabilities]
