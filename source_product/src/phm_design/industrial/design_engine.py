@@ -402,7 +402,8 @@ def run_design(task_spec: Mapping | TaskSpec,
         "calibration_policy": calibration_policy,
         "calibration_role": ("TRAIN_INNER_OOF_ONLY" if calibration_policy else None),
         "compute_ledger": {
-            "fit_unit": "ACTUAL_ESTIMATOR_HEAD_FIT",
+            "fit_unit": "ESTIMATOR_HEAD_FIT_CHARGE",
+            "failed_fit_charge": "CONSERVATIVE_FULL_HEAD_RESERVATION",
             "cpu_seconds": "PYTHON_PROCESS_CPU_BEST_EFFORT",
             "wall_seconds": "HOST_WALL_BEST_EFFORT",
             "inference_wall_seconds": "HOST_WALL_INCLUDES_PYTHON_OVERHEAD",
@@ -424,6 +425,10 @@ def run_design(task_spec: Mapping | TaskSpec,
             raise RuntimeError("TRIAL_CPU_BUDGET_EXCEEDED")
         if set(true[selection].tolist()) != set(range(len(labels))):
             raise RuntimeError("TRAIN_FOLD_CLASS_SUPPORT_MISSING")
+        # Reserve the full known head-fit cost *before* attempting the fit.
+        # If a nested head fails midway, conservative reservations remain
+        # charged; otherwise failures could secretly exceed the fit budget.
+        fits += head_cost
         if trial.topology == "factorized":
             model = _fitted(trial, features[trial.feature][selection],
                             true[selection], environment[selection],
@@ -431,7 +436,8 @@ def run_design(task_spec: Mapping | TaskSpec,
         else:
             model = _fitted(trial, features[trial.feature][selection],
                             true[selection], environment[selection])
-        fits += getattr(model, "fit_count_", 1)
+        if getattr(model, "fit_count_", 1) != head_cost:
+            raise RuntimeError("UNDECLARED_MODEL_FIT_COST")
         return model
 
     def nested_calibration(trial, training_indices):
