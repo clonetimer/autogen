@@ -72,11 +72,8 @@ def test_process_guard_real_fit_and_trusted_artifact_replay(tmp_path):
 def test_wall_timeout_terminates_worker_without_delivering_model():
     s = spec(max_wall=1)
     records = synthetic_records(s, environment_count=3)
-    try:
-        with pytest.raises(GuardedDesignTimeout) as captured:
-            run_design_guarded(s, records, acceptance=SCREEN)
-    except AssertionError:
-        pytest.skip("The host spawned and fitted unexpectedly fast; wall cap not hit.")
+    with pytest.raises(GuardedDesignTimeout) as captured:
+        run_design_guarded(s, records, acceptance=SCREEN)
     assert captured.value.audit["decision"] == "HARD_WALL_TIMEOUT"
     assert captured.value.audit["model_delivered"] is False
     assert captured.value.audit["independent_qualification"] is False
