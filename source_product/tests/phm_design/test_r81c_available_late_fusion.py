@@ -43,7 +43,9 @@ def available_records(spec, n_env=4):
     for i, rec in enumerate(records):
         # Controlled sensor-validity patterns balanced across fault classes;
         # no labels, world IDs or failure onsets are supplied as signals.
-        pattern = [(1., 1.), (1., 0.), (0., 1.)][i % 3]
+        # Every fault class stays supported in every source inner group fold;
+        # one physical example per environment has a *genuine* missing branch.
+        pattern = (1., 0.) if i % 6 == 1 else (1., 1.)
         for row in rec["measurements"]:
             row["vibration_valid"], row["current_valid"] = pattern
     return records
@@ -161,3 +163,20 @@ def test_invalid_or_truth_derived_availability_contracts_fail_closed(mutate, cod
     mutate(s)
     with pytest.raises(TaskSpecRejected, match=code):
         compile_task_spec(s)
+
+
+def test_insufficient_source_group_oof_class_support_refuses_delivery():
+    s = available_spec("available_stack")
+    records = available_records(s)
+    for rec in records:
+        if rec["metadata"]["label"] == s["task"]["labels"][-1]:
+            for row in rec["measurements"]:
+                row["vibration_valid"] = 0.
+                row["current_valid"] = 0.
+    with pytest.raises(IndustrialDesignRejected) as exc:
+        run_design(s, records, acceptance=SCREEN)
+    audit = exc.value.audit
+    assert audit["model_delivered"] is False
+    assert audit["decision"] == "NO_ELIGIBLE_DESIGN"
+    assert "AVAILABILITY_INSUFFICIENT_OOF_SUPPORT" in (
+        audit["attempts"][0]["failure"])
