@@ -257,16 +257,111 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                       required=("candidate_max", "compare", "objectives",
                                 "allow_refusal", "budget"),
                       allowed=("candidate_max", "compare", "objectives",
-                               "allow_refusal", "budget", "representations", "topologies"))
+                               "allow_refusal", "budget", "representations", "topologies",
+                               "calibration", "feature_programs",
+                               "adaptive_feature_search"))
     max_trials = _positive_int(design["candidate_max"], "design.candidate_max",
                                maximum=128)
     backbones = _nonempty_strings(design["compare"], "design.compare")
     objectives = _nonempty_strings(design["objectives"], "design.objectives")
     if not set(backbones).issubset(BACKBONES) or not set(objectives).issubset(OBJECTIVES):
         _reject("UNREGISTERED_ARCHITECTURE_OR_TRAINING_OBJECTIVE")
-    representations = _nonempty_strings(
-        design.get("representations", ["temporal_bins"]),
-        "design.representations")
+    # Explicit bounded programs share open_design's registered feature atoms.
+    # The predeclared set is fixed before any source OOF feedback is seen.
+    from .feature_program import ALLOWED_ATOMS, encode_program
+    adaptive = None
+    if "adaptive_feature_search" in design:
+        from itertools import combinations
+        config = _mapping(
+            design["adaptive_feature_search"], "design.adaptive_feature_search",
+            required=("atoms", "max_programs"),
+            allowed=("atoms", "max_programs"))
+        atoms = _nonempty_strings(config["atoms"], "adaptive_feature_search.atoms")
+        if not set(atoms).issubset(ALLOWED_ATOMS) or len(atoms) < 3:
+            _reject("INVALID_ADAPTIVE_FEATURE_ATOMS")
+        max_programs = _positive_int(
+            config["max_programs"], "adaptive_feature_search.max_programs",
+            minimum=3, maximum=128)
+        if ("feature_programs" in design or "representations" in design or
+                len(backbones) != 1 or backbones[0] not in ("linear", "tree") or
+                objectives != ["ERM"] or
+                design.get("topologies", ["direct"]) not in (["direct"], ["factorized"])):
+            _reject("ADAPTIVE_SEARCH_REQUIRES_SINGLE_CLASSICAL_TEMPLATE")
+        pool_atoms = sorted(atoms)
+        pool = [list(combo) for count in range(1, min(3, len(atoms)) + 1)
+                for combo in combinations(pool_atoms, count)]
+        if max_programs > len(pool) or max_trials != max_programs:
+            _reject("ADAPTIVE_SEARCH_TRIAL_BUDGET_MISMATCH")
+        adaptive = {
+            "mode": "bounded_feedback",
+            "atoms": pool_atoms,
+            "candidate_pool_size": len(pool),
+            "max_programs": max_programs,
+            "seed_programs": [encode_program([atom]) for atom in atoms[:2]],
+            "loss": "SOURCE_TRAIN_OOF_MEAN_TAIL_CLASS_ERROR",
+        }
+    programs = []
+    if "feature_programs" in design:
+        raw_programs = design["feature_programs"]
+        if not isinstance(raw_programs, list) or not raw_programs:
+            _reject("EMPTY_INDUSTRIAL_FEATURE_PROGRAMS")
+        for index, entry in enumerate(raw_programs):
+            cfg = _mapping(entry, "design.feature_programs." + str(index),
+                           required=("atoms", "composition"),
+                           allowed=("atoms", "composition", "bindings"))
+            composition = _enum(cfg["composition"],
+                                {"concat", "available_stack", "available_average"},
+                                "feature_programs.composition")
+            atoms = _nonempty_strings(cfg["atoms"], "design.feature_programs.atoms")
+            if len(atoms) > 3 or not set(atoms).issubset(ALLOWED_ATOMS):
+                _reject("UNREGISTERED_FEATURE_PROGRAM")
+            ordered = sorted(atoms)
+            bindings = []
+            if composition != "concat":
+                if not task["allow_unknown"]:
+                    _reject("AVAILABILITY_REQUIRES_UNKNOWN_TASK_CONTRACT")
+                if len(atoms) < 2 or "calibration" in design:
+                    _reject("UNSUPPORTED_AVAILABILITY_CALIBRATION_OR_BRANCH_COUNT")
+                raw_bindings = _mapping(cfg.get("bindings"), "feature_programs.bindings",
+                                        required=ordered, allowed=ordered)
+                used = set()
+                for atom in ordered:
+                    binding = _mapping(raw_bindings[atom],
+                                       "feature_programs.bindings." + atom,
+                                       required=("signal", "validity_flag"),
+                                       allowed=("signal", "validity_flag"))
+                    signal, valid = binding["signal"], binding["validity_flag"]
+                    if (signal not in names or valid not in names or
+                            signal == valid or signal in used or valid in used):
+                        _reject("INVALID_AVAILABILITY_CHANNEL_BINDING")
+                    flag = channels[names.index(valid)]
+                    if (flag["role"] != "sensor" or flag["unit"] != "1"):
+                        _reject("INVALID_AVAILABILITY_FLAG_CHANNEL_CONTRACT")
+                    used.update((signal, valid))
+                    bindings.append({"atom": atom, "signal": signal,
+                                     "validity_flag": valid,
+                                     "sensor_index": 1 + names.index(signal),
+                                     "validity_index": 1 + names.index(valid)})
+            elif "bindings" in cfg:
+                _reject("CONCAT_MUST_NOT_DECLARE_AVAILABILITY_BINDINGS")
+            item = {"atoms": ordered, "composition": composition,
+                    "identity": encode_program(atoms)}
+            if composition != "concat":
+                item["bindings"] = bindings
+            programs.append(item)
+        identifiers = [(x["identity"], x["composition"]) for x in programs]
+        if len(set(identifiers)) != len(identifiers):
+            _reject("DUPLICATE_INDUSTRIAL_FEATURE_PROGRAM")
+        if any(x["composition"] != "concat" for x in programs) and (
+                len(backbones) != 1 or backbones[0] != "linear" or
+                objectives != ["ERM"] or
+                design.get("topologies", ["direct"]) != ["direct"]):
+            _reject("AVAILABILITY_REQUIRES_LINEAR_DIRECT_ERM")
+    if "representations" in design:
+        representations = _nonempty_strings(
+            design["representations"], "design.representations")
+    else:
+        representations = ([] if programs or adaptive else ["temporal_bins"])
     if not set(representations).issubset(
             {"temporal_bins", "random_kernels", "difference_kernels"}):
         _reject("UNREGISTERED_FEATURE_PROGRAM")
@@ -274,6 +369,27 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         design.get("topologies", ["direct"]), "design.topologies")
     if not set(topologies).issubset({"direct", "factorized"}):
         _reject("UNREGISTERED_DIAGNOSIS_TOPOLOGY")
+    # Opt-in, predeclared before any fitted candidate; old TasksSpecs are unchanged.
+    calibration_policy = None
+    if "calibration" in design:
+        config = _mapping(design["calibration"], "design.calibration",
+                          required=("method", "max_selective_error",
+                                    "minimum_coverage", "min_calibration_samples"),
+                          allowed=("method", "max_selective_error",
+                                   "minimum_coverage", "min_calibration_samples"))
+        _enum(config["method"], {"temperature_selective"}, "calibration.method")
+        if not task["allow_unknown"]:
+            _reject("CALIBRATION_REQUIRES_UNKNOWN_TASK_CONTRACT")
+        for name, minimum, maximum in (
+                ("max_selective_error", 0.01, 0.5),
+                ("minimum_coverage", 0.05, 1.0)):
+            value = config[name]
+            if (type(value) not in (int, float) or not math.isfinite(value)
+                    or not minimum <= value <= maximum):
+                _reject("INVALID_CALIBRATION_POLICY", name)
+        _positive_int(config["min_calibration_samples"],
+                      "calibration.min_calibration_samples", minimum=12)
+        calibration_policy = dict(config)
     if "factorized" in topologies and kind != "joint_diagnosis":
         _reject("FACTORIZED_REQUIRES_JOINT_DIAGNOSIS")
     if "factorized" in topologies:
@@ -285,10 +401,14 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         _reject("DESIGN_REFUSAL_MUST_BE_AVAILABLE")
     budget = _mapping(design["budget"], "design.budget",
                       required=("max_fits", "max_cpu_seconds", "seed"),
-                      allowed=("max_fits", "max_cpu_seconds", "seed"))
+                      allowed=("max_fits", "max_cpu_seconds", "seed",
+                               "max_wall_seconds"))
     max_fits = _positive_int(budget["max_fits"], "budget.max_fits", maximum=10000)
     seconds = _positive_int(budget["max_cpu_seconds"],
                             "budget.max_cpu_seconds", maximum=604800)
+    wall_seconds = (_positive_int(budget["max_wall_seconds"],
+                                  "budget.max_wall_seconds", maximum=604800)
+                    if "max_wall_seconds" in budget else None)
     seed = _positive_int(budget["seed"], "budget.seed", minimum=0,
                          maximum=2**32 - 1)
     grid = []
@@ -296,18 +416,38 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         for objective in objectives:
             if objective != "ERM" and backbone not in NEURAL:
                 continue  # Tree and linear models cannot use backprop DG.
-            choices = (["learned_sequence"] if backbone in NEURAL
-                       else representations)
-            for representation in choices:
+            choices = ([{"representation": "learned_sequence"}]
+                       if backbone in NEURAL else
+                       [{"representation": item} for item in representations] +
+                       [{"representation": "feature_program",
+                         "feature_program": entry["identity"],
+                         **({"composition": entry["composition"],
+                             "availability_bindings": entry["bindings"]}
+                            if entry["composition"] != "concat" else {})}
+                        for entry in programs])
+            for choice in choices:
                 for topology in topologies:
-                    grid.append({"representation": representation,
-                                 "backbone": backbone, "objective": objective,
-                                 "topology": topology})
+                    grid.append({**choice, "backbone": backbone,
+                                 "objective": objective, "topology": topology})
+    if adaptive is not None:
+        # An immutable candidate pool, not an exhaustively evaluated portfolio.
+        # Only max_programs proposals may be trained in one study.
+        grid = [
+            {"representation": "feature_program",
+             "feature_program": encode_program(atoms),
+             "backbone": backbones[0], "objective": "ERM",
+             "topology": topologies[0]}
+            for atoms in pool
+        ]
+        programs = [
+            {"atoms": atoms, "composition": "concat",
+             "identity": encode_program(atoms)} for atoms in pool
+        ]
     if not grid:
         _reject("AUTO_NO_VALID_PLAN")
     if max_fits < max_trials:
         _reject("SEARCH_BUDGET_FITS_BELOW_TRIALS")
-    if len(grid) > max_trials:
+    if len(grid) > max_trials and adaptive is None:
         _reject("SEARCH_SPACE_EXCEEDS_PREDECLARED_TRIAL_BUDGET")
 
     deployment = _mapping(d["deployment"], "deployment",
@@ -355,8 +495,13 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         "fold_strategy": "leave_physical_family_out",
         "source_only_nested_selection": True,
         "candidate_grid": grid,
+        "registered_feature_programs": programs,
+        "adaptive_feature_search": adaptive,
+        "calibration_policy": calibration_policy,
         "budget": {"max_trials": max_trials, "max_fits": max_fits,
-                   "max_cpu_seconds": seconds, "seed": seed},
+                   "max_cpu_seconds": seconds, "seed": seed,
+                   **({"max_wall_seconds": wall_seconds}
+                      if wall_seconds is not None else {})},
         "fold_preprocessing": "fit_on_training_partition_only",
         "predeclared_refusal_modes": [
             "AUTO_NO_VALID_PLAN", "NOT_OBSERVABLE_WITH_DECLARED_SENSORS",

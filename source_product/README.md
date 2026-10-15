@@ -2,7 +2,7 @@
 
 **DEVELOPMENT ONLY.** This development branch is based on the complete R69 0.8.0.dev10 codebase; it does not change or extend the 0.7.0 Stable certification. CUDA training and actual GPU hardware validation remain outside this change. R70 interim work is not included because it has no fully verified integrated handoff.
 
-## R72–R74: leakage-aware automatic design
+> **Latest stacked development:** R80/R81a/R81b/R81c are research branches, not R60 Stable. The current R81c slice adds nested TRAIN-only temperature calibration and optional UNKNOWN decisions (see [README_R81C.md](README_R81C.md)). The R81b model/feature search context is in [README_R81B.md](README_R81B.md). Neither has independent FINAL qualification.\n\n## R72–R74: leakage-aware automatic design
 
 R74 additionally rejects synthetic environment splits that relabel the same generation family or canonical base-physics configuration under different environment-family identifiers. This is a metadata-consistency gate, not independent authentication of physical worlds or a new diagnostic qualification.
 
