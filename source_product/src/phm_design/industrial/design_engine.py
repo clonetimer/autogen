@@ -446,7 +446,7 @@ def run_design(task_spec: Mapping | TaskSpec,
         entry = {"trial_index": i, "trial": asdict(trial),
                  "folds": [], "status": "STARTED"}
         attempts.append(entry)
-        predictions = np.full(len(true), -1, dtype=int)
+        predictions = np.full(len(true), -2, dtype=int)
         try:
             for train, validation in fold_plan:
                 calibrated = (nested_calibration(trial, train)
@@ -468,7 +468,7 @@ def run_design(task_spec: Mapping | TaskSpec,
                     "inner_calibration": (asdict(calibrated)
                                           if calibrated is not None else None),
                 })
-            if (predictions < 0).any():
+            if (predictions == -2).any():
                 raise RuntimeError("INCOMPLETE_TRAIN_SOURCE_OOF")
             metrics = _score(true, predictions, environment, groups, labels, healthy_idx)
             decision = acceptance.evaluate(metrics)
