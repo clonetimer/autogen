@@ -135,9 +135,9 @@ def test_factorized_models_take_exact_same_composed_features_and_budget():
     ({"atoms": ["temporal_bins"] * 4, "composition": "concat"},
      "INVALID_OR_DUPLICATE_ITEMS"),
     ({"atoms": ["temporal_bins"], "composition": "available_stack"},
-     "UNSUPPORTED_INDUSTRIAL_PROGRAM_COMPOSITION"),
+     "UNSUPPORTED_AVAILABILITY_CALIBRATION_OR_BRANCH_COUNT"),
     ({"atoms": ["temporal_bins"], "composition": "available_average"},
-     "UNSUPPORTED_INDUSTRIAL_PROGRAM_COMPOSITION"),
+     "UNSUPPORTED_AVAILABILITY_CALIBRATION_OR_BRANCH_COUNT"),
     ({"atoms": ["temporal_bins"], "composition": "concat", "unsafe": "eval"},
      "UNKNOWN_TASKSPEC_FIELDS"),
 ])
