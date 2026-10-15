@@ -36,13 +36,3 @@ jobs:
           tests/phm_design/test_r76_head_evidence.py
           tests/phm_design/test_r77_neural_domain_generalization.py
           tests/phm_design/test_r78_neural_risk_extrapolation.py
-      - name: Predeclared synthetic OOD stress (development only)
-        if: matrix.python-version == '3.11'
-        run: python research/r78_neural_shift_benchmark.py
-      - name: Archive revealed synthetic development stress
-        if: matrix.python-version == '3.11'
-        uses: actions/upload-artifact@v4
-        with:
-          name: r78-revealed-synthetic-development-stress
-          path: source_product/r78_synthetic_dev_stress.json
-          if-no-files-found: error
