@@ -233,11 +233,23 @@ class FeedbackPlanner:
     programs are shared, not withheld from the expert. No guarantee of optimum.
     """
     learners=('linear','svm','extra','forest','gnb','knn','mlp','probability_mix')
-    def __init__(self,atoms,*,mode='adaptive',seeds=(),risk=RiskPreference(),seed=48019):
-        if mode not in ('adaptive','expert') or not atoms or len(set(atoms))!=len(atoms):raise ValueError('PLANNER_SPEC')
+    def __init__(self,atoms,*,mode='adaptive',seeds=(),risk=RiskPreference(),seed=48019,program_pool=()):
+        if mode not in ('adaptive','expert','bounded_feedback') or not atoms or len(set(atoms))!=len(atoms):raise ValueError('PLANNER_SPEC')
         self.atoms=tuple(atoms);self.mode=mode;self.risk=risk;self.rng=np.random.default_rng(seed)
         self.learners=type(self).learners+('group_stack','group_average')
         self.seeds=list(seeds);self.seen=set();self.history=[];self.proposals=[]
+        self.program_pool=tuple(program_pool)
+        if mode=='bounded_feedback':
+            if (not self.program_pool or
+                    len({p.key for p in self.program_pool})!=len(self.program_pool) or
+                    any(p.composition!='concat' or p.learner!='linear' or
+                        not set(p.atoms).issubset(self.atoms)
+                        for p in self.program_pool) or
+                    any(p.key not in {q.key for q in self.program_pool}
+                        for p in self.seeds)):
+                raise ValueError('INVALID_BOUNDED_PROGRAM_POOL')
+        elif self.program_pool:
+            raise ValueError('PROGRAM_POOL_REQUIRES_BOUNDED_MODE')
 
     def _random(self):
         n=int(self.rng.choice((1,1,1,2,2,3)));n=min(n,len(self.atoms))
@@ -248,6 +260,31 @@ class FeedbackPlanner:
             float(self.rng.choice((1.,2.,4.))),int(self.rng.choice((3,5,8))),int(self.rng.integers(1,2**30)),bool(self.rng.integers(2)),composition)
 
     def propose(self):
+        if self.mode=='bounded_feedback':
+            remaining=[p for p in self.program_pool if p.key not in self.seen]
+            if not remaining:raise RuntimeError('BOUNDED_PROGRAM_POOL_EXHAUSTED')
+            parent=None
+            if self.seeds:
+                p=self.seeds.pop(0)
+                reason='predeclared_shared_seed'
+            elif self.history:
+                # Only outcomes explicitly passed to observe() may influence the
+                # next proposal. Callers must provide TRAIN-only grouped OOF.
+                best=min(self.history,key=lambda h:(h['loss'],h['program'].key))
+                parent=best['program'].key
+                p=min(remaining,key=lambda option:(
+                    len(set(option.atoms)^set(best['program'].atoms)),
+                    option.atoms))
+                reason='source_train_feedback_nearest_program'
+            else:
+                p=min(remaining,key=lambda option:(len(option.atoms),option.atoms))
+                reason='bounded_unscored_exploration'
+            if p.key not in {q.key for q in remaining}:
+                raise RuntimeError('DUPLICATE_BOUNDED_PROGRAM_SEED')
+            self.seen.add(p.key)
+            self.proposals.append({'program':asdict(p),'key':p.key,
+                'parent':parent,'reason':reason,'feedback_count':len(self.history)})
+            return p
         for _ in range(1000):
             parent=None
             if self.seeds: p=self.seeds.pop(0);reason='shared_seed'
