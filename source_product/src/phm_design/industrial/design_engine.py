@@ -296,8 +296,28 @@ class IndustrialDesignArtifact:
         model_path = directory / "model.joblib"
         joblib.dump(self.model, model_path)
         binary_hash = hashlib.sha256(model_path.read_bytes()).hexdigest()
+        from importlib.metadata import PackageNotFoundError, version
+        import os
+        import sys
+
+        dependency_versions = {}
+        for package in ("phm-design", "numpy", "scikit-learn", "torch", "joblib"):
+            try:
+                dependency_versions[package] = version(package)
+            except PackageNotFoundError:
+                dependency_versions[package] = None
+        commit = os.environ.get("GITHUB_SHA", "")
+        if len(commit) != 40 or any(ch not in "0123456789abcdef" for ch in commit.lower()):
+            commit = None
+        runtime_fingerprint = {
+            "python": ".".join(str(x) for x in sys.version_info[:3]),
+            "packages": dependency_versions,
+            "build_git_commit_if_available": commit,
+            "provenance_authenticated": False,
+        }
         description = {
             "schema": "phm.industrial.design-artifact.v0",
+            "runtime_fingerprint": runtime_fingerprint,
             "task_spec_sha256": self.plan["task_spec_sha256"],
             "trial": asdict(self.trial),
             "feature_program_sha256": (
