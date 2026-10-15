@@ -9,6 +9,20 @@ import sys
 from .taskspec import TaskSpecRejected, compile_task_spec
 
 
+def _reject_duplicate_keys(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise TaskSpecRejected("DUPLICATE_JSON_KEY", key)
+        out[key] = value
+    return out
+
+
+def _read_contract(path: Path):
+    return json.loads(path.read_text(encoding="utf-8"),
+                      object_pairs_hook=_reject_duplicate_keys)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="R80 industrial diagnostic TaskSpec compiler")
     parser.add_argument("--spec", type=Path, required=True, help="TaskSpec JSON")
@@ -18,8 +32,8 @@ def main(argv=None) -> int:
                         help="Optional output plan JSON path; default stdout")
     args = parser.parse_args(argv)
     try:
-        spec = json.loads(args.spec.read_text(encoding="utf-8"))
-        records = (json.loads(args.train_manifest.read_text(encoding="utf-8"))
+        spec = _read_contract(args.spec)
+        records = (_read_contract(args.train_manifest)
                    if args.train_manifest is not None else None)
         plan = compile_task_spec(spec, train_manifest=records)
     except (TaskSpecRejected, json.JSONDecodeError, OSError) as exc:
