@@ -430,6 +430,12 @@ def run_design(task_spec: Mapping | TaskSpec,
                                if budget_exhausted else "NO_ELIGIBLE_DESIGN")
         receipt["model_delivered"] = False
         raise IndustrialDesignRejected(receipt)
+    if budget_exhausted:
+        # Refuse a truncated portfolio: an earlier eligible arm cannot mask
+        # an unevaluated candidate after the predeclared fit budget expires.
+        receipt["decision"] = "BUDGET_EXHAUSTED_BEFORE_FINAL_REFIT"
+        receipt["model_delivered"] = False
+        raise IndustrialDesignRejected(receipt)
     final_refit_cost = (1 if selected[1].topology == "direct"
                         else _factorized_fit_cost(plan["ontology"]))
     if (fits + final_refit_cost > budget["max_fits"]
