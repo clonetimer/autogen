@@ -406,6 +406,41 @@ def run_design(task_spec: Mapping | TaskSpec,
         "final_evaluation_performed": False,
         "independent_qualification": False,
     }
+    def fit_budgeted(trial, selection):
+        nonlocal fits
+        head_cost = (1 if trial.topology == "direct" else
+                     _factorized_fit_cost(plan["ontology"]))
+        if fits + head_cost > budget["max_fits"]:
+            raise RuntimeError("TRIAL_FIT_BUDGET_EXCEEDED")
+        if time.process_time() - begun > budget["max_cpu_seconds"]:
+            raise RuntimeError("TRIAL_CPU_BUDGET_EXCEEDED")
+        if set(true[selection].tolist()) != set(range(len(labels))):
+            raise RuntimeError("TRAIN_FOLD_CLASS_SUPPORT_MISSING")
+        if trial.topology == "factorized":
+            model = _fitted(trial, features[trial.feature][selection],
+                            true[selection], environment[selection],
+                            plan["ontology"])
+        else:
+            model = _fitted(trial, features[trial.feature][selection],
+                            true[selection], environment[selection])
+        fits += getattr(model, "fit_count_", 1)
+        return model
+
+    def nested_calibration(trial, training_indices):
+        # The outer heldout environment is never supplied here.
+        inner_env = environment[training_indices]
+        if len(set(inner_env.tolist())) < 3:
+            raise CalibrationRejected("INSUFFICIENT_INNER_CALIBRATION_ENVIRONMENTS")
+        values = np.zeros((len(training_indices), len(labels)), dtype=float)
+        for inner_train, inner_holdout in LeaveOneGroupOut().split(
+                training_indices, groups=inner_env):
+            estimator = fit_budgeted(trial, training_indices[inner_train])
+            values[inner_holdout] = _probabilities(
+                estimator, features[trial.feature][training_indices[inner_holdout]],
+                len(labels))
+        return fit_temperature_selective(
+            values, true[training_indices], calibration_policy)
+
     for i, spec in enumerate(plan["candidate_grid"]):
         trial = _candidate(spec, budget["seed"] + i)
         entry = {"trial_index": i, "trial": asdict(trial),
@@ -414,29 +449,24 @@ def run_design(task_spec: Mapping | TaskSpec,
         predictions = np.full(len(true), -1, dtype=int)
         try:
             for train, validation in fold_plan:
-                estimated_fit_count = (1 if trial.topology == "direct" else
-                                       _factorized_fit_cost(plan["ontology"]))
-                if fits + estimated_fit_count > budget["max_fits"]:
-                    raise RuntimeError("TRIAL_FIT_BUDGET_EXCEEDED")
-                if time.process_time() - begun > budget["max_cpu_seconds"]:
-                    raise RuntimeError("TRIAL_CPU_BUDGET_EXCEEDED")
-                if set(true[train]) != set(range(len(labels))):
-                    raise RuntimeError("TRAIN_FOLD_CLASS_SUPPORT_MISSING")
-                if trial.topology == "factorized":
-                    model = _fitted(trial, features[trial.feature][train],
-                                    true[train], environment[train], plan["ontology"])
+                calibrated = (nested_calibration(trial, train)
+                              if calibration_policy is not None else None)
+                model = fit_budgeted(trial, train)
+                if calibrated is None:
+                    predictions[validation] = _predict_indices(
+                        model, features[trial.feature][validation], len(labels))
                 else:
-                    model = _fitted(trial, features[trial.feature][train],
-                                    true[train], environment[train])
-                fits += getattr(model, "fit_count_", 1)
-                predictions[validation] = _predict_indices(
-                    model, features[trial.feature][validation], len(labels))
+                    probabilities = _probabilities(
+                        model, features[trial.feature][validation], len(labels))
+                    predictions[validation] = calibrated.decide(probabilities)
                 entry["folds"].append({
                     "train_source_environments": sorted(set(environment[train].tolist())),
                     "heldout_environment": sorted(set(environment[validation].tolist())),
                     "train_physical_groups": len(set(groups[train].tolist())),
                     "heldout_physical_groups": len(set(groups[validation].tolist())),
                     "disjoint": True,
+                    "inner_calibration": (asdict(calibrated)
+                                          if calibrated is not None else None),
                 })
             if (predictions < 0).any():
                 raise RuntimeError("INCOMPLETE_TRAIN_SOURCE_OOF")
