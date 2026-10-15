@@ -41,6 +41,7 @@ class AvailableComponentEnsemble(ClassifierMixin, BaseEstimator):
         if p.learner=='knn' and p.healthy_weight!=1.:
             raise ValueError('KNN_DOES_NOT_SUPPORT_SAMPLE_WEIGHTS')
         model.fit(X, y, **kwargs)
+        self.fit_count_ += 1
         return model
 
     def _probability(self, model, X):
@@ -81,6 +82,7 @@ class AvailableComponentEnsemble(ClassifierMixin, BaseEstimator):
         if weights.shape!=y.shape or not np.isfinite(weights).all() or np.any(weights<=0):
             raise ValueError('AVAILABILITY_SAMPLE_WEIGHT')
         self.n_features_in_ = X.shape[1]
+        self.fit_count_ = 0
         n, b, k = len(y), len(blocks), len(self.classes_)
         oof = np.zeros((n,b,k));mask = np.zeros((n,b),bool)
         self.group_audit_ = []
@@ -116,6 +118,7 @@ class AvailableComponentEnsemble(ClassifierMixin, BaseEstimator):
             C=self.program.strength,max_iter=300,random_state=self.program.seed))
         self.meta_.fit(np.concatenate(meta_x),np.concatenate(meta_y),
                        logisticregression__sample_weight=np.concatenate(meta_w))
+        self.fit_count_ += 1
         self.bases_=[]
         for j,block in enumerate(blocks):
             use=np.flatnonzero(available[:,j])
@@ -154,6 +157,32 @@ class AvailableComponentEnsemble(ClassifierMixin, BaseEstimator):
             avg=p[valid].sum(axis=1)/mask[valid].sum(axis=1,keepdims=True)
             out[valid]=self.classes_[avg.argmax(axis=1)]
         return out
+
+    def predict_with_confidence(self, X):
+        """Known class or -1; unsupported masks get (UNKNOWN, 0 confidence)."""
+        p, mask = self._evidence(X)
+        n = len(mask)
+        labels = np.full(n, -1, dtype=int)
+        confidence = np.zeros(n, dtype=float)
+        valid = mask.any(axis=1)
+        if self.program.composition == 'available_stack':
+            valid &= np.asarray([
+                tuple(row.tolist()) in self.mask_patterns_ for row in mask],
+                dtype=bool)
+            if valid.any():
+                scores = self.meta_.predict_proba(self._meta(p[valid], mask[valid]))
+                if not np.array_equal(self.meta_.classes_, self.classes_):
+                    raise ValueError('AVAILABILITY_META_CLASS_ALIGNMENT')
+                labels[valid] = self.classes_[scores.argmax(axis=1)]
+                confidence[valid] = scores.max(axis=1)
+        elif self.program.composition == 'available_average':
+            if valid.any():
+                scores = p[valid].sum(axis=1) / mask[valid].sum(axis=1, keepdims=True)
+                labels[valid] = self.classes_[scores.argmax(axis=1)]
+                confidence[valid] = scores.max(axis=1)
+        else:
+            raise ValueError('AVAILABILITY_COMPOSITION')
+        return labels, confidence
 
     def predict(self, X):
         mode='learned' if self.program.composition=='available_stack' else 'available_average'
