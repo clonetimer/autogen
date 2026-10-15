@@ -144,7 +144,7 @@ def _fit_head(head, spec, matrix, labels, y, subset, seed, training_environments
         raise ValueError('GRAPH_HEAD_MISSING_CLASS:' + head)
     f, l = spec
     candidate = TaskCandidateRegistry().build(f, l, seed)
-    if l.startswith('dg_'):
+    if l.startswith(('dg_', 'rex_')):
         if training_environments is None or len(training_environments) != len(y):
             raise ValueError('DG_REQUIRES_VERIFIED_TRAINING_ENVIRONMENTS')
         return candidate.fit(matrix[f][training_rows], train_y,
@@ -475,7 +475,8 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
         raise ValueError('INVALID_GRAPH_POLICY_TYPE')
     specs = _specs(candidate_specs)
     neural_domain_candidates = sorted({learner for options in specs.values()
-                                       for _, learner in options if learner.startswith('dg_')})
+                                       for _, learner in options
+                                       if learner.startswith(('dg_', 'rex_'))})
     if neural_domain_candidates and (training_lineage is None or
                                      environment_families is None or
                                      selection_mode != 'worst_environment' or
