@@ -76,6 +76,11 @@ def test_real_inner_oof_fit_count_and_calibrated_model_export(tmp_path):
     assert model.audit["decision"] == "TRAIN_ONLY_SELECTION_REFITTED"
     assert model.audit["total_model_fits"] == 21  # outer 4*(inner 3 + 1) + final (inner 4+1)
     assert model.audit["fold_model_fits"] == 16
+    assert model.audit["attempts"][0]["model_fits"] == 16
+    assert model.audit["final_refit_model_fits"] == 5
+    assert model.audit["compute_ledger"]["flops_parity_claimed"] is False
+    assert model.audit["attempts"][0]["wall_seconds"] >= 0
+    assert model.audit["attempts"][0]["inference_wall_seconds"] >= 0
     trial = model.audit["attempts"][0]
     assert trial["metrics"]["coverage"] >= spec["design"]["calibration"]["minimum_coverage"]
     assert all(f["inner_calibration"]["calibration_samples"] == 18
