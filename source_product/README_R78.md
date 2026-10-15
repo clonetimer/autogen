@@ -16,11 +16,29 @@ the frozen R60 / 0.7.0 Stable branch and bundled certified-model hashes intact.
   *Out-of-Distribution Generalization via Risk Extrapolation*, ICML 2021:
   https://proceedings.mlr.press/v139/krueger21a.html
 - V-REx is selectable inside R75's nested leave-one-environment-family-out
-  search alongside standard ERM and GroupDRO models. Verified TRAIN lineage
+  search alongside standard ERM and GroupDRO models. A new optional
+  `neural_design_profile='compact_domain_generalization'` selects three
+  predeclared trainable candidates per detection/localization/mechanism head:
+  ERM / GroupDRO / V-REx on TCN / CNN / GRU backbones respectively. This is a
+  bounded **automatic neural search profile**, not a single hand-selected
+  network or an unbounded NAS procedure. It requires
+  `selection_mode='worst_environment'`,
+  `outer_split_mode='leave_environment_family_out'`, a verified
+  `training_lineage`, and corresponding `environment_families`.
+  Existing manual candidate specs and automatic profile are mutually exclusive.
+  Verified TRAIN lineage
   and environment-only train folds are mandatory for all domain-aware learners.
 - Per-fold normalization is fitted **only** on the training fold. Fault labels
   and environment IDs influence training losses but cannot enter deployed
   observation channels. No FINAL/qualified dataset is opened by this feature.
+
+## Default search profile remains conservative
+
+This automatic neural profile is **opt-in**. The old lightweight sklearn
+profile continues to work without expensive neural search. The compact neural
+profile currently limits each head to three candidate objective variants and
+uses CPU training. It does not tune hyperparameters on heldout environments or
+make neural model acceptance automatic.
 
 ## Stress-test protocol (development-only)
 
