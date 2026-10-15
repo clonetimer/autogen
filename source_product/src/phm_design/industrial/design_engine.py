@@ -52,10 +52,7 @@ class DesignAcceptance:
             ("worst_environment_class_recall", self.worst_environment_class_recall_min, "min"),
             ("healthy_false_alarm", self.healthy_false_alarm_max, "max"),
         )
-        failures = [{"metric": k, "observed": metrics[k], "required": limit,
-                     "relation": ">=" if op == "min" else "<="}
-                    for k, limit, op in requirements
-                    if metrics[k] < limit if op == "min"] if False else []
+        failures = []
         # Explicit loop: no data-dependent change to the declared threshold.
         for name, limit, direction in requirements:
             actual = metrics[name]
