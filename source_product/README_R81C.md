@@ -43,6 +43,54 @@ individually). Exhausting the predeclared budget **refuses delivery**.
 `artifact.export(directory)` records `calibration_state` in `audit.json`, with the
 model hash and `independent_qualification=false`.
 
+## R81c second slice — real composed feature programs
+
+The optional `design.feature_programs` field provides explicit bounded
+multi-atom programs, each with **1–3 unique registered atoms** and the
+`concat` composition. This is the original `open_design.Program` plus
+`generic_registry().transform` execution, not a new set of satellite-only
+handcrafted features.
+
+```json
+{
+  "feature_programs": [
+    {"atoms": ["temporal_bins", "random_kernels"], "composition": "concat"},
+    {"atoms": ["difference_kernels", "temporal_bins"], "composition": "concat"}
+  ]
+}
+```
+
+The TaskSpec compiler compiles these into the *same* `candidate_grid` as
+learner/backbone, objective and topology selection. The full grid must fit
+`candidate_max` **before** any training. Classical and factorized learners
+receive the exact concatenated vectors; fitted preprocessing remains inside
+each training fold. The final refitted model uses the identical feature
+transform during deployment prediction and records a deterministic program
+SHA-256 in `audit.json`.
+
+If `feature_programs` is present and `representations` is omitted, there
+are no implicit extra classical feature candidates. Both may be explicitly
+declared to compare single-atom and multi-atom programs. Learned sequence
+models continue to use their established `learned_sequence` representation.
+
+**Not yet implemented:** availability-aware `available_stack` or
+`available_average` requires an inner physical-group-OOF per-atom training
+contract, so such programs are explicitly rejected rather than faked by
+concatenation. Adaptive `FeedbackPlanner` mutation remains in the older
+`open_design` path; this slice integrates the safe, predeclared program
+grammar rather than implying closed-loop program proposal has been unified.
+Neural learned front-end composition is also not implemented.
+
+Reproducibility evidence now includes source TaskSpec and TRAIN data hashes,
+candidate grid hash, selection-trial hash, selected feature-program hash,
+calibration policy hash, acceptance policy hash and binary model hash.
+These are audit checksums, **not** independent data-provenance attestation.
+
+```bash
+cd source_product
+python -m pytest -q tests/phm_design/test_r81c_feature_program_composition.py
+```
+
 ## Limitations and scientific boundary
 
 - Temperature selection and selective-error bound use **TRAIN source environments only**.
@@ -56,7 +104,7 @@ model hash and `independent_qualification=false`.
   multi-head fits conservatively charge their full planned head count to avoid
   undercounting partially attempted training. These are
   **best-effort machine-dependent measurements**, not FLOPs-equivalent budgets.
-- This first R81c slice does not yet provide richer feature-program composition,
+- R81c still does not provide availability-aware/adaptive feature-program search,
   parameter/FLOPs/peak-memory ledgers, full provenance replay, or a sealed FINAL steward.
 
 ## Local regression
