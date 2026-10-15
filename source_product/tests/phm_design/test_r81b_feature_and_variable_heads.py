@@ -76,7 +76,10 @@ def test_direct_and_factorized_topologies_are_compared_with_real_training():
     assert len(a.audit["attempts"]) == 2
     assert [t["trial"]["topology"] for t in a.audit["attempts"]] == [
         "direct", "factorized"]
-    assert a.audit["total_model_fits"] == 16  # (1+3) × (3 folds + refit)
+    assert a.audit["fold_model_fits"] == 12  # 3 direct + 9 factorized folds
+    assert a.audit["total_model_fits"] == (
+        12 + (3 if a.trial.topology == "factorized" else 1))
+    # Exactly one selected candidate is refitted, not both arms.
     assert all(t["status"] == "ELIGIBLE" for t in a.audit["attempts"])
     assert all(t["metrics"]["evidence"] ==
                "TRAIN_SOURCE_LOEO_OOF_NOT_INDEPENDENT_VALIDATION"
