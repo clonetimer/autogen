@@ -186,7 +186,8 @@ class IndustrialDesignArtifact:
         # Never accept labels, provenance, or extra channels at prediction.
         task = self.audit["source_task_spec"]
         validate_observations(task, rows, decision_timestamp=decision_timestamp)
-        field_order = self.plan["feature_contract"]["ordered_channel_names"]
+        field_order = ([self.plan["feature_contract"]["time_field"]]
+                       + self.plan["feature_contract"]["ordered_channel_names"])
         sequence = np.asarray([[r[field] for field in field_order] for r in rows])
         feature = _features(sequence, self.trial.feature)
         batch = feature[None, ...]
