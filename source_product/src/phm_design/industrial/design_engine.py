@@ -20,6 +20,7 @@ from sklearn.model_selection import LeaveOneGroupOut
 from .taskspec import (
     TaskSpec, TaskSpecRejected, compile_task_spec, validate_observations,
 )
+from .calibration import CalibrationRejected, fit_temperature_selective
 from ..open_design import temporal_bins, random_temporal_kernels
 from ..task_candidate_registry import TaskCandidateRegistry, deployment_sequence
 
@@ -167,7 +168,7 @@ def _factorized_fit_cost(ontology: Mapping) -> int:
     return 1 + int(len(components) > 1) + int(len(mechanisms) > 1)
 
 
-def _predict_indices(model, features, expected_classes: int) -> np.ndarray:
+def _probabilities(model, features, expected_classes: int) -> np.ndarray:
     probabilities = np.asarray(model.predict_proba(features), dtype=np.float64)
     classes = np.asarray(model.classes_)
     if (probabilities.shape != (len(features), expected_classes)
@@ -177,7 +178,11 @@ def _predict_indices(model, features, expected_classes: int) -> np.ndarray:
             or np.any(probabilities < 0)
             or not np.allclose(probabilities.sum(axis=1), 1., atol=1.e-4)):
         raise ValueError("UNSUPPORTED_MODEL_CLASS_OR_PROBABILITY_CONTRACT")
-    return classes[np.argmax(probabilities, axis=1)].astype(int)
+    return probabilities[:, np.argsort(classes.astype(int))]
+
+
+def _predict_indices(model, features, expected_classes: int) -> np.ndarray:
+    return np.argmax(_probabilities(model, features, expected_classes), axis=1)
 
 
 def _score(truth, predicted, environments, groups, labels, healthy_idx) -> dict:
@@ -202,6 +207,7 @@ def _score(truth, predicted, environments, groups, labels, healthy_idx) -> dict:
             "samples": int(mask.sum()),
             "class_support": support, "class_recall": recalls,
             "accuracy": float(np.mean(p[mask] == y[mask])),
+            "unknown_rate": float(np.mean(p[mask] == -1)),
         }
         minimum_recalls.extend(recalls.values())
     normal = y == healthy_idx
@@ -215,6 +221,10 @@ def _score(truth, predicted, environments, groups, labels, healthy_idx) -> dict:
         "worst_environment_accuracy": float(
             min(v["accuracy"] for v in families_out.values())),
         "healthy_false_alarm": float(np.mean(p[normal] != healthy_idx)),
+        "unknown_rate": float(np.mean(p == -1)),
+        "coverage": float(np.mean(p != -1)),
+        "accepted_accuracy": (float(np.mean(p[p != -1] == y[p != -1]))
+                              if np.any(p != -1) else 0.),
         "source_environment_metrics": families_out,
         "samples": int(len(y)),
         "physical_groups": len(set(group.tolist())),
@@ -225,25 +235,41 @@ def _score(truth, predicted, environments, groups, labels, healthy_idx) -> dict:
 class IndustrialDesignArtifact:
     """Refitted model + source-only audit. Loading pickle requires trusted files."""
     def __init__(self, *, model, trial: TrialSpec, plan: dict,
-                 acceptance: dict, audit: dict):
+                 acceptance: dict, audit: dict, calibrator=None):
         self.model = model
         self.trial = trial
         self.plan = plan
         self.acceptance = acceptance
         self.audit = audit
+        self.calibrator = calibrator
 
     def predict(self, rows: Sequence[Mapping], *, decision_timestamp=None) -> list[str]:
-        # Never accept labels, provenance, or extra channels at prediction.
+        return [item["label"] for item in self.predict_decisions(
+            rows, decision_timestamp=decision_timestamp)]
+
+    def predict_decisions(self, rows: Sequence[Mapping], *,
+                          decision_timestamp=None) -> list[dict]:
+        """Return deployable confidence and explicit UNKNOWN/abstention."""
         task = self.audit["source_task_spec"]
         validate_observations(task, rows, decision_timestamp=decision_timestamp)
         field_order = ([self.plan["feature_contract"]["time_field"]]
                        + self.plan["feature_contract"]["ordered_channel_names"])
         sequence = np.asarray([[r[field] for field in field_order] for r in rows])
         feature = _features(sequence, self.trial.feature)
-        batch = feature[None, ...]
-        numeric = _predict_indices(self.model, batch,
-                                   len(self.plan["ontology"]["labels"]))
-        return [self.plan["ontology"]["labels"][k] for k in numeric]
+        probabilities = _probabilities(
+            self.model, feature[None, ...], len(self.plan["ontology"]["labels"]))
+        labels = self.plan["ontology"]["labels"]
+        if self.calibrator is not None:
+            decision = self.calibrator.decisions(probabilities)
+        else:
+            decision = [{"class_index": int(np.argmax(row)),
+                         "confidence": float(max(row)), "abstained": False}
+                        for row in probabilities]
+        return [{"label": ("__UNKNOWN__" if item["abstained"]
+                           else labels[item["class_index"]]),
+                 "confidence": item["confidence"],
+                 "abstained": item["abstained"]}
+                for item in decision]
 
     def export(self, directory: str | Path) -> dict:
         """Write research-only artifact and content hash, no qualified metadata."""
@@ -261,6 +287,8 @@ class IndustrialDesignArtifact:
             "trial": asdict(self.trial),
             "trial_selection_audit": self.audit,
             "model_sha256": binary_hash,
+            "calibration_state": (asdict(self.calibrator)
+                                  if self.calibrator is not None else None),
             "model_file": "model.joblib",
             "trained": True,
             "development_selection_only": True,
@@ -311,6 +339,7 @@ def run_design(task_spec: Mapping | TaskSpec,
                                     for q in measurements], dtype=np.float64))
     plan = compile_task_spec(raw, train_manifest=train_metadata)
     budget = plan["budget"]
+    calibration_policy = plan["calibration_policy"]
     labels = plan["ontology"]["labels"]
     healthy_idx = labels.index(plan["ontology"]["healthy_label"])
     label_to_idx = {k: i for i, k in enumerate(labels)}
@@ -370,6 +399,8 @@ def run_design(task_spec: Mapping | TaskSpec,
         "source_physical_group_count": len(set(groups.tolist())),
         "preprocessing": "MODEL_FIT_INSIDE_TRAIN_FOLD",
         "search_budget": budget,
+        "calibration_policy": calibration_policy,
+        "calibration_role": ("TRAIN_INNER_OOF_ONLY" if calibration_policy else None),
         "attempts": attempts,
         "target_feedback_used": False,
         "final_evaluation_performed": False,
