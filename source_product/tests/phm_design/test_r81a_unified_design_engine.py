@@ -17,6 +17,10 @@ from phm_design.industrial.design_engine import (
 )
 
 EXAMPLES = Path(__file__).resolve().parents[2] / "examples" / "industrial"
+# Functional API tests use an explicitly predeclared development-only screen.
+# Strict default policy behavior is exercised in independent refusal tests.
+FUNCTIONAL_SCREEN = DesignAcceptance(accuracy_min=0.,
+    worst_environment_class_recall_min=0., healthy_false_alarm_max=1.)
 
 
 def task(file_name, *, compare=("linear", "tree"), objectives=("ERM",)):
@@ -62,7 +66,7 @@ def synthetic_records(spec, *, environment_count=4):
 def test_bearing_runs_actual_two_classical_models_and_predicts():
     spec = task("industrial_bearing_classification_demo.json")
     rec = synthetic_records(spec)
-    artifact = run_design(spec, rec)
+    artifact = run_design(spec, rec, acceptance=FUNCTIONAL_SCREEN)
     assert artifact.audit["decision"] == "TRAIN_ONLY_SELECTION_REFITTED"
     assert artifact.audit["model_qualified"] is False
     assert artifact.audit["source_data_role"] == "TRAIN_ONLY"
@@ -78,8 +82,8 @@ def test_bearing_runs_actual_two_classical_models_and_predicts():
 def test_satellite_and_bearing_share_search_core_but_have_different_output_classes():
     sat = task("satellite_eps_joint_demo.json")
     bearing = task("industrial_bearing_classification_demo.json")
-    a = run_design(sat, synthetic_records(sat))
-    b = run_design(bearing, synthetic_records(bearing))
+    a = run_design(sat, synthetic_records(sat), acceptance=FUNCTIONAL_SCREEN)
+    b = run_design(bearing, synthetic_records(bearing), acceptance=FUNCTIONAL_SCREEN)
     assert a.plan["eligible_task_nodes"] != b.plan["eligible_task_nodes"]
     assert len(a.plan["ontology"]["labels"]) == 5
     assert len(b.plan["ontology"]["labels"]) == 3
@@ -168,7 +172,7 @@ def test_physical_group_cross_environment_label_support_and_causal_are_blocked()
 def test_artifact_export_has_content_hash_and_explicit_no_qualification(tmp_path):
     spec = task("industrial_bearing_classification_demo.json",
                 compare=("linear",))
-    a = run_design(spec, synthetic_records(spec))
+    a = run_design(spec, synthetic_records(spec), acceptance=FUNCTIONAL_SCREEN)
     output = a.export(tmp_path / "model")
     assert output["qualified"] is False
     info = json.loads((tmp_path / "model" / "audit.json").read_text())
@@ -186,13 +190,13 @@ def test_invalid_acceptance_and_insufficient_trial_budget_fail():
     spec["design"]["budget"]["max_fits"] = 1
     with pytest.raises(IndustrialDesignRejected) as err:
         run_design(spec, synthetic_records(spec))
-    assert err.value.audit["decision"] == "BUDGET_EXHAUSTED_BEFORE_FINAL_REFIT"
+    assert err.value.audit["decision"] == "BUDGET_EXHAUSTED_BEFORE_SELECTION"
     assert err.value.audit["model_delivered"] is False
 
 
 def test_no_r71_r78_or_final_targets_in_any_design_record():
     spec = task("industrial_bearing_classification_demo.json", compare=("linear",))
-    result = run_design(spec, synthetic_records(spec))
+    result = run_design(spec, synthetic_records(spec), acceptance=FUNCTIONAL_SCREEN)
     assert result.audit["target_feedback_used"] is False
     assert result.audit["independent_qualification"] is False
     assert result.audit["final_evaluation_performed"] is False
