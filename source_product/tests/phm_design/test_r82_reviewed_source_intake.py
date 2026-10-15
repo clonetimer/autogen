@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from phm_design.io import sha_file, write_json, read_json
-from phm_design.industrial.source_intake import intake_train_source
+from phm_design.industrial.source_intake import intake_train_source, stage_train_only_view
 from phm_design.industrial.design_engine import DesignAcceptance, run_design
 from test_r81a_unified_design_engine import task, synthetic_records
 
@@ -162,3 +162,35 @@ def test_software_synthetic_source_kind_refused_even_with_valid_files(tmp_path):
     spec, source, mapping = make_fixture(tmp_path, source_kind="fixture_software_synthetic")
     with pytest.raises(ValueError, match="R82_UNSUPPORTED_OR_UNVERIFIED_SOURCE_KIND"):
         intake_train_source(spec, source, mapping)
+
+
+def test_trusted_staging_copies_train_only_without_reading_validation_trace(tmp_path):
+    spec, source, mapping = make_fixture(tmp_path)
+    raw = read_json(source)
+    raw["samples"].append({
+        "id": "reserved-val-001", "group_id": "reserved-physical",
+        "lineage_id": "reserved-lineage", "split": "validation",
+        "label": raw["contract"]["classes"][0],
+        "path": "observations/VALIDATION_SHOULD_NOT_EXIST.csv",
+        "sha256": "0" * 64})
+    write_json(source, raw)
+    # Design worker fails closed if supplied mixed manifest.
+    with pytest.raises(ValueError, match="R82_PROTECTED_OR_MIXED_SOURCE_MANIFEST"):
+        intake_train_source(spec, source, mapping)
+    staged = stage_train_only_view(source, tmp_path / "train_view")
+    assert staged["validation_telemetry_accessed"] is False
+    data = read_json(staged["manifest"])
+    assert len(data["samples"]) == 18
+    assert {row["split"] for row in data["samples"]} == {"train"}
+    records, audit = intake_train_source(spec, staged["manifest"], mapping)
+    assert len(records) == 18
+    assert audit["role"] == "TRAIN_ONLY"
+
+
+def test_trusted_staging_refuses_test_role_even_without_accessing_trace(tmp_path):
+    spec, source, _mapping = make_fixture(tmp_path)
+    raw = read_json(source)
+    raw["samples"][0]["split"] = "test"
+    write_json(source, raw)
+    with pytest.raises(ValueError, match="DATA_ROLE_VIOLATION"):
+        stage_train_only_view(source, tmp_path / "train_view")
