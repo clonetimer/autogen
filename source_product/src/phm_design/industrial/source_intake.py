@@ -75,8 +75,43 @@ def stage_train_only_view(development_manifest, destination):
     }
 
 
+def verify_native_source_binding(binding, project_root, wheel_factory_file):
+    """Hash actual source files; verify identity, NOT executed physics or authorship.
+
+    Wheel factory source is the locally installed Basilisk source path, supplied
+    by the reviewing operator rather than taken from an untrusted manifest.
+    Never execute or import these code files during hash review.
+    """
+    if project_root is None or wheel_factory_file is None:
+        raise ValueError("R82_NATIVE_SOURCE_FILES_REQUIRED")
+    project_root = Path(project_root)
+    expected = {
+        "runtime_source": "src/sat_sim/bsk_engine/unified_native.py",
+        "fault_effect_source": "src/sat_sim/bsk_engine/project_native_modules.py",
+    }
+    reviewed = {}
+    for key, relative in expected.items():
+        source = binding[key]
+        if source["reference"] != relative:
+            raise ValueError("R82_UNEXPECTED_NATIVE_SOURCE_REFERENCE:" + key)
+        path = safe_child(project_root, relative)
+        if not path.is_file() or sha_file(path) != source["sha256"]:
+            raise ValueError("R82_NATIVE_SOURCE_SHA256_MISMATCH:" + key)
+        reviewed[key] = source["sha256"]
+    wheel = Path(wheel_factory_file)
+    if (binding["wheel_factory_source"]["reference"] !=
+            "Basilisk/utilities/simIncludeRW.py" or
+            wheel.name != "simIncludeRW.py" or not wheel.is_file() or
+            sha_file(wheel) != binding["wheel_factory_source"]["sha256"]):
+        raise ValueError("R82_NATIVE_SOURCE_SHA256_MISMATCH:wheel_factory_source")
+    reviewed["wheel_factory_source"] = binding["wheel_factory_source"]["sha256"]
+    return reviewed
+
+
 def intake_train_source(task_spec, manifest_path, physical_map_path, *,
-                        native_binding_path=None):
+                        native_binding_path=None,
+                        native_source_checkout_root=None,
+                        native_wheel_factory_file=None):
     """Return (TRAIN records, research source audit), never inspect other roles.
 
     physical_map schema:
@@ -114,11 +149,14 @@ def intake_train_source(task_spec, manifest_path, physical_map_path, *,
                     for key in ("runtime_source", "fault_effect_source",
                                 "wheel_factory_source"))):
             raise ValueError("R82_NATIVE_BINDING_CONTRACT_INCOMPLETE")
+        source_hash_review = verify_native_source_binding(
+            binding, native_source_checkout_root, native_wheel_factory_file)
         binding_sha = sha_file(native_binding_path)
     elif (source_kind == "real_equipment_unreviewed" and
           contract["evidence_type"] == "real_unreviewed" and
           native_binding_path is None):
         binding_sha = None
+        source_hash_review = None
     else:
         raise ValueError("R82_UNSUPPORTED_OR_UNVERIFIED_SOURCE_KIND")
 
@@ -202,6 +240,7 @@ def intake_train_source(task_spec, manifest_path, physical_map_path, *,
         "source_manifest_sha256": sha_file(manifest_path),
         "physical_map_sha256": sha_file(Path(physical_map_path)),
         "native_binding_sha256": binding_sha,
+        "native_source_file_hashes_verified": source_hash_review,
         "source_kind_claimed": source_kind,
         "data_file_hashes_checked": True,
         "role": "TRAIN_ONLY",
