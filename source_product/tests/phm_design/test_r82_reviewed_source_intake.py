@@ -19,7 +19,7 @@ def make_fixture(tmp_path, *, source_kind="real_equipment_unreviewed"):
     channels = spec["observations"]["channels"]
     time_field = spec["observations"]["time"]["field"]
     group_key = spec["data"]["group_keys"][0]
-    env_key = spec["data"]["environment_axes"][0]
+    env_keys = spec["data"]["environment_axes"]
     root = tmp_path / "dataset"
     root.mkdir()
     (root / "observations").mkdir()
@@ -40,7 +40,8 @@ def make_fixture(tmp_path, *, source_kind="real_equipment_unreviewed"):
                         "label": meta["label"],
                         "path": "observations/" + ident + ".csv",
                         "sha256": sha_file(source)})
-        map_records[ident] = {group_key: meta[group_key], env_key: meta[env_key]}
+        map_records[ident] = {group_key: meta[group_key],
+                              **{key: meta[key] for key in env_keys}}
     evidence = ("real_unreviewed" if source_kind == "real_equipment_unreviewed"
                 else "simulation")
     manifest = {"schema": "phm.sequence-dataset.v1",
