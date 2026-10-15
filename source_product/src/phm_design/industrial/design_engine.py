@@ -409,7 +409,8 @@ class IndustrialDesignArtifact:
 
 def run_design(task_spec: Mapping | TaskSpec,
                records: Sequence[Mapping], *,
-               acceptance: DesignAcceptance = DesignAcceptance()) -> IndustrialDesignArtifact:
+               acceptance: DesignAcceptance = DesignAcceptance(),
+               _guarded_execution: bool = False) -> IndustrialDesignArtifact:
     """Run a bounded, source-only cross-environment selection and TRAIN refit.
 
     records: [{measurements: [{time_field: float, channel: float, ...},...],
@@ -442,6 +443,9 @@ def run_design(task_spec: Mapping | TaskSpec,
                                     for q in measurements], dtype=np.float64))
     plan = compile_task_spec(raw, train_manifest=train_metadata)
     budget = plan["budget"]
+    if "max_wall_seconds" in budget and not _guarded_execution:
+        raise TaskSpecRejected("HARD_WALL_BUDGET_REQUIRES_GUARDED_RUNNER")
+    begun = time.process_time()  # Include feature-program preprocessing.
     calibration_policy = plan["calibration_policy"]
     adaptive_policy = plan["adaptive_feature_search"]
     labels = plan["ontology"]["labels"]
@@ -489,7 +493,6 @@ def run_design(task_spec: Mapping | TaskSpec,
     selected = None
     fits = 0
     budget_exhausted = False
-    begun = time.process_time()
     receipt = {
         "schema": "phm.industrial.design-trials.v0",
         "source_task_spec_sha256": source_digest,
@@ -504,6 +507,12 @@ def run_design(task_spec: Mapping | TaskSpec,
         "source_physical_group_count": len(set(groups.tolist())),
         "preprocessing": "MODEL_FIT_INSIDE_TRAIN_FOLD",
         "search_budget": budget,
+        "budget_enforcement": {
+            "wall_deadline": ("PROCESS_ISOLATED_PARENT_TERMINATION"
+                              if _guarded_execution else "NOT_CONFIGURED"),
+            "cpu_limit": "FAIL_CLOSED_POST_FIT_NOT_PREEMPTIVE",
+            "preprocessing_charged": True,
+        },
         "candidate_grid_sha256": _sha(plan["candidate_grid"]),
         "feature_programs_sha256": _sha(plan["registered_feature_programs"]),
         "adaptive_feature_search": adaptive_policy,
@@ -525,6 +534,11 @@ def run_design(task_spec: Mapping | TaskSpec,
         "final_evaluation_performed": False,
         "independent_qualification": False,
     }
+    if time.process_time() - begun > budget["max_cpu_seconds"]:
+        receipt["decision"] = "BUDGET_EXHAUSTED_IN_PREPROCESSING"
+        receipt["model_delivered"] = False
+        raise IndustrialDesignRejected(receipt)
+
     def fit_budgeted(trial, selection):
         nonlocal fits
         head_cost = _charged_fit_cost(trial, plan["ontology"])
@@ -553,6 +567,8 @@ def run_design(task_spec: Mapping | TaskSpec,
         if (actual > head_cost if trial.availability_bindings
                 else actual != head_cost):
             raise RuntimeError("UNDECLARED_MODEL_FIT_COST")
+        if time.process_time() - begun > budget["max_cpu_seconds"]:
+            raise RuntimeError("TRIAL_CPU_BUDGET_EXCEEDED")
         return model
 
     def nested_calibration(trial, training_indices):
@@ -635,6 +651,8 @@ def run_design(task_spec: Mapping | TaskSpec,
                     "inner_calibration": (asdict(calibrated)
                                           if calibrated is not None else None),
                 })
+            if time.process_time() - begun > budget["max_cpu_seconds"]:
+                raise RuntimeError("TRIAL_CPU_BUDGET_EXCEEDED")
             if (predictions == -2).any():
                 raise RuntimeError("INCOMPLETE_TRAIN_SOURCE_OOF")
             metrics = _score(true, predictions, environment, groups, labels, healthy_idx)
@@ -725,6 +743,8 @@ def run_design(task_spec: Mapping | TaskSpec,
         calibrator = (nested_calibration(trial, np.arange(len(true)))
                       if calibration_policy is not None else None)
         trained = fit_budgeted(trial, np.arange(len(true)))
+        if time.process_time() - begun > budget["max_cpu_seconds"]:
+            raise RuntimeError("TRIAL_CPU_BUDGET_EXCEEDED")
     except Exception as exc:
         receipt["decision"] = ("BUDGET_EXHAUSTED_BEFORE_FINAL_REFIT"
                                if str(exc).startswith("TRIAL_") else
