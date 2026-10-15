@@ -285,6 +285,7 @@ def run_design(task_spec: Mapping | TaskSpec,
     attempts = []
     selected = None
     fits = 0
+    budget_exhausted = False
     begun = time.process_time()
     receipt = {
         "schema": "phm.industrial.design-trials.v0",
@@ -346,12 +347,17 @@ def run_design(task_spec: Mapping | TaskSpec,
         except Exception as exc:
             entry["status"] = "FAILED"
             entry["failure"] = repr(exc)
+            if str(exc) in ("TRIAL_FIT_BUDGET_EXCEEDED", "TRIAL_CPU_BUDGET_EXCEEDED"):
+                budget_exhausted = True
         entry["cpu_seconds"] = round(time.process_time() - begun, 5)
+        if budget_exhausted:
+            break
     receipt["fold_model_fits"] = fits
     receipt["total_cpu_seconds_at_selection"] = round(time.process_time() - begun, 5)
     receipt["acceptance_policy"] = asdict(acceptance)
     if selected is None:
-        receipt["decision"] = "NO_ELIGIBLE_DESIGN"
+        receipt["decision"] = ("BUDGET_EXHAUSTED_BEFORE_SELECTION"
+                               if budget_exhausted else "NO_ELIGIBLE_DESIGN")
         receipt["model_delivered"] = False
         raise IndustrialDesignRejected(receipt)
     if fits >= budget["max_fits"] or time.process_time() - begun > budget["max_cpu_seconds"]:
