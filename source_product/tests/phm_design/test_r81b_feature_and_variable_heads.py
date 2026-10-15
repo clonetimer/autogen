@@ -65,12 +65,6 @@ def test_variable_five_label_factorized_heads_are_real_models_and_deployable():
     assert a.model.fit_count_ == 3
     assert set(a.model.models_) == {"detection", "component", "mechanism"}
     assert a.model.training_["independent_qualification"] is False
-    feature = a.model.predict_proba(np.stack(
-        [np.asarray([row[c] for c in
-                      [s["observations"]["time"]["field"],
-                       *[m["name"] for m in s["observations"]["channels"]]]]
-                     for row in records[0]["measurements"]])[:1]
-    )) if False else None
     assert a.predict(records[0]["measurements"])[0] in s["task"]["labels"]
     assert all(t["folds"][0]["disjoint"] for t in a.audit["attempts"])
 
@@ -165,3 +159,20 @@ def test_protected_final_metadata_is_blocked_even_with_factorized_search():
     records[0]["metadata"]["role"] = "FINAL_OOD"
     with pytest.raises(TaskSpecRejected, match="DESIGN_WORKER_PROTECTED_ROLE"):
         run_design(s, records, acceptance=FUNCTIONAL)
+
+
+def test_one_fault_joint_ontology_supports_constant_conditional_heads():
+    s = _search(topologies=("factorized",))
+    s["task"]["labels"] = ["NOMINAL", "SOLAR_A_EFFICIENCY_LOSS"]
+    s["task"]["structure"]["components"] = ["solar_a"]
+    s["task"]["structure"]["mechanisms"] = ["efficiency_loss"]
+    s["task"]["structure"]["class_attributes"] = {
+        "SOLAR_A_EFFICIENCY_LOSS": {"component": "solar_a",
+                                    "mechanism": "efficiency_loss"}}
+    records = synthetic_records(s, environment_count=3)
+    result = run_design(s, records, acceptance=FUNCTIONAL)
+    assert result.model.fit_count_ == 1
+    assert result.model.models_["component"] is None
+    assert result.model.models_["mechanism"] is None
+    assert result.audit["total_model_fits"] == 4
+    assert result.predict(records[0]["measurements"])[0] in s["task"]["labels"]
