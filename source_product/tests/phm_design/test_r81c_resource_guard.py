@@ -102,3 +102,44 @@ def test_cpu_overrun_after_fit_refuses_delivery(monkeypatch):
     assert audit["model_delivered"] is False
     assert audit["decision"] == "BUDGET_EXHAUSTED_BEFORE_SELECTION"
     assert audit["fold_model_fits"] == 1
+
+
+def test_train_fingerprint_binds_record_shapes_and_boundaries():
+    import numpy as np
+    from phm_design.industrial.design_engine import _observations_digest
+    one = [np.array([[1., 2.], [3., 4.]], dtype=float)]
+    two = [np.array([[1., 2.]], dtype=float),
+           np.array([[3., 4.]], dtype=float)]
+    assert _observations_digest(one) != _observations_digest(two)
+    assert _observations_digest(one) == _observations_digest([
+        np.asfortranarray(one[0])])
+
+
+def test_full_audit_and_runtime_tampering_are_rejected_before_pickle(tmp_path):
+    import json
+    from phm_design.industrial.artifact_io import load_trusted_artifact
+
+    s = spec(max_wall=60)
+    model = run_design_guarded(s, synthetic_records(s, environment_count=3),
+                               acceptance=SCREEN)
+    folder = tmp_path / "audit"
+    model.export(folder)
+    audit_path = folder / "audit.json"
+    original = json.loads(audit_path.read_text())
+
+    changed = copy.deepcopy(original)
+    changed["trial_selection_audit"]["model_delivered"] = False
+    audit_path.write_text(json.dumps(changed))
+    with pytest.raises(ValueError, match="ARTIFACT_FULL_AUDIT_HASH_MISMATCH"):
+        load_trusted_artifact(folder, trust_pickle=True)
+
+    changed = copy.deepcopy(original)
+    changed["runtime_fingerprint"]["packages"]["scikit-learn"] = "0.0.0"
+    audit_path.write_text(json.dumps(changed))
+    with pytest.raises(ValueError, match="ARTIFACT_RUNTIME_DEPENDENCY_MISMATCH"):
+        load_trusted_artifact(folder, trust_pickle=True)
+
+    audit_path.write_text(json.dumps(original))
+    restored = load_trusted_artifact(folder, trust_pickle=True)
+    assert restored.audit["training_observations_hash_contract"] == (
+        "LENGTH_PREFIXED_FLOAT64_LE_V1")
