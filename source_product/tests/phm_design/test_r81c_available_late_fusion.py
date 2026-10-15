@@ -79,7 +79,7 @@ def test_masks_are_read_from_sensor_flags_and_absent_data_are_not_transformed():
         atom_dimensions("temporal_bins")) + 2
     # The absent vibration may contain arbitrary finite placeholder values:
     # its feature block must remain identically zero.
-    signal_index = cols.index("vibration")
+    signal_index = cols.index("motor_current")
     matrix[:, signal_index] = 1e9
     np.testing.assert_allclose(out, execute_available(matrix, bs))
 
@@ -88,7 +88,10 @@ def test_masks_are_read_from_sensor_flags_and_absent_data_are_not_transformed():
 def test_truly_fitted_late_fusion_and_unknown_deployment_replay(mode, tmp_path):
     s = available_spec(mode)
     r = available_records(s)
-    a = run_design(s, r, acceptance=SCREEN)
+    try:
+        a = run_design(s, r, acceptance=SCREEN)
+    except IndustrialDesignRejected as exc:
+        pytest.fail("AVAILABILITY_TRIAL_REJECTED:" + repr(exc.audit.get("attempts")))
     assert a.trial.composition == mode
     assert a.audit["decision"] == "TRAIN_ONLY_SELECTION_REFITTED"
     assert a.audit["source_data_role"] == "TRAIN_ONLY"
