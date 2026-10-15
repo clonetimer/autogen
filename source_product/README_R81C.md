@@ -228,6 +228,48 @@ cd source_product
 python -m pytest -q tests/phm_design/test_r81c_available_late_fusion.py
 ```
 
+## R81c fifth slice — isolated deadlines and replay receipt hardening
+
+An optional `design.budget.max_wall_seconds` (positive integer seconds)
+now authorizes **process-isolated, parent-enforced wall-clock cutoff**:
+
+```python
+from phm_design.industrial.resource_guard import run_design_guarded
+
+# The TaskSpec design.budget declares max_wall_seconds=60.
+artifact = run_design_guarded(task_spec, source_train_records,
+                              acceptance=declared_train_oof_screen)
+```
+
+- Windows and POSIX use Python `multiprocessing.spawn`. If the worker does
+  not return before the wall-clock deadline, the parent terminates (then
+  kills if required) the worker and raises `GuardedDesignTimeout`;
+  **no model is delivered**. The timeout covers worker startup and result
+  transfer as well as preprocessing, trial fitting and final refit.
+- `run_design(...)` refuses a TaskSpec declaring `max_wall_seconds`:
+  the in-process implementation cannot promise to preempt model fitting.
+- Source TRAIN feature precomputation now contributes to the CPU budget, and
+  the executor rechecks CPU time **after each potentially lengthy model fit**
+  and before final delivery. However CPU enforcement remains **fail-closed
+  after overruns**, not real-time CPU preemption.
+- A CPU-based deadline is not a bound on GPU memory, FLOPs, network/disk
+  I/O, spawned grandchildren or physical worker crashes. Full descendant
+  process-tree termination and hardware-specific quotas require separate
+  controls. Do not claim this is a production sandbox.
+- Exported research artifacts now include a full selection-audit hash,
+  a length/shape-prefixed TRAIN observation digest and record count. Trusted
+  restore rejects inconsistent selection/release states, budget contracts,
+  or installed core numeric-library versions. These are non-authenticated
+  integrity and compatibility checks, **not independent training replay
+  or protection against an adversary able to rewrite both manifest and model**.
+- Source data and independent FINAL labels are still not supplied to any
+  release qualification worker by this code path.
+
+```bash
+cd source_product
+python -m pytest -q tests/phm_design/test_r81c_resource_guard.py
+```
+
 ## Limitations and scientific boundary
 
 - Temperature selection and selective-error bound use **TRAIN source environments only**.
