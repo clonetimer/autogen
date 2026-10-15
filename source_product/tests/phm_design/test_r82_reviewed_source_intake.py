@@ -104,20 +104,65 @@ def test_rejects_unproven_native_source_without_binding(tmp_path):
         intake_train_source(spec, source, mapping)
 
 
-def test_declared_native_runtime_hashes_are_only_claims(tmp_path):
-    spec, source, mapping = make_fixture(tmp_path, source_kind="native_basilisk")
+def native_code_fixture(tmp_path):
+    """Synthetic code files are for hash-path tests only, never physics."""
+    root = tmp_path / "code"
+    paths = {
+        "runtime_source": "src/sat_sim/bsk_engine/unified_native.py",
+        "fault_effect_source": "src/sat_sim/bsk_engine/project_native_modules.py",
+        "wheel_factory_source": "Basilisk/utilities/simIncludeRW.py",
+    }
+    source_claims = {}
+    for key, relative in paths.items():
+        file = root / relative
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text("# CONTRACT FIXTURE ONLY; NO BASILISK EXECUTION\\n")
+        source_claims[key] = {"reference": relative, "sha256": sha_file(file)}
     binding_path = tmp_path / "runtime_binding.json"
     write_json(binding_path, {
         "scope": "simulation_source_binding_only",
-        "runtime_source": {"reference": "src/native.py", "sha256": "a" * 64},
-        "fault_effect_source": {"reference": "src/fault.py", "sha256": "b" * 64},
-        "wheel_factory_source": {"reference": "Basilisk/rw.py", "sha256": "c" * 64},
+        **source_claims,
     })
-    _, audit = intake_train_source(spec, source, mapping,
-                                   native_binding_path=binding_path)
+    return binding_path, root, root / paths["wheel_factory_source"]
+
+
+def test_native_source_file_hashes_checked_without_claiming_real_execution(tmp_path):
+    spec, source, mapping = make_fixture(tmp_path, source_kind="native_basilisk")
+    binding, root, wheel = native_code_fixture(tmp_path)
+    with pytest.raises(ValueError, match="R82_NATIVE_SOURCE_FILES_REQUIRED"):
+        intake_train_source(spec, source, mapping, native_binding_path=binding)
+    _, audit = intake_train_source(
+        spec, source, mapping, native_binding_path=binding,
+        native_source_checkout_root=root, native_wheel_factory_file=wheel)
     assert audit["source_kind_claimed"] == "native_basilisk"
     assert audit["physical_source_independently_attested"] is False
-    assert audit["native_binding_sha256"] == sha_file(binding_path)
+    assert audit["native_binding_sha256"] == sha_file(binding)
+    assert len(audit["native_source_file_hashes_verified"]) == 3
+
+
+@pytest.mark.parametrize("key", ["runtime_source", "fault_effect_source", "wheel_factory_source"])
+def test_native_source_hash_mismatch_fails_closed(tmp_path, key):
+    spec, source, mapping = make_fixture(tmp_path, source_kind="native_basilisk")
+    binding, root, wheel = native_code_fixture(tmp_path)
+    file = (wheel if key == "wheel_factory_source" else
+            root / read_json(binding)[key]["reference"])
+    file.write_text("tampered source code")
+    with pytest.raises(ValueError, match="R82_NATIVE_SOURCE_SHA256_MISMATCH"):
+        intake_train_source(
+            spec, source, mapping, native_binding_path=binding,
+            native_source_checkout_root=root, native_wheel_factory_file=wheel)
+
+
+def test_native_binding_rejects_unreviewed_source_path(tmp_path):
+    spec, source, mapping = make_fixture(tmp_path, source_kind="native_basilisk")
+    binding, root, wheel = native_code_fixture(tmp_path)
+    doc = read_json(binding)
+    doc["runtime_source"]["reference"] = "../native_outside.py"
+    write_json(binding, doc)
+    with pytest.raises(ValueError, match="R82_UNEXPECTED_NATIVE_SOURCE_REFERENCE"):
+        intake_train_source(
+            spec, source, mapping, native_binding_path=binding,
+            native_source_checkout_root=root, native_wheel_factory_file=wheel)
 
 
 def test_source_file_hash_mismatch_rejected(tmp_path):
