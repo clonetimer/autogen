@@ -21,6 +21,60 @@ def _valid_sha(value):
             all(char in "0123456789abcdef" for char in value))
 
 
+def stage_train_only_view(development_manifest, destination):
+    """Trusted preparation ONLY: copy TRAIN traces to an isolated manifest.
+
+    Unlike the design-worker intake, the trusted staging role may inspect
+    development manifest metadata for TRAIN and VALIDATION, but it never
+    opens, copies or hashes a validation telemetry file. TEST/FINAL roles
+    are forbidden even in this preparer. The staged manifest can then be
+    passed to intake_train_source; the original mixed manifest cannot.
+    """
+    from shutil import copyfile
+    from ..io import write_json
+
+    source = Dataset(development_manifest,
+                     allowed_splits={"train", "validation"})
+    training = [sample for sample in source.samples if sample["split"] == "train"]
+    if not training:
+        raise ValueError("R82_NO_TRAIN_CASES_TO_STAGE")
+    destination = Path(destination)
+    if destination.exists():
+        raise FileExistsError("R82_STAGING_DESTINATION_EXISTS")
+    destination.mkdir(parents=True)
+    copies = []
+    for sample in training:
+        original = safe_child(source.root, sample["path"])
+        if not original.is_file() or sha_file(original) != sample["sha256"]:
+            raise ValueError("R82_TRAIN_FILE_INTEGRITY_FAILURE")
+        dest = safe_child(destination, sample["path"])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        copyfile(original, dest)
+        if sha_file(dest) != sample["sha256"]:
+            raise ValueError("R82_STAGED_TRAIN_FILE_CHANGED")
+        copies.append(dict(sample))
+    output = dict(source.raw)
+    output["samples"] = copies
+    output["dataset_id"] = source.raw["dataset_id"] + "-train-only-r82"
+    output["provenance"] = {
+        **source.raw["provenance"],
+        "train_only_view": True,
+        "source_development_manifest_sha256": sha_file(Path(development_manifest)),
+        "validation_telemetry_accessed": False,
+        "independent_qualification": False,
+    }
+    staged_manifest = destination / "dataset.json"
+    write_json(staged_manifest, output)
+    return {
+        "schema": "phm.industrial.r82-staged-train.v0",
+        "manifest": str(staged_manifest),
+        "train_records": len(copies),
+        "validation_telemetry_accessed": False,
+        "train_only": True,
+        "independent_qualification": False,
+    }
+
+
 def intake_train_source(task_spec, manifest_path, physical_map_path, *,
                         native_binding_path=None):
     """Return (TRAIN records, research source audit), never inspect other roles.
