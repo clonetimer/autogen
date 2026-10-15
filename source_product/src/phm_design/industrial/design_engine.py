@@ -472,12 +472,21 @@ def run_design(task_spec: Mapping | TaskSpec,
                 raise RuntimeError("INCOMPLETE_TRAIN_SOURCE_OOF")
             metrics = _score(true, predictions, environment, groups, labels, healthy_idx)
             decision = acceptance.evaluate(metrics)
+            if (calibration_policy is not None and
+                    metrics["coverage"] < calibration_policy["minimum_coverage"]):
+                decision["eligible"] = False
+                decision["failed_gates"].append({
+                    "metric": "source_oof_coverage",
+                    "observed": metrics["coverage"],
+                    "required": calibration_policy["minimum_coverage"],
+                    "relation": ">="})
             entry["metrics"], entry["acceptance"] = metrics, decision
             entry["status"] = "ELIGIBLE" if decision["eligible"] else "REJECTED_BY_POLICY"
             if decision["eligible"]:
                 rank = (-(metrics["worst_environment_class_recall"]),
                         -(metrics["worst_environment_accuracy"]),
-                        metrics["healthy_false_alarm"], -metrics["macro_f1"], i)
+                        metrics["healthy_false_alarm"], -metrics["macro_f1"],
+                        -metrics["coverage"], i)
                 if selected is None or rank < selected[0]:
                     selected = (rank, trial)
         except Exception as exc:
@@ -502,25 +511,24 @@ def run_design(task_spec: Mapping | TaskSpec,
         receipt["decision"] = "BUDGET_EXHAUSTED_BEFORE_FINAL_REFIT"
         receipt["model_delivered"] = False
         raise IndustrialDesignRejected(receipt)
-    final_refit_cost = (1 if selected[1].topology == "direct"
-                        else _factorized_fit_cost(plan["ontology"]))
+    trial = selected[1]
+    head_cost = (1 if trial.topology == "direct" else
+                 _factorized_fit_cost(plan["ontology"]))
+    final_refit_cost = head_cost * (
+        (len(set(environment.tolist())) + 1) if calibration_policy else 1)
     if (fits + final_refit_cost > budget["max_fits"]
             or time.process_time() - begun > budget["max_cpu_seconds"]):
         receipt["decision"] = "BUDGET_EXHAUSTED_BEFORE_FINAL_REFIT"
         receipt["model_delivered"] = False
         raise IndustrialDesignRejected(receipt)
-    trial = selected[1]
-    # Refitting only the selected candidate on the original TRAIN data is not
-    # another validation run. It does not revise any candidate thresholds.
     try:
-        if trial.topology == "factorized":
-            trained = _fitted(trial, features[trial.feature], true,
-                              environment, plan["ontology"])
-        else:
-            trained = _fitted(trial, features[trial.feature], true, environment)
-        fits += getattr(trained, "fit_count_", 1)
+        calibrator = (nested_calibration(trial, np.arange(len(true)))
+                      if calibration_policy is not None else None)
+        trained = fit_budgeted(trial, np.arange(len(true)))
     except Exception as exc:
-        receipt["decision"] = "SELECTED_REFIT_FAILED"
+        receipt["decision"] = ("BUDGET_EXHAUSTED_BEFORE_FINAL_REFIT"
+                               if str(exc).startswith("TRIAL_") else
+                               "SELECTED_REFIT_FAILED")
         receipt["failure"] = repr(exc)
         receipt["model_delivered"] = False
         raise IndustrialDesignRejected(receipt) from exc
@@ -529,5 +537,7 @@ def run_design(task_spec: Mapping | TaskSpec,
     receipt["total_model_fits"] = fits
     receipt["model_delivered"] = True
     receipt["model_qualified"] = False
+    receipt["calibration_state"] = (asdict(calibrator) if calibrator else None)
     return IndustrialDesignArtifact(model=trained, trial=trial, plan=plan,
-                                    acceptance=asdict(acceptance), audit=receipt)
+                                    acceptance=asdict(acceptance), audit=receipt,
+                                    calibrator=calibrator)
