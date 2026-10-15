@@ -1,0 +1,93 @@
+{
+  "schema": "phm.industrial.task.v0",
+  "id": "industrial.bearing.vibration.current",
+  "equipment": {
+    "family": "rolling_bearing",
+    "adapter": "paderborn_experimental"
+  },
+  "task": {
+    "kind": "fault_classification",
+    "decision_mode": "offline_trajectory",
+    "allow_unknown": true,
+    "multifault": false,
+    "healthy_label": "HEALTHY",
+    "labels": [
+      "HEALTHY",
+      "INNER_DAMAGE",
+      "OUTER_DAMAGE"
+    ],
+    "structure": {
+      "components": [
+        "bearing"
+      ],
+      "mechanisms": [
+        "inner_damage",
+        "outer_damage"
+      ],
+      "class_attributes": {
+        "INNER_DAMAGE": {
+          "component": "bearing",
+          "mechanism": "inner_damage"
+        },
+        "OUTER_DAMAGE": {
+          "component": "bearing",
+          "mechanism": "outer_damage"
+        }
+      }
+    }
+  },
+  "observations": {
+    "time": {
+      "field": "sample_time_s",
+      "sampling": "fixed"
+    },
+    "healthy_prefix_policy": "not_assumed",
+    "channels": [
+      {
+        "name": "vibration",
+        "role": "sensor",
+        "unit": "m/s2",
+        "available_at_decision": true
+      },
+      {
+        "name": "motor_current",
+        "role": "sensor",
+        "unit": "A",
+        "available_at_decision": true
+      }
+    ]
+  },
+  "data": {
+    "role": "TRAIN",
+    "group_keys": [
+      "bearing_instance_id"
+    ],
+    "environment_axes": [
+      "speed_regime",
+      "radial_load_regime"
+    ]
+  },
+  "design": {
+    "candidate_max": 12,
+    "compare": [
+      "linear",
+      "tree",
+      "cnn1d",
+      "tcn"
+    ],
+    "objectives": [
+      "ERM",
+      "GroupDRO"
+    ],
+    "allow_refusal": true,
+    "budget": {
+      "max_fits": 48,
+      "max_cpu_seconds": 3600,
+      "seed": 8001
+    }
+  },
+  "deployment": {
+    "causal_online": false,
+    "prototype_only": true
+  }
+}
