@@ -55,8 +55,9 @@ def load_trusted_artifact(directory, *, trust_pickle=False):
                 audit["training_observations_sha256"] !=
                 manifest["training_observations_sha256"]):
             raise ValueError("ARTIFACT_SOURCE_AUDIT_INCONSISTENT")
-        if not any(asdict(_candidate(candidate, plan["budget"]["seed"] + i))
-                   == trial_data for i, candidate in enumerate(plan["candidate_grid"])):
+        if not any(_sha(asdict(_candidate(candidate, plan["budget"]["seed"] + i)))
+                   == _sha(trial_data)
+                   for i, candidate in enumerate(plan["candidate_grid"])):
             raise ValueError("ARTIFACT_TRIAL_NOT_IN_DECLARED_SEARCH_SPACE")
         expected_program_hash = (
             program_digest(trial.feature)
