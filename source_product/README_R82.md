@@ -2,7 +2,11 @@
 
 **Status:** stacked draft on R81c; this is a source-contract/gating slice,
 not a Basilisk simulation run, real bearing experiment, or independent OOD
-qualification. A declaration such as `source_kind=native_basilisk` is not
+qualification.
+
+For the concrete ZIP/file inventory needed to perform an actual physical-data
+validation, see [R82_REQUIRED_MATERIALS.md](R82_REQUIRED_MATERIALS.md).
+ A declaration such as `source_kind=native_basilisk` is not
 physical proof. Source binding hashes check file identity, not physical
 model fidelity or independent sensor verification.
 
