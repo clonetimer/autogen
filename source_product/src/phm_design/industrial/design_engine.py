@@ -385,6 +385,7 @@ def run_design(task_spec: Mapping | TaskSpec,
     plan = compile_task_spec(raw, train_manifest=train_metadata)
     budget = plan["budget"]
     calibration_policy = plan["calibration_policy"]
+    adaptive_policy = plan["adaptive_feature_search"]
     labels = plan["ontology"]["labels"]
     healthy_idx = labels.index(plan["ontology"]["healthy_label"])
     label_to_idx = {k: i for i, k in enumerate(labels)}
@@ -446,6 +447,9 @@ def run_design(task_spec: Mapping | TaskSpec,
         "search_budget": budget,
         "candidate_grid_sha256": _sha(plan["candidate_grid"]),
         "feature_programs_sha256": _sha(plan["registered_feature_programs"]),
+        "adaptive_feature_search": adaptive_policy,
+        "source_train_feedback_guided_proposal": adaptive_policy is not None,
+        "adaptive_feedback_is_independent_test": False,
         "calibration_policy": calibration_policy,
         "calibration_role": ("TRAIN_INNER_OOF_ONLY" if calibration_policy else None),
         "compute_ledger": {
@@ -502,12 +506,40 @@ def run_design(task_spec: Mapping | TaskSpec,
         return fit_temperature_selective(
             values, true[training_indices], calibration_policy)
 
-    for i, spec in enumerate(plan["candidate_grid"]):
+    planner = None
+    candidate_by_key = {}
+    if adaptive_policy is not None:
+        from ..open_design import FeedbackPlanner, Program, RiskPreference
+        pool = [
+            Program(decode_program(spec["feature_program"]), learner="linear")
+            for spec in plan["candidate_grid"]
+        ]
+        candidate_by_key = {program.key: i for i, program in enumerate(pool)}
+        seeds = [Program(decode_program(identifier), learner="linear")
+                 for identifier in adaptive_policy["seed_programs"]]
+        planner = FeedbackPlanner(
+            adaptive_policy["atoms"], mode="bounded_feedback",
+            seeds=seeds, risk=RiskPreference(), seed=budget["seed"],
+            program_pool=pool)
+    steps = (adaptive_policy["max_programs"] if planner is not None
+             else len(plan["candidate_grid"]))
+    for proposal_step in range(steps):
+        if planner is not None:
+            program = planner.propose()
+            i = candidate_by_key[program.key]
+            spec = plan["candidate_grid"][i]
+            proposal_audit = dict(planner.proposals[-1])
+        else:
+            program = None
+            i = proposal_step
+            spec = plan["candidate_grid"][i]
+            proposal_audit = None
         trial = _candidate(spec, budget["seed"] + i)
         trial_start_cpu = time.process_time()
         trial_start_wall = time.perf_counter()
         trial_fits_before = fits
-        entry = {"trial_index": i, "trial": asdict(trial),
+        entry = {"trial_index": i, "proposal_step": proposal_step,
+                 "adaptive_proposal": proposal_audit, "trial": asdict(trial),
                  "trial_sha256": _sha(asdict(trial)),
                  "feature_program_sha256": (
                      program_digest(trial.feature)
@@ -552,6 +584,20 @@ def run_design(task_spec: Mapping | TaskSpec,
                     "required": calibration_policy["minimum_coverage"],
                     "relation": ">="})
             entry["metrics"], entry["acceptance"] = metrics, decision
+            if planner is not None:
+                # Source TRAIN OOF *selection feedback*. Never independent
+                # validation, even though whole environments are left out.
+                class_errors = [
+                    float(np.mean(predictions[true == k] != k))
+                    for k in range(len(labels))
+                ]
+                planner.observe(program, class_errors)
+                entry["adaptive_feedback"] = {
+                    "role": "SOURCE_TRAIN_OOF_ONLY",
+                    "class_errors": class_errors,
+                    "loss": planner.history[-1]["loss"],
+                    "independent_qualification": False,
+                }
             entry["status"] = "ELIGIBLE" if decision["eligible"] else "REJECTED_BY_POLICY"
             if decision["eligible"]:
                 rank = (-(metrics["worst_environment_class_recall"]),
@@ -572,6 +618,19 @@ def run_design(task_spec: Mapping | TaskSpec,
         if budget_exhausted:
             break
     receipt["fold_model_fits"] = fits
+    if planner is not None:
+        receipt["adaptive_trace"] = {
+            "schema": "phm.industrial.source-feedback-search.v0",
+            "proposal_count": len(planner.proposals),
+            "candidate_pool_count": len(plan["candidate_grid"]),
+            "selected_from_predeclared_pool_only": True,
+            "untested_pool_candidate_count": (len(plan["candidate_grid"])
+                                               - len(planner.proposals)),
+            "feedback_count": len(planner.history),
+            "proposals": planner.proposals,
+            "archive": planner.archive(),
+            "development_selection_not_independent_validation": True,
+        }
     receipt["total_cpu_seconds_at_selection"] = round(time.process_time() - begun, 5)
     receipt["acceptance_policy"] = asdict(acceptance)
     if selected is None:
