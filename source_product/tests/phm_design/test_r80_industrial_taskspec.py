@@ -336,3 +336,40 @@ def test_rejects_unqualified_field_deployment_flag():
     s = bearer()
     s["deployment"]["prototype_only"] = False
     reject(s, "INDUSTRIAL_FIELD_QUALIFICATION_UNSUPPORTED")
+
+
+def test_cli_compiles_real_json_and_writes_nonqualified_plan(tmp_path):
+    from phm_design.industrial.__main__ import main
+    out = tmp_path / "plan.json"
+    rc = main(["--spec", str(EXAMPLES / "industrial_bearing_classification_demo.json"),
+               "--output", str(out)])
+    assert rc == 0
+    p = json.loads(out.read_text(encoding="utf-8"))
+    assert p["task_kind"] == "fault_classification"
+    assert p["qualified"] is False and p["manifest_audit"] is None
+
+
+def test_cli_rejects_ambiguous_duplicate_json_role_before_loading_manifest(tmp_path, capsys):
+    from phm_design.industrial.__main__ import main
+    s = bearer()
+    src = tmp_path / "duplicate_role.json"
+    # Must refuse role shadowing rather than silently accepting last JSON key.
+    raw = json.dumps(s, sort_keys=True).replace(
+        '"role": "TRAIN"', '"role": "FINAL_OOD", "role": "TRAIN"', 1)
+    src.write_text(raw, encoding="utf-8")
+    target = tmp_path / "should-not-exist.json"
+    rc = main(["--spec", str(src), "--output", str(target)])
+    assert rc == 2 and not target.exists()
+    assert "DUPLICATE_JSON_KEY" in capsys.readouterr().err
+
+
+def test_timestamps_cannot_masquerade_as_ground_truth():
+    s = bearer()
+    s["observations"]["time"]["field"] = "fault_onset"
+    reject(s, "PROTECTED_FIELD_CANNOT_BE_INFERENCE_INPUT")
+
+
+def test_machine_id_metadata_cannot_also_be_deployment_sensor():
+    s = bearer()
+    s["data"]["group_keys"][0] = "vibration"
+    reject(s, "PROVENANCE_METADATA_CANNOT_BE_DEPLOYMENT_FIELDS")
