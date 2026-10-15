@@ -10,11 +10,10 @@ from __future__ import annotations
 import hashlib
 import json
 
-import numpy as np
-
-from ..open_design import ObservationSpec, Program, generic_registry
-
-ALLOWED_ATOMS = frozenset(generic_registry().names)
+# PLAN compilation must remain stdlib-only; R80 G0 runs without NumPy.
+# This allowlist mirrors the existing generic_registry. Runtime verifies it.
+ALLOWED_ATOMS = frozenset(("temporal_bins", "random_kernels",
+                           "difference_kernels"))
 PREFIX = "program:concat:"
 
 
@@ -48,13 +47,18 @@ def program_digest(identifier: str) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def execute_program(array, identifier: str) -> np.ndarray:
+def execute_program(array, identifier: str):
     """Materialize only deployment-visible numeric observations via old Program.
 
     Synthetic *field identifiers* preserve matrix order; actual deployment
     field names and roles are validated by industrial.validate_observations.
     Existing generic FeatureRegistry supplies the atom implementations.
     """
+    import numpy as np
+    from ..open_design import ObservationSpec, Program, generic_registry
+
+    if set(generic_registry().names) != ALLOWED_ATOMS:
+        raise ValueError("INDUSTRIAL_FEATURE_REGISTRY_DRIFT")
     atoms = decode_program(identifier)
     a = np.asarray(array, dtype=float)
     if a.ndim != 2 or a.shape[1] < 2:
