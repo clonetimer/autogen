@@ -1,0 +1,56 @@
+name: Independent Industrial AutoDesign Direction Audit
+on:
+  pull_request:
+    paths:
+      - 'independent_review/industrial_diagnosis/**'
+      - '.github/workflows/industrial-autodesign-independent-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frozen-read-only-review:
+    name: R79 review of pinned R78 evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out isolated review agent
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check out frozen reviewed source without write credentials
+        uses: actions/checkout@v4
+        with:
+          repository: clonetimer/autogen
+          ref: a10469bb419a98cade08a02c0c7ed8e11ab9872a
+          path: target_snapshot
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reviewer tamper and provenance tests
+        run: python -m unittest discover -s independent_review/industrial_diagnosis/tests -v
+      - name: Execute locked evidence review
+        run: >-
+          python independent_review/industrial_diagnosis/review_agent.py
+          --source-root target_snapshot
+          --lock independent_review/industrial_diagnosis/source_lock.json
+          --out-dir review_output
+      - name: Check reviewer did not authorize broad industrial qualification
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x = json.loads(Path('review_output/review.json').read_text())
+          assert x['reviewed_commit'] == 'a10469bb419a98cade08a02c0c7ed8e11ab9872a'
+          assert x['broad_industrial_qualification'] is False
+          assert x['no_model_training_or_final_data_opened'] is True
+          assert len(x['findings']) >= 6
+          assert all(f['source_urls'] for f in x['findings'])
+          print('Review audit persisted; no qualification minted.')
+          PY
+      - name: Archive independent review results
+        uses: actions/upload-artifact@v4
+        with:
+          name: r79-industrial-autodesign-direction-independent-audit
+          path: review_output/
+          if-no-files-found: error

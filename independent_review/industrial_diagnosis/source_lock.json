@@ -1,0 +1,58 @@
+{
+  "schema": "phm.independent-review.source-lock.v1",
+  "review_id": "R79-industrial-autodesign-direction-20261015",
+  "target_repo": "clonetimer/autogen",
+  "target_commit": "a10469bb419a98cade08a02c0c7ed8e11ab9872a",
+  "reviewed_version": "0.8.0.dev17",
+  "data_policy": "STATIC_SOURCE_AND_PUBLIC_DEVELOPMENT_EVIDENCE_ONLY_NO_FINAL",
+  "files": [
+    {
+      "path": "RELEASE_DECISION_R60.md",
+      "blob_sha1": "e2e80a2a32e5fd5c3466604582be6b82ce0f807d"
+    },
+    {
+      "path": "source_product/src/phm_design/limited_models/scope_contract.json",
+      "blob_sha1": "93f82956cd7e0a4b11123bf35e31313b426f4a63"
+    },
+    {
+      "path": "source_product/src/phm_design/task_architectures.py",
+      "blob_sha1": "712d023e325780a7b3692972c103cfea6135b770"
+    },
+    {
+      "path": "source_product/src/phm_design/task_graph.py",
+      "blob_sha1": "e2c7533baf03eb07eb13b49d0c16f92086c68281"
+    },
+    {
+      "path": "source_product/src/phm_design/platform_features.py",
+      "blob_sha1": "dab558cbbe3b8cda3d6c75b9bffa41814e8fecf5"
+    },
+    {
+      "path": "source_product/src/phm_design/neural_domain_generalization.py",
+      "blob_sha1": "e88bca920a61611747ceeac7ea318444c402891c"
+    },
+    {
+      "path": "source_product/src/phm_design/task_candidate_registry.py",
+      "blob_sha1": "21e45157d4a6b6e9b771157e68162a268027803e"
+    },
+    {
+      "path": "source_product/src/phm_design/open_design_fit.py",
+      "blob_sha1": "fd89d52183ea1da594010271fa50399eff21d89a"
+    },
+    {
+      "path": "source_product/src/phm_design/leakage_control.py",
+      "blob_sha1": "b361393317025e1900372c00068c7640b5259580"
+    },
+    {
+      "path": "source_product/docs/DIAGNOSIS_DESIGN_TESTING_LESSONS_AND_LEAKAGE_PREVENTION.md",
+      "blob_sha1": "08fb33d4e97db8836489e1e15ac6f2ed4886ac77"
+    },
+    {
+      "path": "source_product/README_R78.md",
+      "blob_sha1": "6742b36799ab9d245cf55c124d8e9761108cbcbc"
+    },
+    {
+      "path": "source_product/research/r78_neural_shift_benchmark.py",
+      "blob_sha1": "a263c28626bc8fa6a7181505e3bb2301b8910f4f"
+    }
+  ]
+}
