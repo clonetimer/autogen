@@ -162,7 +162,7 @@ def test_physical_group_cross_environment_label_support_and_causal_are_blocked()
         run_design(spec, rec)
     spec["task"]["decision_mode"] = "causal_window"
     with pytest.raises(TaskSpecRejected, match="CAUSAL_R81_EXECUTION_NOT_IMPLEMENTED"):
-        run_design(spec, [] if False else synthetic_records(spec))
+        run_design(spec, synthetic_records(spec))
 
 
 def test_artifact_export_has_content_hash_and_explicit_no_qualification(tmp_path):
@@ -184,8 +184,10 @@ def test_invalid_acceptance_and_insufficient_trial_budget_fail():
         DesignAcceptance(healthy_false_alarm_max=-.1)
     spec = task("industrial_bearing_classification_demo.json", compare=("linear",))
     spec["design"]["budget"]["max_fits"] = 1
-    with pytest.raises(TaskSpecRejected, match="SEARCH_BUDGET_FITS_BELOW_TRIALS"):
+    with pytest.raises(IndustrialDesignRejected) as err:
         run_design(spec, synthetic_records(spec))
+    assert err.value.audit["decision"] == "BUDGET_EXHAUSTED_BEFORE_FINAL_REFIT"
+    assert err.value.audit["model_delivered"] is False
 
 
 def test_no_r71_r78_or_final_targets_in_any_design_record():
