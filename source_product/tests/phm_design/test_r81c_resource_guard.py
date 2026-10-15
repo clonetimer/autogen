@@ -69,11 +69,17 @@ def test_process_guard_real_fit_and_trusted_artifact_replay(tmp_path):
         model.predict_decisions(records[0]["measurements"]))
 
 
+def _deliberately_blocked_worker(conn):
+    # Top-level function is importable under Windows and POSIX spawn. This
+    # deliberately exceeds the deadline regardless of classifier speed.
+    time.sleep(5)
+    conn.send(("delivered", None))
+
+
 def test_wall_timeout_terminates_worker_without_delivering_model():
-    s = spec(max_wall=1)
-    records = synthetic_records(s, environment_count=3)
+    from phm_design.industrial.resource_guard import _invoke_worker
     with pytest.raises(GuardedDesignTimeout) as captured:
-        run_design_guarded(s, records, acceptance=SCREEN)
+        _invoke_worker(_deliberately_blocked_worker, (), 1)
     assert captured.value.audit["decision"] == "HARD_WALL_TIMEOUT"
     assert captured.value.audit["model_delivered"] is False
     assert captured.value.audit["independent_qualification"] is False
