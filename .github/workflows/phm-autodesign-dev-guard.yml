@@ -40,3 +40,4 @@ jobs:
           tests/phm_design/test_r81b_feature_and_variable_heads.py
           tests/phm_design/test_r81c_train_only_calibration.py
           tests/phm_design/test_r81c_feature_program_composition.py
+          tests/phm_design/test_r81c_adaptive_feature_search.py
