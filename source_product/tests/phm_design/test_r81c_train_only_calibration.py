@@ -139,3 +139,37 @@ def test_final_role_and_ground_truth_are_rejected_before_calibration():
     records[0]["measurements"][0]["ground_truth"] = 1
     with pytest.raises(TaskSpecRejected, match="UNDECLARED_OR_PROTECTED_OBSERVATION"):
         run_design(spec, records, acceptance=FUNCTIONAL)
+
+
+def test_partial_factorized_head_failure_charges_full_reserved_budget(monkeypatch):
+    import phm_design.industrial.design_engine as engine
+
+    spec = task("satellite_eps_joint_demo.json", compare=("linear",))
+    spec["design"]["topologies"] = ["factorized"]
+    spec["design"]["budget"]["max_fits"] = 9
+
+    def fails_after_possible_partial_fits(*_args):
+        raise ValueError("DELIBERATE_HEAD_TRAINING_FAILURE")
+
+    monkeypatch.setattr(engine, "_fitted", fails_after_possible_partial_fits)
+    with pytest.raises(IndustrialDesignRejected) as caught:
+        run_design(spec, synthetic_records(spec, environment_count=3),
+                   acceptance=FUNCTIONAL)
+    audit = caught.value.audit
+    assert audit["decision"] == "NO_ELIGIBLE_DESIGN"
+    assert audit["fold_model_fits"] == 3
+    assert audit["attempts"][0]["model_fits"] == 3
+    assert audit["model_delivered"] is False
+
+
+def test_probabilities_align_to_ontology_class_ids_not_estimator_column_order():
+    from phm_design.industrial.design_engine import _predict_indices
+
+    class PermutedModel:
+        classes_ = np.array([2, 0, 1], dtype=int)
+
+        def predict_proba(self, array):
+            return np.tile(np.array([[.1, .2, .7]]), (len(array), 1))
+
+    # The largest probability is the class in the third *column* (ID 1).
+    assert _predict_indices(PermutedModel(), np.zeros((2, 4)), 3).tolist() == [1, 1]
