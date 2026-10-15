@@ -42,3 +42,4 @@ jobs:
           tests/phm_design/test_r81c_feature_program_composition.py
           tests/phm_design/test_r81c_adaptive_feature_search.py
           tests/phm_design/test_open_design_dev7.py
+          tests/phm_design/test_r81c_available_late_fusion.py
