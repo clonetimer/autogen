@@ -477,12 +477,13 @@ def run_design(task_spec: Mapping | TaskSpec,
            for train, test in fold_plan):
         raise AssertionError("R81_PHYSICAL_ENVIRONMENT_SPLIT_LEAKAGE")
     required_features = {
-        _candidate(spec, budget["seed"] + i).feature
+        (trial.feature, trial.availability_bindings)
         for i, spec in enumerate(plan["candidate_grid"])
+        for trial in [_candidate(spec, budget["seed"] + i)]
     }
     features = {
-        feature: np.stack([_features(m, feature) for m in matrices])
-        for feature in sorted(required_features)
+        key: np.stack([_features(m, key[0], key[1]) for m in matrices])
+        for key in sorted(required_features)
     }
     attempts = []
     selected = None
@@ -526,8 +527,7 @@ def run_design(task_spec: Mapping | TaskSpec,
     }
     def fit_budgeted(trial, selection):
         nonlocal fits
-        head_cost = (1 if trial.topology == "direct" else
-                     _factorized_fit_cost(plan["ontology"]))
+        head_cost = _charged_fit_cost(trial, plan["ontology"])
         if fits + head_cost > budget["max_fits"]:
             raise RuntimeError("TRIAL_FIT_BUDGET_EXCEEDED")
         if time.process_time() - begun > budget["max_cpu_seconds"]:
@@ -538,14 +538,20 @@ def run_design(task_spec: Mapping | TaskSpec,
         # If a nested head fails midway, conservative reservations remain
         # charged; otherwise failures could secretly exceed the fit budget.
         fits += head_cost
+        key = (trial.feature, trial.availability_bindings)
         if trial.topology == "factorized":
-            model = _fitted(trial, features[trial.feature][selection],
+            model = _fitted(trial, features[key][selection],
                             true[selection], environment[selection],
                             plan["ontology"])
+        elif trial.composition in ("available_stack", "available_average"):
+            model = _fitted(trial, features[key][selection],
+                            true[selection], groups[selection])
         else:
-            model = _fitted(trial, features[trial.feature][selection],
+            model = _fitted(trial, features[key][selection],
                             true[selection], environment[selection])
-        if getattr(model, "fit_count_", 1) != head_cost:
+        actual = getattr(model, "fit_count_", 1)
+        if (actual > head_cost if trial.availability_bindings
+                else actual != head_cost):
             raise RuntimeError("UNDECLARED_MODEL_FIT_COST")
         return model
 
@@ -559,7 +565,7 @@ def run_design(task_spec: Mapping | TaskSpec,
                 training_indices, groups=inner_env):
             estimator = fit_budgeted(trial, training_indices[inner_train])
             values[inner_holdout] = _probabilities(
-                estimator, features[trial.feature][training_indices[inner_holdout]],
+                estimator, features[(trial.feature, trial.availability_bindings)][training_indices[inner_holdout]],
                 len(labels))
         return fit_temperature_selective(
             values, true[training_indices], calibration_policy)
@@ -614,10 +620,10 @@ def run_design(task_spec: Mapping | TaskSpec,
                 infer_started = time.perf_counter()
                 if calibrated is None:
                     predictions[validation] = _predict_indices(
-                        model, features[trial.feature][validation], len(labels))
+                        model, features[(trial.feature, trial.availability_bindings)][validation], len(labels))
                 else:
                     probabilities = _probabilities(
-                        model, features[trial.feature][validation], len(labels))
+                        model, features[(trial.feature, trial.availability_bindings)][validation], len(labels))
                     predictions[validation] = calibrated.decide(probabilities)
                 entry["inference_wall_seconds"] += time.perf_counter() - infer_started
                 entry["folds"].append({
@@ -707,8 +713,7 @@ def run_design(task_spec: Mapping | TaskSpec,
     trial = selected[1]
     refit_fits_before = fits
     refit_started_wall = time.perf_counter()
-    head_cost = (1 if trial.topology == "direct" else
-                 _factorized_fit_cost(plan["ontology"]))
+    head_cost = _charged_fit_cost(trial, plan["ontology"])
     final_refit_cost = head_cost * (
         (len(set(environment.tolist())) + 1) if calibration_policy else 1)
     if (fits + final_refit_cost > budget["max_fits"]
