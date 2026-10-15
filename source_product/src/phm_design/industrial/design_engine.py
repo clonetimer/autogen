@@ -21,6 +21,7 @@ from .taskspec import (
     TaskSpec, TaskSpecRejected, compile_task_spec, validate_observations,
 )
 from .calibration import CalibrationRejected, fit_temperature_selective
+from .feature_program import decode_program, execute_program, program_digest
 from ..open_design import temporal_bins, random_temporal_kernels
 from ..task_candidate_registry import TaskCandidateRegistry, deployment_sequence
 
@@ -84,6 +85,11 @@ def _candidate(spec: Mapping, seed: int) -> TrialSpec:
     backbone, objective = spec["backbone"], spec["objective"]
     representation = spec.get("representation", "tabular_signal_summary")
     topology = spec.get("topology", "direct")
+    if representation == "feature_program":
+        feature_identifier = spec.get("feature_program")
+        decode_program(feature_identifier)
+    else:
+        feature_identifier = None
     if topology not in ("direct", "factorized"):
         raise TaskSpecRejected("UNREGISTERED_R81_TOPOLOGY")
     mapping = {
@@ -97,6 +103,8 @@ def _candidate(spec: Mapping, seed: int) -> TrialSpec:
                    "temporal_bins": "temporal",
                    "random_kernels": "random_kernels",
                    "difference_kernels": "difference_kernels"}.get(representation)
+        if feature_identifier is not None:
+            feature = feature_identifier
         if feature is None:
             raise TaskSpecRejected("INVALID_TABULAR_REPRESENTATION")
         return TrialSpec(backbone, objective, feature, "linear", seed, topology)
@@ -107,6 +115,8 @@ def _candidate(spec: Mapping, seed: int) -> TrialSpec:
                    "temporal_bins": "temporal",
                    "random_kernels": "random_kernels",
                    "difference_kernels": "difference_kernels"}.get(representation)
+        if feature_identifier is not None:
+            feature = feature_identifier
         if feature is None:
             raise TaskSpecRejected("INVALID_TABULAR_REPRESENTATION")
         return TrialSpec(backbone, objective, feature, "extra", seed, topology)
@@ -122,6 +132,8 @@ def _candidate(spec: Mapping, seed: int) -> TrialSpec:
 
 
 def _features(array: np.ndarray, mode: str) -> np.ndarray:
+    if mode.startswith("program:"):
+        return execute_program(array, mode)
     if mode == "temporal":
         return np.asarray(temporal_bins(array), dtype=np.float64)
     if mode == "random_kernels":
@@ -141,7 +153,9 @@ def _fitted(candidate: TrialSpec, train_x, train_y, domains, ontology=None):
         from .factorized_model import FactorizedDiagnosisModel
         model = FactorizedDiagnosisModel(
             feature=("temporal" if candidate.feature in
-                     ("random_kernels", "difference_kernels") else candidate.feature),
+                     ("random_kernels", "difference_kernels") or
+                     candidate.feature.startswith("program:")
+                     else candidate.feature),
             learner=candidate.learner, objective=candidate.objective,
             seed=candidate.seed, labels=ontology["labels"],
             healthy_label=ontology["healthy_label"],
@@ -151,7 +165,8 @@ def _fitted(candidate: TrialSpec, train_x, train_y, domains, ontology=None):
         return model.fit(train_x, train_y, domain_groups=domains)
     registry = TaskCandidateRegistry()
     registry_feature = ("temporal" if candidate.feature in
-                        ("random_kernels", "difference_kernels")
+                        ("random_kernels", "difference_kernels") or
+                        candidate.feature.startswith("program:")
                         else candidate.feature)
     # Registry input_kind remains tabular/sequence. Feature-program identity
     # is carried by TrialSpec and materialized before the classifier is built.
@@ -285,6 +300,16 @@ class IndustrialDesignArtifact:
             "schema": "phm.industrial.design-artifact.v0",
             "task_spec_sha256": self.plan["task_spec_sha256"],
             "trial": asdict(self.trial),
+            "feature_program_sha256": (
+                program_digest(self.trial.feature)
+                if self.trial.feature.startswith("program:") else None),
+            "candidate_grid_sha256": _sha(self.plan["candidate_grid"]),
+            "acceptance_policy_sha256": _sha(self.acceptance),
+            "calibration_policy_sha256": (
+                _sha(self.plan["calibration_policy"])
+                if self.plan["calibration_policy"] is not None else None),
+            "training_manifest_sha256": self.audit["training_manifest_sha256"],
+            "training_observations_sha256": self.audit["training_observations_sha256"],
             "trial_selection_audit": self.audit,
             "model_sha256": binary_hash,
             "calibration_state": (asdict(self.calibrator)
@@ -399,6 +424,8 @@ def run_design(task_spec: Mapping | TaskSpec,
         "source_physical_group_count": len(set(groups.tolist())),
         "preprocessing": "MODEL_FIT_INSIDE_TRAIN_FOLD",
         "search_budget": budget,
+        "candidate_grid_sha256": _sha(plan["candidate_grid"]),
+        "feature_programs_sha256": _sha(plan["registered_feature_programs"]),
         "calibration_policy": calibration_policy,
         "calibration_role": ("TRAIN_INNER_OOF_ONLY" if calibration_policy else None),
         "compute_ledger": {
@@ -461,6 +488,10 @@ def run_design(task_spec: Mapping | TaskSpec,
         trial_start_wall = time.perf_counter()
         trial_fits_before = fits
         entry = {"trial_index": i, "trial": asdict(trial),
+                 "trial_sha256": _sha(asdict(trial)),
+                 "feature_program_sha256": (
+                     program_digest(trial.feature)
+                     if trial.feature.startswith("program:") else None),
                  "folds": [], "status": "STARTED",
                  "inference_wall_seconds": 0.}
         attempts.append(entry)
@@ -559,6 +590,7 @@ def run_design(task_spec: Mapping | TaskSpec,
         raise IndustrialDesignRejected(receipt) from exc
     receipt["decision"] = "TRAIN_ONLY_SELECTION_REFITTED"
     receipt["selected_trial"] = asdict(trial)
+    receipt["selected_trial_sha256"] = _sha(asdict(trial))
     receipt["total_model_fits"] = fits
     receipt["final_refit_model_fits"] = fits - refit_fits_before
     receipt["final_refit_wall_seconds"] = round(
