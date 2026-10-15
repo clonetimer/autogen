@@ -71,6 +71,38 @@ def _channelsafe_perturb(x, policy: DGTrainingPolicy):
     return (x * gain + offset + noise).clamp(-20., 20.)
 
 
+@dataclass(frozen=True)
+class RiskExtrapolationPolicy(DGTrainingPolicy):
+    """V-REx trades mean source risk against source-risk variance.
+
+    This objective can fail when environment metadata is incomplete or the
+    invariant signal is unidentifiable. It must compete with ERM and GroupDRO
+    under the identical nested environment holdout protocol.
+    """
+    risk_variance_weight: float = 0.75
+    risk_variance_warmup_epochs: int = 2
+
+    def __post_init__(self):
+        super().__post_init__()
+        if (isinstance(self.risk_variance_weight, bool)
+                or not isinstance(self.risk_variance_weight, (float, int))
+                or not math.isfinite(self.risk_variance_weight)
+                or not 0 <= self.risk_variance_weight <= 10):
+            raise ValueError('INVALID_REX_RISK_VARIANCE_WEIGHT')
+        if (type(self.risk_variance_warmup_epochs) is not int
+                or not 0 <= self.risk_variance_warmup_epochs < self.epochs):
+            raise ValueError('INVALID_REX_WARMUP_EPOCHS')
+
+
+def _risk_extrapolation_loss(source_losses, weight):
+    """Differentiable mean-risk + population risk-variance penalty."""
+    import torch
+    if source_losses.ndim != 1 or source_losses.numel() < 2 or not torch.isfinite(source_losses).all():
+        raise ValueError('REX_REQUIRES_FINITE_MULTI_ENVIRONMENT_RISKS')
+    return source_losses.mean() + weight * source_losses.var(unbiased=False)
+
+
+
 class DGSequenceEstimator(TorchTaskEstimator):
     """Sklearn-compatible estimator with environment-conditional GroupDRO.
 
@@ -83,6 +115,7 @@ class DGSequenceEstimator(TorchTaskEstimator):
         if learner not in ('dg_cnn1d', 'dg_gru', 'dg_transformer', 'dg_tcn'):
             raise ValueError('UNREGISTERED_DG_NETWORK')
         self.dg_name = learner
+        self.objective_name = 'group_dro'
         base = {'dg_cnn1d': 'torch_cnn1d', 'dg_gru': 'torch_gru',
                 'dg_transformer': 'torch_transformer', 'dg_tcn': 'torch_tcn'}[learner]
         self.policy = policy if policy is not None else DGTrainingPolicy()
@@ -133,7 +166,7 @@ class DGSequenceEstimator(TorchTaskEstimator):
             rng = np.random.default_rng(self.seed)
             log_weights = torch.zeros(len(names), dtype=torch.float32)
             history = []
-            for _ in range(self.policy.epochs):
+            for epoch_index in range(self.policy.epochs):
                 model.train()
                 for _step in range(self.policy.steps_per_epoch):
                     losses = []
@@ -161,11 +194,19 @@ class DGSequenceEstimator(TorchTaskEstimator):
                     stacked = torch.stack(losses)
                     if not torch.isfinite(stacked).all():
                         raise ValueError('NONFINITE_DG_ENVIRONMENT_LOSS')
-                    with torch.no_grad():
-                        log_weights += self.policy.group_step_size * stacked.detach()
-                        log_weights -= torch.logsumexp(log_weights, dim=0)
-                        weights = torch.softmax(log_weights, dim=0)
-                    loss = (weights * stacked).sum()
+                    if self.objective_name == 'risk_variance':
+                        weights = torch.full_like(log_weights, 1. / len(names))
+                        weight = (self.policy.risk_variance_weight
+                                  if epoch_index >= self.policy.risk_variance_warmup_epochs else 0.)
+                        loss = _risk_extrapolation_loss(stacked, weight)
+                    else:
+                        with torch.no_grad():
+                            log_weights += self.policy.group_step_size * stacked.detach()
+                            log_weights -= torch.logsumexp(log_weights, dim=0)
+                            weights = torch.softmax(log_weights, dim=0)
+                        loss = (weights * stacked).sum()
+                    if not torch.isfinite(loss):
+                        raise ValueError('NONFINITE_DG_OBJECTIVE')
                     opt.zero_grad(set_to_none=True)
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(model.parameters(), 5., error_if_nonfinite=True)
@@ -175,7 +216,7 @@ class DGSequenceEstimator(TorchTaskEstimator):
         self.model_ = model
         self.train_environments_ = tuple(names)
         self.domain_weights_ = {g: float(v) for g, v in zip(names, weights.tolist())}
-        self.training_ = {'backend': 'torch_cpu', 'objective': 'group_dro',
+        self.training_ = {'backend': 'torch_cpu', 'objective': self.objective_name,
                           'model': self.dg_name, 'epochs': self.policy.epochs,
                           'optimizer_steps': self.policy.epochs * self.policy.steps_per_epoch,
                           'parameter_count': nparameters, 'normalization': 'training_partition_only',
@@ -187,4 +228,31 @@ class DGSequenceEstimator(TorchTaskEstimator):
                           'last_worst_train_domain_loss': history[-1],
                           'seed': self.seed, 'cuda_used': False,
                           'independent_qualification': False}
+        if self.objective_name == 'risk_variance':
+            self.training_['risk_variance_weight'] = self.policy.risk_variance_weight
+            self.training_['risk_variance_warmup_epochs'] = self.policy.risk_variance_warmup_epochs
         return self
+
+
+class RiskExtrapolationEstimator(DGSequenceEstimator):
+    """V-REx neural estimator (same encoder and training budgets as DG)."""
+
+    _REX_BASE = {
+        'rex_cnn1d': 'dg_cnn1d',
+        'rex_gru': 'dg_gru',
+        'rex_transformer': 'dg_transformer',
+        'rex_tcn': 'dg_tcn',
+    }
+
+    def __init__(self, learner: str, seed: int, *, policy: RiskExtrapolationPolicy | None = None,
+                 max_parameters: int = 200_000):
+        if learner not in self._REX_BASE:
+            raise ValueError('UNREGISTERED_REX_NETWORK')
+        effective_policy = policy if policy is not None else RiskExtrapolationPolicy()
+        if not isinstance(effective_policy, RiskExtrapolationPolicy):
+            raise ValueError('INVALID_REX_TRAINING_POLICY')
+        super().__init__(self._REX_BASE[learner], seed, policy=effective_policy,
+                         max_parameters=max_parameters)
+        self.dg_name = learner
+        self.objective_name = 'risk_variance'
+

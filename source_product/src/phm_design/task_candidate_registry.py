@@ -30,6 +30,10 @@ _LEARNERS = {
     'dg_gru': ('torch_cpu_dg', 'sequence'),
     'dg_transformer': ('torch_cpu_dg', 'sequence'),
     'dg_tcn': ('torch_cpu_dg', 'sequence'),
+    'rex_cnn1d': ('torch_cpu_rex', 'sequence'),
+    'rex_gru': ('torch_cpu_rex', 'sequence'),
+    'rex_transformer': ('torch_cpu_rex', 'sequence'),
+    'rex_tcn': ('torch_cpu_rex', 'sequence'),
 }
 
 
@@ -62,6 +66,9 @@ class TaskCandidateRegistry:
         if record.backend == 'torch_cpu_dg':
             from .neural_domain_generalization import DGSequenceEstimator
             return DGSequenceEstimator(record.learner, seed)
+        if record.backend == 'torch_cpu_rex':
+            from .neural_domain_generalization import RiskExtrapolationEstimator
+            return RiskExtrapolationEstimator(record.learner, seed)
         return TorchTaskEstimator(record.learner, seed)
 
 

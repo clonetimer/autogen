@@ -103,6 +103,25 @@ class TaskGraphPolicy:
                 'evidence': 'NESTED_GROUP_OOF_DESIGN_TRAIN_ONLY', 'deployment_qualified': False}
 
 
+
+def _auto_neural_candidate_specs(profile: str) -> dict[str, tuple[tuple[str, str], ...]]:
+    """Opt-in bounded neural auto-search; candidates are fixed before OOD eval.
+
+    For each head the *same* backbone competes under ERM, GroupDRO and
+    V-REx objectives. Backbones differ across detection/localization/mechanism.
+    """
+    if profile != 'compact_domain_generalization':
+        raise ValueError('UNREGISTERED_NEURAL_DESIGN_PROFILE')
+    return {
+        'detection': (('sequence', 'torch_tcn'),
+                      ('sequence', 'dg_tcn'), ('sequence', 'rex_tcn')),
+        'localization': (('sequence', 'torch_cnn1d'),
+                         ('sequence', 'dg_cnn1d'), ('sequence', 'rex_cnn1d')),
+        'mechanism': (('sequence', 'torch_gru'),
+                      ('sequence', 'dg_gru'), ('sequence', 'rex_gru')),
+    }
+
+
 def _specs(candidate_specs) -> dict[str, tuple[tuple[str, str], ...]]:
     if candidate_specs is None:
         candidate_specs = {h: _DEFAULT_SPECS for h in _HEADS}
@@ -144,7 +163,7 @@ def _fit_head(head, spec, matrix, labels, y, subset, seed, training_environments
         raise ValueError('GRAPH_HEAD_MISSING_CLASS:' + head)
     f, l = spec
     candidate = TaskCandidateRegistry().build(f, l, seed)
-    if l.startswith('dg_'):
+    if l.startswith(('dg_', 'rex_')):
         if training_environments is None or len(training_environments) != len(y):
             raise ValueError('DG_REQUIRES_VERIFIED_TRAINING_ENVIRONMENTS')
         return candidate.fit(matrix[f][training_rows], train_y,
@@ -398,6 +417,7 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
                       labels: Sequence[int], world_ids: Sequence[str], roles: Sequence[str],
                       healthy_prefix_confirmed: Sequence[bool],
                       candidate_specs: Mapping | None = None,
+                      neural_design_profile: str | None = None,
                       environment_families: Sequence[str] | None = None,
                       selection_mode: str = 'mean',
                       outer_split_mode: str = 'world_group',
@@ -473,9 +493,18 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
     policy = acceptance_policy if acceptance_policy is not None else TaskGraphPolicy()
     if not isinstance(gates, TaskGraphGate) or not isinstance(policy, TaskGraphPolicy):
         raise ValueError('INVALID_GRAPH_POLICY_TYPE')
+    if neural_design_profile is not None:
+        if candidate_specs is not None:
+            raise ValueError('NEURAL_AUTO_PROFILE_AND_MANUAL_CANDIDATES_CONFLICT')
+        if (training_lineage is None or environment_families is None
+                or selection_mode != 'worst_environment'
+                or outer_split_mode != 'leave_environment_family_out'):
+            raise ValueError('NEURAL_AUTO_PROFILE_REQUIRES_VERIFIED_OOD_PROTOCOL')
+        candidate_specs = _auto_neural_candidate_specs(neural_design_profile)
     specs = _specs(candidate_specs)
     neural_domain_candidates = sorted({learner for options in specs.values()
-                                       for _, learner in options if learner.startswith('dg_')})
+                                       for _, learner in options
+                                       if learner.startswith(('dg_', 'rex_'))})
     if neural_domain_candidates and (training_lineage is None or
                                      environment_families is None or
                                      selection_mode != 'worst_environment' or
@@ -560,6 +589,8 @@ def design_task_graph(*, domain: str, observations: Sequence, fields: Sequence[s
              'unique_training_rows': n, 'group_fold_intersection': 0,
              'observation_fields': list(schema),
              'candidate_specs': {h: [list(s) for s in specs[h]] for h in _HEADS},
+             'neural_design_profile': neural_design_profile,
+             'neural_profile_candidate_budget': (3 if neural_design_profile is not None else None),
              'neural_domain_generalization_candidates': neural_domain_candidates,
              'neural_domain_metadata_used_as_features': False,
              'head_evidence_policy': vars(head_evidence_policy).copy() if head_evidence_policy else None,
