@@ -108,7 +108,7 @@ def test_real_source_oof_adapts_third_trial_and_deploys_selected_program(tmp_pat
     assert restored.predict_decisions(records[0]["measurements"]) == (
         model.predict_decisions(records[0]["measurements"]))
     manifest = json.loads((folder / "audit.json").read_text())
-    assert manifest["trial_selection_audit"]["adaptive_trace"] == trace
+    assert manifest["trial_selection_audit"]["adaptive_trace"] == json.loads(json.dumps(trace))
     assert manifest["independent_qualification"] is False
 
 
