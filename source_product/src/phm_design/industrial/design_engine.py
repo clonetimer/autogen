@@ -84,6 +84,20 @@ def _sha(payload) -> str:
     ).hexdigest()
 
 
+def _observations_digest(matrices) -> str:
+    """Bind source TRAIN record boundaries/shapes to the observation checksum."""
+    h = hashlib.sha256()
+    h.update(b"phm.industrial.train-records.float64le.v1\\0")
+    h.update(len(matrices).to_bytes(8, byteorder="little", signed=False))
+    for array in matrices:
+        a = np.ascontiguousarray(array, dtype="<f8")
+        h.update(len(a.shape).to_bytes(1, "little"))
+        for size in a.shape:
+            h.update(int(size).to_bytes(8, "little", signed=False))
+        h.update(a.tobytes())
+    return h.hexdigest()
+
+
 def _candidate(spec: Mapping, seed: int) -> TrialSpec:
     backbone, objective = spec["backbone"], spec["objective"]
     representation = spec.get("representation", "tabular_signal_summary")
@@ -498,9 +512,9 @@ def run_design(task_spec: Mapping | TaskSpec,
         "source_task_spec_sha256": source_digest,
         "source_task_spec": raw,
         "training_manifest_sha256": _sha(train_metadata),
-        "training_observations_sha256": hashlib.sha256(
-            b"".join(np.ascontiguousarray(a, dtype="<f8").tobytes()
-                     for a in matrices)).hexdigest(),
+        "training_observations_sha256": _observations_digest(matrices),
+        "training_observations_hash_contract": "LENGTH_PREFIXED_FLOAT64_LE_V1",
+        "training_record_count": len(matrices),
         "source_data_role": "TRAIN_ONLY",
         "split": "LEAVE_ONE_ENTIRE_SOURCE_ENVIRONMENT_OUT",
         "source_environment_count": len(set(environment.tolist())),
