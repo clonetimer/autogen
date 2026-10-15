@@ -125,3 +125,33 @@ def test_rex_integrates_into_heldout_environment_head_search():
     assert model.training_['objective']=='risk_variance'
     assert model.training_['domain_source']=='TRAIN_LINEAGE_ONLY'
     assert model.predict_proba(train_seq['sequence'][:2]).shape==(2,2)
+
+
+def test_auto_neural_profile_compares_training_objectives_with_heterogeneous_heads():
+    from phm_design.task_graph import _auto_neural_candidate_specs
+    profile = _auto_neural_candidate_specs('compact_domain_generalization')
+    assert set(profile) == {'detection','localization','mechanism'}
+    assert all(len(x) == 3 for x in profile.values())
+    registry = TaskCandidateRegistry()
+    for head, options in profile.items():
+        assert {name.split('_', 1)[0] for _, name in options} == {'torch','dg','rex'}
+        assert all(registry.describe(*option).input_kind == 'sequence' for option in options)
+    assert profile['detection'][0][1] == 'torch_tcn'
+    assert profile['localization'][0][1] == 'torch_cnn1d'
+    assert profile['mechanism'][0][1] == 'torch_gru'
+    with pytest.raises(ValueError, match='UNREGISTERED_NEURAL_DESIGN_PROFILE'):
+        _auto_neural_candidate_specs('unbounded')
+
+
+def test_auto_neural_profile_fails_without_verified_ood_protocol():
+    rows, y, worlds, roles, healthy = fixture_train()
+    kwargs = dict(domain='Thermal_localization',
+        observations=rows, fields=FIELDS['Thermal_localization'], labels=y,
+        world_ids=worlds, roles=roles, healthy_prefix_confirmed=healthy,
+        neural_design_profile='compact_domain_generalization',
+        acceptance_policy=TaskGraphPolicy(0,1,0,0,0,0,0,1,8))
+    with pytest.raises(ValueError, match='NEURAL_AUTO_PROFILE_REQUIRES_VERIFIED_OOD_PROTOCOL'):
+        design_task_graph(**kwargs)
+    with pytest.raises(ValueError, match='NEURAL_AUTO_PROFILE_AND_MANUAL_CANDIDATES_CONFLICT'):
+        design_task_graph(**kwargs, candidate_specs={
+          h:[('temporal','linear')] for h in ('detection','localization','mechanism')})
