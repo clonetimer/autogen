@@ -149,7 +149,12 @@ def _fitted(candidate: TrialSpec, train_x, train_y, domains, ontology=None):
         # TaskCandidateRegistry tabular backbones take "temporal" descriptors.
         return model.fit(train_x, train_y, domain_groups=domains)
     registry = TaskCandidateRegistry()
-    model = registry.build(candidate.feature, candidate.learner, candidate.seed)
+    registry_feature = ("temporal" if candidate.feature in
+                        ("random_kernels", "difference_kernels")
+                        else candidate.feature)
+    # Registry input_kind remains tabular/sequence. Feature-program identity
+    # is carried by TrialSpec and materialized before the classifier is built.
+    model = registry.build(registry_feature, candidate.learner, candidate.seed)
     if candidate.objective in ("GroupDRO", "V-REx"):
         return model.fit(train_x, train_y, domain_groups=np.asarray(domains))
     return model.fit(train_x, train_y)
