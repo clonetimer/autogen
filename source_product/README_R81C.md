@@ -81,6 +81,27 @@ concatenation. Adaptive `FeedbackPlanner` mutation remains in the older
 grammar rather than implying closed-loop program proposal has been unified.
 Neural learned front-end composition is also not implemented.
 
+### Trusted research inference replay (not independent retraining)
+
+The `phm_design.industrial.artifact_io.load_trusted_artifact` API can
+rehydrate an exported model with its selected feature program, TaskSpec and
+calibration state. It validates TaskSpec/grid/trial hashes and the on-disk
+model SHA-256 *before* deserialization:
+
+```python
+from phm_design.industrial.artifact_io import load_trusted_artifact
+
+artifact = load_trusted_artifact("./my_train_model", trust_pickle=True)
+labels = artifact.predict(deployment_measurements)
+```
+
+`trust_pickle=True` is an explicit security boundary: joblib/pickle
+deserialization can execute attacker-controlled code. Use it **only** on
+artifacts from a source you already trust. Checksums detect corruption,
+not adversarial tampering or authorship. This restores trained-model inference
+and does not reproduce training from independently stewarded source data;
+that would require a separate controlled replay pipeline.
+
 Reproducibility evidence now includes source TaskSpec and TRAIN data hashes,
 candidate grid hash, selection-trial hash, selected feature-program hash,
 calibration policy hash, acceptance policy hash and binary model hash.
