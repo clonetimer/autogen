@@ -258,16 +258,39 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                                 "allow_refusal", "budget"),
                       allowed=("candidate_max", "compare", "objectives",
                                "allow_refusal", "budget", "representations", "topologies",
-                               "calibration"))
+                               "calibration", "feature_programs"))
     max_trials = _positive_int(design["candidate_max"], "design.candidate_max",
                                maximum=128)
     backbones = _nonempty_strings(design["compare"], "design.compare")
     objectives = _nonempty_strings(design["objectives"], "design.objectives")
     if not set(backbones).issubset(BACKBONES) or not set(objectives).issubset(OBJECTIVES):
         _reject("UNREGISTERED_ARCHITECTURE_OR_TRAINING_OBJECTIVE")
-    representations = _nonempty_strings(
-        design.get("representations", ["temporal_bins"]),
-        "design.representations")
+    # Explicit bounded programs share open_design's registered feature atoms.
+    # The predeclared set is fixed before any source OOF feedback is seen.
+    from .feature_program import ALLOWED_ATOMS, encode_program
+    programs = []
+    if "feature_programs" in design:
+        raw_programs = design["feature_programs"]
+        if not isinstance(raw_programs, list) or not raw_programs:
+            _reject("EMPTY_INDUSTRIAL_FEATURE_PROGRAMS")
+        for index, entry in enumerate(raw_programs):
+            cfg = _mapping(entry, "design.feature_programs." + str(index),
+                           required=("atoms", "composition"),
+                           allowed=("atoms", "composition"))
+            if cfg["composition"] != "concat":
+                _reject("UNSUPPORTED_INDUSTRIAL_PROGRAM_COMPOSITION")
+            atoms = _nonempty_strings(cfg["atoms"], "design.feature_programs.atoms")
+            if len(atoms) > 3 or not set(atoms).issubset(ALLOWED_ATOMS):
+                _reject("UNREGISTERED_FEATURE_PROGRAM")
+            programs.append({"atoms": sorted(atoms), "composition": "concat",
+                             "identity": encode_program(atoms)})
+        if len(set(x["identity"] for x in programs)) != len(programs):
+            _reject("DUPLICATE_INDUSTRIAL_FEATURE_PROGRAM")
+    if "representations" in design:
+        representations = _nonempty_strings(
+            design["representations"], "design.representations")
+    else:
+        representations = ([] if programs else ["temporal_bins"])
     if not set(representations).issubset(
             {"temporal_bins", "random_kernels", "difference_kernels"}):
         _reject("UNREGISTERED_FEATURE_PROGRAM")
@@ -318,13 +341,15 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         for objective in objectives:
             if objective != "ERM" and backbone not in NEURAL:
                 continue  # Tree and linear models cannot use backprop DG.
-            choices = (["learned_sequence"] if backbone in NEURAL
-                       else representations)
-            for representation in choices:
+            choices = ([{"representation": "learned_sequence"}]
+                       if backbone in NEURAL else
+                       [{"representation": item} for item in representations] +
+                       [{"representation": "feature_program",
+                         "feature_program": entry["identity"]} for entry in programs])
+            for choice in choices:
                 for topology in topologies:
-                    grid.append({"representation": representation,
-                                 "backbone": backbone, "objective": objective,
-                                 "topology": topology})
+                    grid.append({**choice, "backbone": backbone,
+                                 "objective": objective, "topology": topology})
     if not grid:
         _reject("AUTO_NO_VALID_PLAN")
     if max_fits < max_trials:
@@ -377,6 +402,7 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         "fold_strategy": "leave_physical_family_out",
         "source_only_nested_selection": True,
         "candidate_grid": grid,
+        "registered_feature_programs": programs,
         "calibration_policy": calibration_policy,
         "budget": {"max_trials": max_trials, "max_fits": max_fits,
                    "max_cpu_seconds": seconds, "seed": seed},
