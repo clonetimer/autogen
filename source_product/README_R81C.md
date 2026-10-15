@@ -1,6 +1,6 @@
 # R81c Development Slice — TRAIN-only calibration and UNKNOWN
 
-**Status:** Draft PR #18 stacked onto R81b PR #17. Version `0.8.0.dev22`.
+**Status:** Draft PR #18 stacked onto R81b PR #17. Version `0.8.0.dev23`.
 **Stable `main` remains R60 / 0.7.0. This is not a Stable or qualified release.**
 
 ## What actually executes
