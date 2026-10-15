@@ -258,7 +258,8 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                                 "allow_refusal", "budget"),
                       allowed=("candidate_max", "compare", "objectives",
                                "allow_refusal", "budget", "representations", "topologies",
-                               "calibration", "feature_programs"))
+                               "calibration", "feature_programs",
+                               "adaptive_feature_search"))
     max_trials = _positive_int(design["candidate_max"], "design.candidate_max",
                                maximum=128)
     backbones = _nonempty_strings(design["compare"], "design.compare")
@@ -268,6 +269,37 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
     # Explicit bounded programs share open_design's registered feature atoms.
     # The predeclared set is fixed before any source OOF feedback is seen.
     from .feature_program import ALLOWED_ATOMS, encode_program
+    adaptive = None
+    if "adaptive_feature_search" in design:
+        from itertools import combinations
+        config = _mapping(
+            design["adaptive_feature_search"], "design.adaptive_feature_search",
+            required=("atoms", "max_programs"),
+            allowed=("atoms", "max_programs"))
+        atoms = _nonempty_strings(config["atoms"], "adaptive_feature_search.atoms")
+        if not set(atoms).issubset(ALLOWED_ATOMS) or len(atoms) < 3:
+            _reject("INVALID_ADAPTIVE_FEATURE_ATOMS")
+        max_programs = _positive_int(
+            config["max_programs"], "adaptive_feature_search.max_programs",
+            minimum=3, maximum=128)
+        if ("feature_programs" in design or "representations" in design or
+                len(backbones) != 1 or backbones[0] not in ("linear", "tree") or
+                objectives != ["ERM"] or
+                design.get("topologies", ["direct"]) not in (["direct"], ["factorized"])):
+            _reject("ADAPTIVE_SEARCH_REQUIRES_SINGLE_CLASSICAL_TEMPLATE")
+        pool_atoms = sorted(atoms)
+        pool = [list(combo) for count in range(1, min(3, len(atoms)) + 1)
+                for combo in combinations(pool_atoms, count)]
+        if max_programs > len(pool) or max_trials != max_programs:
+            _reject("ADAPTIVE_SEARCH_TRIAL_BUDGET_MISMATCH")
+        adaptive = {
+            "mode": "bounded_feedback",
+            "atoms": pool_atoms,
+            "candidate_pool_size": len(pool),
+            "max_programs": max_programs,
+            "seed_programs": [encode_program([atom]) for atom in atoms[:2]],
+            "loss": "SOURCE_TRAIN_OOF_MEAN_TAIL_CLASS_ERROR",
+        }
     programs = []
     if "feature_programs" in design:
         raw_programs = design["feature_programs"]
@@ -290,7 +322,7 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         representations = _nonempty_strings(
             design["representations"], "design.representations")
     else:
-        representations = ([] if programs else ["temporal_bins"])
+        representations = ([] if programs or adaptive else ["temporal_bins"])
     if not set(representations).issubset(
             {"temporal_bins", "random_kernels", "difference_kernels"}):
         _reject("UNREGISTERED_FEATURE_PROGRAM")
@@ -350,11 +382,25 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                 for topology in topologies:
                     grid.append({**choice, "backbone": backbone,
                                  "objective": objective, "topology": topology})
+    if adaptive is not None:
+        # An immutable candidate pool, not an exhaustively evaluated portfolio.
+        # Only max_programs proposals may be trained in one study.
+        grid = [
+            {"representation": "feature_program",
+             "feature_program": encode_program(atoms),
+             "backbone": backbones[0], "objective": "ERM",
+             "topology": topologies[0]}
+            for atoms in pool
+        ]
+        programs = [
+            {"atoms": atoms, "composition": "concat",
+             "identity": encode_program(atoms)} for atoms in pool
+        ]
     if not grid:
         _reject("AUTO_NO_VALID_PLAN")
     if max_fits < max_trials:
         _reject("SEARCH_BUDGET_FITS_BELOW_TRIALS")
-    if len(grid) > max_trials:
+    if len(grid) > max_trials and adaptive is None:
         _reject("SEARCH_SPACE_EXCEEDS_PREDECLARED_TRIAL_BUDGET")
 
     deployment = _mapping(d["deployment"], "deployment",
@@ -403,6 +449,7 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         "source_only_nested_selection": True,
         "candidate_grid": grid,
         "registered_feature_programs": programs,
+        "adaptive_feature_search": adaptive,
         "calibration_policy": calibration_policy,
         "budget": {"max_trials": max_trials, "max_fits": max_fits,
                    "max_cpu_seconds": seconds, "seed": seed},
