@@ -54,10 +54,9 @@ def test_calibration_policy_compiles_and_rejects_unsafe_or_missing_unknown():
 
 
 def test_calibration_refuses_unknown_confidence_without_forcing_known_class():
-    probabilities = np.tile(np.array([[.98, .01, .01]]), (30, 1))
     truth = np.arange(30, dtype=int) % 3
-    probabilities = np.roll(np.tile(np.array([[.98, .01, .01]]),
-                                    (30, 1)), truth[:, None], axis=1)
+    probabilities = np.full((30, 3), .01, dtype=float)
+    probabilities[np.arange(30), truth] = .98
     policy = calibrated_spec()["design"]["calibration"]
     fitted = fit_temperature_selective(probabilities, truth, policy)
     assert fitted.calibration_samples == 30
