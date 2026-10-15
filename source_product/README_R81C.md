@@ -52,7 +52,9 @@ model hash and `independent_qualification=false`.
   observability or generalization on real industrial machinery or Basilisk physics.
 - The deployment serializer is research-only and requires trusted joblib sources.
 - The trial audit now measures per-candidate process CPU time, host wall time,
-  inference host wall time, actual head-fit count and refit count. These are
+  inference host wall time, charged head-fit count and refit count. Failed
+  multi-head fits conservatively charge their full planned head count to avoid
+  undercounting partially attempted training. These are
   **best-effort machine-dependent measurements**, not FLOPs-equivalent budgets.
 - This first R81c slice does not yet provide richer feature-program composition,
   parameter/FLOPs/peak-memory ledgers, full provenance replay, or a sealed FINAL steward.
