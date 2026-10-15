@@ -34,6 +34,25 @@ def load_trusted_artifact(directory, *, trust_pickle=False):
         trial = TrialSpec(**trial_data)
         plan = compile_task_spec(source)
         policy = audit["acceptance_policy"]
+        if manifest["trial_selection_audit_sha256"] != _sha(audit):
+            raise ValueError("ARTIFACT_FULL_AUDIT_HASH_MISMATCH")
+        if (audit["decision"] != "TRAIN_ONLY_SELECTION_REFITTED" or
+                audit["model_delivered"] is not True or
+                audit["model_qualified"] is not False or
+                audit["target_feedback_used"] is not False or
+                audit["final_evaluation_performed"] is not False or
+                audit["independent_qualification"] is not False):
+            raise ValueError("ARTIFACT_RELEASE_STATE_MISMATCH")
+        if (audit["training_observations_hash_contract"] !=
+                "LENGTH_PREFIXED_FLOAT64_LE_V1" or
+                not isinstance(audit["training_record_count"], int) or
+                audit["training_record_count"] <= 0):
+            raise ValueError("ARTIFACT_TRAIN_SOURCE_DIGEST_CONTRACT")
+        if (audit["search_budget"] != plan["budget"] or
+                audit["budget_enforcement"]["wall_deadline"] != (
+                    "PROCESS_ISOLATED_PARENT_TERMINATION"
+                    if "max_wall_seconds" in plan["budget"] else "NOT_CONFIGURED")):
+            raise ValueError("ARTIFACT_BUDGET_CONTRACT_MISMATCH")
         if (manifest["schema"] != "phm.industrial.design-artifact.v0" or
                 manifest["model_file"] != "model.joblib" or
                 manifest["independent_qualification"] is not False or
@@ -62,6 +81,17 @@ def load_trusted_artifact(directory, *, trust_pickle=False):
         expected_program_hash = (
             program_digest(trial.feature)
             if trial.feature.startswith("program:") else None)
+        runtime = manifest["runtime_fingerprint"]
+        from importlib.metadata import PackageNotFoundError, version
+        for package in ("scikit-learn", "numpy", "joblib"):
+            try:
+                installed = version(package)
+            except PackageNotFoundError as exc:
+                raise ValueError("ARTIFACT_RUNTIME_DEPENDENCY_MISSING") from exc
+            if runtime["packages"][package] != installed:
+                raise ValueError("ARTIFACT_RUNTIME_DEPENDENCY_MISMATCH:" + package)
+        if runtime["provenance_authenticated"] is not False:
+            raise ValueError("ARTIFACT_PROVENANCE_UNSUPPORTED")
         if manifest["feature_program_sha256"] != expected_program_hash:
             raise ValueError("ARTIFACT_FEATURE_PROGRAM_HASH_MISMATCH")
         calibration = manifest["calibration_state"]
