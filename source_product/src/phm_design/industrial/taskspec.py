@@ -179,7 +179,9 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         _nonempty_strings(components, "structure.components")
     if mechanisms:
         _nonempty_strings(mechanisms, "structure.mechanisms")
-    attrs = _mapping(structure["class_attributes"], "structure.class_attributes")
+    attrs = structure["class_attributes"]
+    if not isinstance(attrs, Mapping) or any(not isinstance(k, str) for k in attrs):
+        _reject("INVALID_CLASS_ATTRIBUTES")
     if set(attrs) != set(labels) - {task["healthy_label"]}:
         _reject("INCOMPLETE_OR_EXTRANEOUS_CLASS_ATTRIBUTES")
     needs_component = kind in ("component_localization", "joint_diagnosis")
