@@ -162,6 +162,73 @@ cd source_product
 python -m pytest -q tests/phm_design/test_r81c_feature_program_composition.py
 ```
 
+## R81c fourth slice — measured per-branch availability (source TRAIN only)
+
+`design.feature_programs[].composition` now optionally accepts
+`available_stack` or `available_average`. This branch reuses the existing
+`open_design_availability.AvailableComponentEnsemble`, including **3-fold
+physical-group-out-of-fold base probabilities**, source OOF meta training,
+model-refit and explicit unsupported-mask refusal. It is a bounded classical
+`linear` / `ERM` / `direct` offline trajectory mode only.
+
+Each branch must bind to exactly one real sensor and one **different,
+decision-time-measured binary sensor-validity channel**. Example inside the
+complete TaskSpec (add the named validity channels to
+`observations.channels` with `role:"sensor"`, `unit:"1"` and
+`available_at_decision:true`):
+
+```json
+{
+  "feature_programs": [{
+    "atoms": ["temporal_bins", "random_kernels"],
+    "composition": "available_stack",
+    "bindings": {
+      "temporal_bins": {
+        "signal": "vibration", "validity_flag": "vibration_valid"
+      },
+      "random_kernels": {
+        "signal": "motor_current", "validity_flag": "current_valid"
+      }
+    }
+  }]
+}
+```
+
+The **same exact observation columns and validity flags** are used for
+training, source-OOF trial ranking and deployment. A missing branch has a
+zero-valued **absent branch vector plus an explicit zero validity mask**,
+not an imputed sensor observation. Only valid branches execute feature atoms.
+Nonbinary, changing-within-trajectory, unregistered, label-derived, missing
+or duplicated validity channels are rejected. This version requires at
+least two distinct branches and `task.allow_unknown=true`.
+
+An all-absent mask, or a stacking availability pattern unsupported by source
+training, yields `__UNKNOWN__`, zero confidence, and `abstained=true`.
+Unknown is counted as incorrect in source class recall/accuracy, including for
+healthy examples. Available-stack probabilities are *not* assumed calibrated.
+This first integration disallows nesting temperature calibration around the
+availability model; otherwise unsupported-mask probabilities could be hidden.
+
+A two-branch ensemble conservatively reserves **9 estimator fits per
+outer fold** (three inner group folds for each branch, a refit of each
+branch, one meta learner). An aborted or unsupported inner fit still consumes
+its reserved budget; the actual successful internal fit count remains visible
+on the model. These are research-only upper bound fit charges, not identical
+CPU/GPU FLOPs. Fit-count parity must be evaluated separately.
+
+**Limits:** This contract is only as trustworthy as the sensor-validity
+channels supplied by the data adapter; a dishonest adapter could leak truth
+through a seemingly deployable flag. Physical attestation of validity
+origin and independent equipment OOD performance are still R82/R84 tasks.
+This slice assumes a constant availability flag for each whole trajectory;
+it does not claim packet-level online dropout handling, partially missing
+rows or deployment-time hardware reliability.
+
+```bash
+cd source_product
+python -m pytest -q tests/phm_design/test_r81c_available_late_fusion.py
+```
+
 ## Limitations and scientific boundary
 
 - Temperature selection and selective-error bound use **TRAIN source environments only**.
