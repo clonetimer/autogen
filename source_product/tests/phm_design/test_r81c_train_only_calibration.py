@@ -95,6 +95,10 @@ def test_real_inner_oof_fit_count_and_calibrated_model_export(tmp_path):
     audit = json.loads((tmp_path / "calibrated" / "audit.json").read_text())
     assert audit["calibration_state"]["temperature"] == model.calibrator.temperature
     assert audit["independent_qualification"] is False
+    from phm_design.industrial.artifact_io import load_trusted_artifact
+    restored = load_trusted_artifact(tmp_path / "calibrated", trust_pickle=True)
+    assert restored.calibrator == model.calibrator
+    assert restored.predict_decisions(records[0]["measurements"]) == decisions
 
 
 def test_calibration_fails_closed_for_missing_inner_worlds():
