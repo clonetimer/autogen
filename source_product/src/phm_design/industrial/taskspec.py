@@ -308,16 +308,53 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         for index, entry in enumerate(raw_programs):
             cfg = _mapping(entry, "design.feature_programs." + str(index),
                            required=("atoms", "composition"),
-                           allowed=("atoms", "composition"))
-            if cfg["composition"] != "concat":
-                _reject("UNSUPPORTED_INDUSTRIAL_PROGRAM_COMPOSITION")
+                           allowed=("atoms", "composition", "bindings"))
+            composition = _enum(cfg["composition"],
+                                {"concat", "available_stack", "available_average"},
+                                "feature_programs.composition")
             atoms = _nonempty_strings(cfg["atoms"], "design.feature_programs.atoms")
             if len(atoms) > 3 or not set(atoms).issubset(ALLOWED_ATOMS):
                 _reject("UNREGISTERED_FEATURE_PROGRAM")
-            programs.append({"atoms": sorted(atoms), "composition": "concat",
-                             "identity": encode_program(atoms)})
-        if len(set(x["identity"] for x in programs)) != len(programs):
+            ordered = sorted(atoms)
+            bindings = []
+            if composition != "concat":
+                if not task["allow_unknown"]:
+                    _reject("AVAILABILITY_REQUIRES_UNKNOWN_TASK_CONTRACT")
+                if len(atoms) < 2 or "calibration" in design:
+                    _reject("UNSUPPORTED_AVAILABILITY_CALIBRATION_OR_BRANCH_COUNT")
+                raw_bindings = _mapping(cfg.get("bindings"), "feature_programs.bindings",
+                                        required=ordered, allowed=ordered)
+                used = set()
+                for atom in ordered:
+                    binding = _mapping(raw_bindings[atom],
+                                       "feature_programs.bindings." + atom,
+                                       required=("signal", "validity_flag"),
+                                       allowed=("signal", "validity_flag"))
+                    signal, valid = binding["signal"], binding["validity_flag"]
+                    if (signal not in names or valid not in names or
+                            signal == valid or signal in used or valid in used):
+                        _reject("INVALID_AVAILABILITY_CHANNEL_BINDING")
+                    flag = channels[names.index(valid)]
+                    if (flag["role"] != "sensor" or flag["unit"] != "1"):
+                        _reject("INVALID_AVAILABILITY_FLAG_CHANNEL_CONTRACT")
+                    used.update((signal, valid))
+                    bindings.append({"atom": atom, "signal": signal,
+                                     "validity_flag": valid,
+                                     "sensor_index": 1 + names.index(signal),
+                                     "validity_index": 1 + names.index(valid)})
+            elif "bindings" in cfg:
+                _reject("CONCAT_MUST_NOT_DECLARE_AVAILABILITY_BINDINGS")
+            programs.append({"atoms": ordered, "composition": composition,
+                             "identity": encode_program(atoms),
+                             "bindings": bindings})
+        identifiers = [(x["identity"], x["composition"]) for x in programs]
+        if len(set(identifiers)) != len(identifiers):
             _reject("DUPLICATE_INDUSTRIAL_FEATURE_PROGRAM")
+        if any(x["composition"] != "concat" for x in programs) and (
+                len(backbones) != 1 or backbones[0] != "linear" or
+                objectives != ["ERM"] or
+                design.get("topologies", ["direct"]) != ["direct"]):
+            _reject("AVAILABILITY_REQUIRES_LINEAR_DIRECT_ERM")
     if "representations" in design:
         representations = _nonempty_strings(
             design["representations"], "design.representations")
@@ -377,7 +414,10 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                        if backbone in NEURAL else
                        [{"representation": item} for item in representations] +
                        [{"representation": "feature_program",
-                         "feature_program": entry["identity"]} for entry in programs])
+                         "feature_program": entry["identity"],
+                         "composition": entry["composition"],
+                         "availability_bindings": entry["bindings"]}
+                        for entry in programs])
             for choice in choices:
                 for topology in topologies:
                     grid.append({**choice, "backbone": backbone,
@@ -394,7 +434,7 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         ]
         programs = [
             {"atoms": atoms, "composition": "concat",
-             "identity": encode_program(atoms)} for atoms in pool
+             "identity": encode_program(atoms), "bindings": []} for atoms in pool
         ]
     if not grid:
         _reject("AUTO_NO_VALID_PLAN")
