@@ -257,7 +257,8 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                       required=("candidate_max", "compare", "objectives",
                                 "allow_refusal", "budget"),
                       allowed=("candidate_max", "compare", "objectives",
-                               "allow_refusal", "budget", "representations", "topologies"))
+                               "allow_refusal", "budget", "representations", "topologies",
+                               "calibration"))
     max_trials = _positive_int(design["candidate_max"], "design.candidate_max",
                                maximum=128)
     backbones = _nonempty_strings(design["compare"], "design.compare")
@@ -274,6 +275,27 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         design.get("topologies", ["direct"]), "design.topologies")
     if not set(topologies).issubset({"direct", "factorized"}):
         _reject("UNREGISTERED_DIAGNOSIS_TOPOLOGY")
+    # Opt-in, predeclared before any fitted candidate; old TasksSpecs are unchanged.
+    calibration_policy = None
+    if "calibration" in design:
+        config = _mapping(design["calibration"], "design.calibration",
+                          required=("method", "max_selective_error",
+                                    "minimum_coverage", "min_calibration_samples"),
+                          allowed=("method", "max_selective_error",
+                                   "minimum_coverage", "min_calibration_samples"))
+        _enum(config["method"], {"temperature_selective"}, "calibration.method")
+        if not task["allow_unknown"]:
+            _reject("CALIBRATION_REQUIRES_UNKNOWN_TASK_CONTRACT")
+        for name, minimum, maximum in (
+                ("max_selective_error", 0.01, 0.5),
+                ("minimum_coverage", 0.05, 1.0)):
+            value = config[name]
+            if (type(value) not in (int, float) or not math.isfinite(value)
+                    or not minimum <= value <= maximum):
+                _reject("INVALID_CALIBRATION_POLICY", name)
+        _positive_int(config["min_calibration_samples"],
+                      "calibration.min_calibration_samples", minimum=12)
+        calibration_policy = dict(config)
     if "factorized" in topologies and kind != "joint_diagnosis":
         _reject("FACTORIZED_REQUIRES_JOINT_DIAGNOSIS")
     if "factorized" in topologies:
@@ -355,6 +377,7 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         "fold_strategy": "leave_physical_family_out",
         "source_only_nested_selection": True,
         "candidate_grid": grid,
+        "calibration_policy": calibration_policy,
         "budget": {"max_trials": max_trials, "max_fits": max_fits,
                    "max_cpu_seconds": seconds, "seed": seed},
         "fold_preprocessing": "fit_on_training_partition_only",
