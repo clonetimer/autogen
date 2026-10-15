@@ -6,9 +6,28 @@ FINAL qualification. Do not upload independent FINAL/TEST datasets to the
 TRAIN-side `intake_train_source` worker. An authorized steward must keep those
 roles separate.
 
+## Already accessible through connected GitHub (do not re-upload)
+
+The following repositories were inspected on 2026-10-15:
+
+- [clonetimer/SatAgentSimulation](https://github.com/clonetimer/SatAgentSimulation),
+  `main` commit `1f709beeae97baec65db9ca13ae373d88728f87d`, provides
+  `src/sat_sim/bsk_engine/unified_native.py` and
+  `src/sat_sim/bsk_engine/project_native_modules.py`.
+- [clonetimer/basilisk](https://github.com/clonetimer/basilisk),
+  `develop` commit `c3624e0fe9d79c2be705b1c587ba88e34f8061ff`, includes
+  `src/utilities/simIncludeRW.py`. **This checkout is not by itself proof
+  of the installed `bsk` wheel/module version used by a campaign.**
+
+These Git commits are **reference pointers**, not a matched runtime receipt.
+The specific campaign's actual source versions, installed wheel/source
+SHA-256, and physics execution logs still need correlation.
+
 ## Option A — Basilisk native ADCS/reaction-wheel study (preferred first)
 
-Supply one ZIP or a reviewed repository reference with:
+Supply the missing generated data and run evidence as a ZIP or a reviewed
+repository reference. Re-uploading the two source repositories above is
+unnecessary unless the actual campaign used a **different** source revision:
 
 1. **Native simulator project sources**
    - `src/sat_sim/bsk_engine/unified_native.py`
