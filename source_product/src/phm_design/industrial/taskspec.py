@@ -344,9 +344,11 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                                      "validity_index": 1 + names.index(valid)})
             elif "bindings" in cfg:
                 _reject("CONCAT_MUST_NOT_DECLARE_AVAILABILITY_BINDINGS")
-            programs.append({"atoms": ordered, "composition": composition,
-                             "identity": encode_program(atoms),
-                             "bindings": bindings})
+            item = {"atoms": ordered, "composition": composition,
+                    "identity": encode_program(atoms)}
+            if composition != "concat":
+                item["bindings"] = bindings
+            programs.append(item)
         identifiers = [(x["identity"], x["composition"]) for x in programs]
         if len(set(identifiers)) != len(identifiers):
             _reject("DUPLICATE_INDUSTRIAL_FEATURE_PROGRAM")
@@ -415,8 +417,9 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                        [{"representation": item} for item in representations] +
                        [{"representation": "feature_program",
                          "feature_program": entry["identity"],
-                         "composition": entry["composition"],
-                         "availability_bindings": entry["bindings"]}
+                         **({"composition": entry["composition"],
+                             "availability_bindings": entry["bindings"]}
+                            if entry["composition"] != "concat" else {})}
                         for entry in programs])
             for choice in choices:
                 for topology in topologies:
@@ -434,7 +437,7 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         ]
         programs = [
             {"atoms": atoms, "composition": "concat",
-             "identity": encode_program(atoms), "bindings": []} for atoms in pool
+             "identity": encode_program(atoms)} for atoms in pool
         ]
     if not grid:
         _reject("AUTO_NO_VALID_PLAN")
