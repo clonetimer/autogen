@@ -401,10 +401,14 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         _reject("DESIGN_REFUSAL_MUST_BE_AVAILABLE")
     budget = _mapping(design["budget"], "design.budget",
                       required=("max_fits", "max_cpu_seconds", "seed"),
-                      allowed=("max_fits", "max_cpu_seconds", "seed"))
+                      allowed=("max_fits", "max_cpu_seconds", "seed",
+                               "max_wall_seconds"))
     max_fits = _positive_int(budget["max_fits"], "budget.max_fits", maximum=10000)
     seconds = _positive_int(budget["max_cpu_seconds"],
                             "budget.max_cpu_seconds", maximum=604800)
+    wall_seconds = (_positive_int(budget["max_wall_seconds"],
+                                  "budget.max_wall_seconds", maximum=604800)
+                    if "max_wall_seconds" in budget else None)
     seed = _positive_int(budget["seed"], "budget.seed", minimum=0,
                          maximum=2**32 - 1)
     grid = []
@@ -495,7 +499,9 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
         "adaptive_feature_search": adaptive,
         "calibration_policy": calibration_policy,
         "budget": {"max_trials": max_trials, "max_fits": max_fits,
-                   "max_cpu_seconds": seconds, "seed": seed},
+                   "max_cpu_seconds": seconds, "seed": seed,
+                   **({"max_wall_seconds": wall_seconds}
+                      if wall_seconds is not None else {})},
         "fold_preprocessing": "fit_on_training_partition_only",
         "predeclared_refusal_modes": [
             "AUTO_NO_VALID_PLAN", "NOT_OBSERVABLE_WITH_DECLARED_SENSORS",
