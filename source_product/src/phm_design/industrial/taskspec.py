@@ -209,7 +209,7 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
     timing = _mapping(obs["time"], "observations.time",
                       required=("field", "sampling"),
                       allowed=("field", "sampling", "window_samples", "horizon_samples"))
-    time_field = _identity(timing["field"], "time.field")
+    time_field = _channel_name(timing["field"], "time.field")
     _enum(timing["sampling"], {"fixed", "irregular"}, "time.sampling")
     health = _enum(obs["healthy_prefix_policy"],
                    {"not_assumed", "verified_if_required", "required"},
@@ -250,6 +250,8 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                                      "data.environment_axes")
     if set(groups).intersection(environments):
         _reject("GROUP_ENVIRONMENT_KEYS_OVERLAP")
+    if ({time_field, *names} & (set(groups) | set(environments))):
+        _reject("PROVENANCE_METADATA_CANNOT_BE_DEPLOYMENT_FIELDS")
 
     design = _mapping(d["design"], "design",
                       required=("candidate_max", "compare", "objectives",
@@ -399,6 +401,8 @@ def validate_observations(spec: Mapping | TaskSpec, rows: Sequence[Mapping],
                           *, decision_timestamp: float | None = None,
                           healthy_prefix_verified: bool = False) -> dict:
     """Validate deployment inputs without reading labels/simulator truth."""
+    # Observation checking must not be weaker than plan compilation.
+    compiled = compile_task_spec(spec)
     d = spec.to_dict() if isinstance(spec, TaskSpec) else TaskSpec.from_dict(spec).to_dict()
     obs = d["observations"]
     time = obs["time"]
