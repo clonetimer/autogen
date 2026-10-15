@@ -1,0 +1,68 @@
+name: R80 Industrial TaskSpec Contract
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/**'
+      - 'source_product/examples/industrial/**'
+      - 'source_product/tests/phm_design/test_r80_industrial_taskspec.py'
+      - '.github/workflows/r80-industrial-taskspec.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  taskspec:
+    runs-on: ubuntu-latest
+    name: "Industrial TaskSpec G0 / Python ${{ matrix.python-version }}"
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Minimal test dependencies (no networked datasets)
+        run: python -m pip install 'pytest==9.0.2'
+      - name: Compile satellite and bearing TaskSpec + attack controls
+        run: python -m pytest -q source_product/tests/phm_design/test_r80_industrial_taskspec.py
+        env:
+          PYTHONPATH: source_product/src
+      - name: Compile two real CLI input contracts and compare shapes
+        run: |
+          python -m phm_design.industrial --spec source_product/examples/industrial/satellite_eps_joint_demo.json --output /tmp/eps_plan.json
+          python -m phm_design.industrial --spec source_product/examples/industrial/industrial_bearing_classification_demo.json --output /tmp/bearing_plan.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path('/tmp/eps_plan.json').read_text())
+          b=json.loads(Path('/tmp/bearing_plan.json').read_text())
+          assert len(a['ontology']['labels']) == 5
+          assert len(b['ontology']['labels']) == 3
+          assert a['task_kind'] == 'joint_diagnosis'
+          assert b['task_kind'] == 'fault_classification'
+          assert a['qualified'] is False and b['qualified'] is False
+          assert a['task_spec_sha256'] != b['task_spec_sha256']
+          print('R80 CLI compile: two distinct device tasks, no model trained')
+          PY
+        env:
+          PYTHONPATH: source_product/src
+      - name: Check wheel includes industrial compiler and CLI
+        run: |
+          python -m pip install 'setuptools==82.0.1' wheel
+          python -m pip wheel --no-deps --no-build-isolation ./source_product --wheel-dir /tmp/r80-wheel
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          w,=list(Path('/tmp/r80-wheel').glob('phm_design-*.whl'))
+          with ZipFile(w) as z:
+              contents=set(z.namelist())
+              assert 'phm_design/industrial/taskspec.py' in contents
+              assert 'phm_design/industrial/__main__.py' in contents
+              assert 'phm_design/industrial/__init__.py' in contents
+              print('Wheel includes R80 industrial compiler')
+          PY
+      - name: Ensure stable certificate untouched by contract tests
+        run: |
+          git diff --exit-code HEAD -- source_product/src/phm_design/limited_models/

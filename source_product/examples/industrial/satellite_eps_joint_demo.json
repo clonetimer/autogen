@@ -1,0 +1,132 @@
+{
+  "schema": "phm.industrial.task.v0",
+  "id": "satellite.eps.paired.offline",
+  "equipment": {
+    "family": "satellite",
+    "adapter": "basilisk_native_eps",
+    "version": "2.11.0"
+  },
+  "task": {
+    "kind": "joint_diagnosis",
+    "decision_mode": "offline_trajectory",
+    "allow_unknown": true,
+    "multifault": false,
+    "healthy_label": "NOMINAL",
+    "labels": [
+      "NOMINAL",
+      "SOLAR_A_EFFICIENCY_LOSS",
+      "SOLAR_B_EFFICIENCY_LOSS",
+      "LOAD_A_EXTRA",
+      "LOAD_B_EXTRA"
+    ],
+    "structure": {
+      "components": [
+        "solar_a",
+        "solar_b",
+        "load_a",
+        "load_b"
+      ],
+      "mechanisms": [
+        "efficiency_loss",
+        "extra_load"
+      ],
+      "class_attributes": {
+        "SOLAR_A_EFFICIENCY_LOSS": {
+          "component": "solar_a",
+          "mechanism": "efficiency_loss"
+        },
+        "SOLAR_B_EFFICIENCY_LOSS": {
+          "component": "solar_b",
+          "mechanism": "efficiency_loss"
+        },
+        "LOAD_A_EXTRA": {
+          "component": "load_a",
+          "mechanism": "extra_load"
+        },
+        "LOAD_B_EXTRA": {
+          "component": "load_b",
+          "mechanism": "extra_load"
+        }
+      }
+    }
+  },
+  "observations": {
+    "time": {
+      "field": "time_s",
+      "sampling": "irregular"
+    },
+    "healthy_prefix_policy": "verified_if_required",
+    "channels": [
+      {
+        "name": "illumination",
+        "role": "sensor",
+        "unit": "1",
+        "available_at_decision": true
+      },
+      {
+        "name": "load_a_command_w",
+        "role": "command",
+        "unit": "W",
+        "available_at_decision": true
+      },
+      {
+        "name": "load_b_command_w",
+        "role": "command",
+        "unit": "W",
+        "available_at_decision": true
+      },
+      {
+        "name": "panel_a_meter_w",
+        "role": "sensor",
+        "unit": "W",
+        "available_at_decision": true
+      },
+      {
+        "name": "panel_b_meter_w",
+        "role": "sensor",
+        "unit": "W",
+        "available_at_decision": true
+      },
+      {
+        "name": "bus_net_meter_w",
+        "role": "sensor",
+        "unit": "W",
+        "available_at_decision": true
+      }
+    ]
+  },
+  "data": {
+    "role": "TRAIN",
+    "group_keys": [
+      "base_physics_id",
+      "generation_family_id"
+    ],
+    "environment_axes": [
+      "illumination_regime",
+      "duty_cycle_regime"
+    ]
+  },
+  "design": {
+    "candidate_max": 12,
+    "compare": [
+      "linear",
+      "tree",
+      "cnn1d",
+      "tcn"
+    ],
+    "objectives": [
+      "ERM",
+      "GroupDRO"
+    ],
+    "allow_refusal": true,
+    "budget": {
+      "max_fits": 48,
+      "max_cpu_seconds": 3600,
+      "seed": 8001
+    }
+  },
+  "deployment": {
+    "causal_online": false,
+    "prototype_only": true
+  }
+}
