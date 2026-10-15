@@ -401,6 +401,14 @@ def run_design(task_spec: Mapping | TaskSpec,
         "search_budget": budget,
         "calibration_policy": calibration_policy,
         "calibration_role": ("TRAIN_INNER_OOF_ONLY" if calibration_policy else None),
+        "compute_ledger": {
+            "fit_unit": "ACTUAL_ESTIMATOR_HEAD_FIT",
+            "cpu_seconds": "PYTHON_PROCESS_CPU_BEST_EFFORT",
+            "wall_seconds": "HOST_WALL_BEST_EFFORT",
+            "inference_wall_seconds": "HOST_WALL_INCLUDES_PYTHON_OVERHEAD",
+            "flops_parity_claimed": False,
+            "gpu_memory_or_energy_measured": False,
+        },
         "attempts": attempts,
         "target_feedback_used": False,
         "final_evaluation_performed": False,
@@ -443,8 +451,12 @@ def run_design(task_spec: Mapping | TaskSpec,
 
     for i, spec in enumerate(plan["candidate_grid"]):
         trial = _candidate(spec, budget["seed"] + i)
+        trial_start_cpu = time.process_time()
+        trial_start_wall = time.perf_counter()
+        trial_fits_before = fits
         entry = {"trial_index": i, "trial": asdict(trial),
-                 "folds": [], "status": "STARTED"}
+                 "folds": [], "status": "STARTED",
+                 "inference_wall_seconds": 0.}
         attempts.append(entry)
         predictions = np.full(len(true), -2, dtype=int)
         try:
@@ -452,6 +464,7 @@ def run_design(task_spec: Mapping | TaskSpec,
                 calibrated = (nested_calibration(trial, train)
                               if calibration_policy is not None else None)
                 model = fit_budgeted(trial, train)
+                infer_started = time.perf_counter()
                 if calibrated is None:
                     predictions[validation] = _predict_indices(
                         model, features[trial.feature][validation], len(labels))
@@ -459,6 +472,7 @@ def run_design(task_spec: Mapping | TaskSpec,
                     probabilities = _probabilities(
                         model, features[trial.feature][validation], len(labels))
                     predictions[validation] = calibrated.decide(probabilities)
+                entry["inference_wall_seconds"] += time.perf_counter() - infer_started
                 entry["folds"].append({
                     "train_source_environments": sorted(set(environment[train].tolist())),
                     "heldout_environment": sorted(set(environment[validation].tolist())),
@@ -494,7 +508,10 @@ def run_design(task_spec: Mapping | TaskSpec,
             entry["failure"] = repr(exc)
             if str(exc) in ("TRIAL_FIT_BUDGET_EXCEEDED", "TRIAL_CPU_BUDGET_EXCEEDED"):
                 budget_exhausted = True
-        entry["cpu_seconds"] = round(time.process_time() - begun, 5)
+        entry["cpu_seconds"] = round(time.process_time() - trial_start_cpu, 5)
+        entry["wall_seconds"] = round(time.perf_counter() - trial_start_wall, 5)
+        entry["inference_wall_seconds"] = round(entry["inference_wall_seconds"], 6)
+        entry["model_fits"] = fits - trial_fits_before
         if budget_exhausted:
             break
     receipt["fold_model_fits"] = fits
@@ -512,6 +529,8 @@ def run_design(task_spec: Mapping | TaskSpec,
         receipt["model_delivered"] = False
         raise IndustrialDesignRejected(receipt)
     trial = selected[1]
+    refit_fits_before = fits
+    refit_started_wall = time.perf_counter()
     head_cost = (1 if trial.topology == "direct" else
                  _factorized_fit_cost(plan["ontology"]))
     final_refit_cost = head_cost * (
@@ -535,6 +554,9 @@ def run_design(task_spec: Mapping | TaskSpec,
     receipt["decision"] = "TRAIN_ONLY_SELECTION_REFITTED"
     receipt["selected_trial"] = asdict(trial)
     receipt["total_model_fits"] = fits
+    receipt["final_refit_model_fits"] = fits - refit_fits_before
+    receipt["final_refit_wall_seconds"] = round(
+        time.perf_counter() - refit_started_wall, 5)
     receipt["model_delivered"] = True
     receipt["model_qualified"] = False
     receipt["calibration_state"] = (asdict(calibrator) if calibrator else None)
