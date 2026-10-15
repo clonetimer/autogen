@@ -273,6 +273,20 @@ def run_design(task_spec: Mapping | TaskSpec,
                               for row in train_metadata])
     if len(set(environment.tolist())) < 3:
         raise TaskSpecRejected("INSUFFICIENT_SOURCE_ENVIRONMENTS")
+    seen_trajectories = {}
+    for sample_index, (matrix, group) in enumerate(zip(matrices, groups)):
+        # Exact duplicate observations under different physical unit IDs can
+        # masquerade as independent examples even with perfect label-role
+        # checks. Do not treat renaming as a new sample/world.
+        fingerprint = hashlib.sha256(
+            np.ascontiguousarray(matrix, dtype="<f8").tobytes()
+        ).hexdigest()
+        previously = seen_trajectories.get(fingerprint)
+        if previously is not None and previously != group:
+            raise TaskSpecRejected(
+                "DUPLICATE_TRAJECTORY_ACROSS_PHYSICAL_GROUPS",
+                str(sample_index))
+        seen_trajectories[fingerprint] = group
     fold_plan = list(LeaveOneGroupOut().split(true, groups=environment))
     if any(set(groups[train]) & set(groups[test]) or
            set(environment[train]) & set(environment[test])
