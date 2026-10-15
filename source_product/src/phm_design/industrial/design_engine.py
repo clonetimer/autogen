@@ -20,7 +20,7 @@ from sklearn.model_selection import LeaveOneGroupOut
 from .taskspec import (
     TaskSpec, TaskSpecRejected, compile_task_spec, validate_observations,
 )
-from ..open_design import temporal_bins
+from ..open_design import temporal_bins, random_temporal_kernels
 from ..task_candidate_registry import TaskCandidateRegistry, deployment_sequence
 
 
@@ -31,6 +31,7 @@ class TrialSpec:
     feature: str
     learner: str
     seed: int
+    topology: str = "direct"
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,10 @@ def _sha(payload) -> str:
 
 def _candidate(spec: Mapping, seed: int) -> TrialSpec:
     backbone, objective = spec["backbone"], spec["objective"]
+    representation = spec.get("representation", "tabular_signal_summary")
+    topology = spec.get("topology", "direct")
+    if topology not in ("direct", "factorized"):
+        raise TaskSpecRejected("UNREGISTERED_R81_TOPOLOGY")
     mapping = {
         "cnn1d": "cnn1d", "tcn": "tcn", "gru": "gru",
         "transformer": "transformer",
@@ -87,34 +92,79 @@ def _candidate(spec: Mapping, seed: int) -> TrialSpec:
     if backbone == "linear":
         if objective != "ERM":
             raise TaskSpecRejected("INVALID_NONNEURAL_OBJECTIVE")
-        return TrialSpec(backbone, objective, "temporal", "linear", seed)
+        feature = {"tabular_signal_summary": "temporal",
+                   "temporal_bins": "temporal",
+                   "random_kernels": "random_kernels",
+                   "difference_kernels": "difference_kernels"}.get(representation)
+        if feature is None:
+            raise TaskSpecRejected("INVALID_TABULAR_REPRESENTATION")
+        return TrialSpec(backbone, objective, feature, "linear", seed, topology)
     if backbone == "tree":
         if objective != "ERM":
             raise TaskSpecRejected("INVALID_NONNEURAL_OBJECTIVE")
-        return TrialSpec(backbone, objective, "temporal", "extra", seed)
+        feature = {"tabular_signal_summary": "temporal",
+                   "temporal_bins": "temporal",
+                   "random_kernels": "random_kernels",
+                   "difference_kernels": "difference_kernels"}.get(representation)
+        if feature is None:
+            raise TaskSpecRejected("INVALID_TABULAR_REPRESENTATION")
+        return TrialSpec(backbone, objective, feature, "extra", seed, topology)
     if backbone not in mapping:
         raise TaskSpecRejected("UNREGISTERED_R81_BACKBONE")
     prefix = {"ERM": "torch_", "GroupDRO": "dg_", "V-REx": "rex_"}.get(objective)
     if prefix is None:
         raise TaskSpecRejected("UNREGISTERED_R81_OBJECTIVE")
+    if representation != "learned_sequence":
+        raise TaskSpecRejected("INVALID_NEURAL_REPRESENTATION")
     return TrialSpec(backbone, objective, "sequence",
-                     prefix + mapping[backbone], seed)
+                     prefix + mapping[backbone], seed, topology)
 
 
 def _features(array: np.ndarray, mode: str) -> np.ndarray:
     if mode == "temporal":
         return np.asarray(temporal_bins(array), dtype=np.float64)
+    if mode == "random_kernels":
+        return np.asarray(random_temporal_kernels(array), dtype=np.float64)
+    if mode == "difference_kernels":
+        return np.asarray(random_temporal_kernels(array, differences=True),
+                          dtype=np.float64)
     if mode == "sequence":
         return np.asarray(deployment_sequence(array), dtype=np.float32)
     raise ValueError("INVALID_TRIAL_FEATURE")
 
 
-def _fitted(candidate: TrialSpec, train_x, train_y, domains):
+def _fitted(candidate: TrialSpec, train_x, train_y, domains, ontology=None):
+    if candidate.topology == "factorized":
+        if ontology is None:
+            raise TaskSpecRejected("FACTORIZED_ONTOLOGY_REQUIRED")
+        from .factorized_model import FactorizedDiagnosisModel
+        model = FactorizedDiagnosisModel(
+            feature=("temporal" if candidate.feature in
+                     ("random_kernels", "difference_kernels") else candidate.feature),
+            learner=candidate.learner, objective=candidate.objective,
+            seed=candidate.seed, labels=ontology["labels"],
+            healthy_label=ontology["healthy_label"],
+            class_attributes=ontology["class_attributes"])
+        # The model's heads receive the exact selected representation matrix;
+        # TaskCandidateRegistry tabular backbones take "temporal" descriptors.
+        return model.fit(train_x, train_y, domain_groups=domains)
     registry = TaskCandidateRegistry()
-    model = registry.build(candidate.feature, candidate.learner, candidate.seed)
+    registry_feature = ("temporal" if candidate.feature in
+                        ("random_kernels", "difference_kernels")
+                        else candidate.feature)
+    # Registry input_kind remains tabular/sequence. Feature-program identity
+    # is carried by TrialSpec and materialized before the classifier is built.
+    model = registry.build(registry_feature, candidate.learner, candidate.seed)
     if candidate.objective in ("GroupDRO", "V-REx"):
         return model.fit(train_x, train_y, domain_groups=np.asarray(domains))
     return model.fit(train_x, train_y)
+
+
+def _factorized_fit_cost(ontology: Mapping) -> int:
+    attrs = ontology["class_attributes"]
+    components = {row["component"] for row in attrs.values()}
+    mechanisms = {row["mechanism"] for row in attrs.values()}
+    return 1 + int(len(components) > 1) + int(len(mechanisms) > 1)
 
 
 def _predict_indices(model, features, expected_classes: int) -> np.ndarray:
@@ -293,9 +343,13 @@ def run_design(task_spec: Mapping | TaskSpec,
            set(environment[train]) & set(environment[test])
            for train, test in fold_plan):
         raise AssertionError("R81_PHYSICAL_ENVIRONMENT_SPLIT_LEAKAGE")
+    required_features = {
+        _candidate(spec, budget["seed"] + i).feature
+        for i, spec in enumerate(plan["candidate_grid"])
+    }
     features = {
-        "temporal": np.stack([_features(m, "temporal") for m in matrices]),
-        "sequence": np.stack([_features(m, "sequence") for m in matrices]),
+        feature: np.stack([_features(m, feature) for m in matrices])
+        for feature in sorted(required_features)
     }
     attempts = []
     selected = None
@@ -329,15 +383,21 @@ def run_design(task_spec: Mapping | TaskSpec,
         predictions = np.full(len(true), -1, dtype=int)
         try:
             for train, validation in fold_plan:
-                if fits >= budget["max_fits"]:
+                estimated_fit_count = (1 if trial.topology == "direct" else
+                                       _factorized_fit_cost(plan["ontology"]))
+                if fits + estimated_fit_count > budget["max_fits"]:
                     raise RuntimeError("TRIAL_FIT_BUDGET_EXCEEDED")
                 if time.process_time() - begun > budget["max_cpu_seconds"]:
                     raise RuntimeError("TRIAL_CPU_BUDGET_EXCEEDED")
                 if set(true[train]) != set(range(len(labels))):
                     raise RuntimeError("TRAIN_FOLD_CLASS_SUPPORT_MISSING")
-                model = _fitted(trial, features[trial.feature][train],
-                                true[train], environment[train])
-                fits += 1
+                if trial.topology == "factorized":
+                    model = _fitted(trial, features[trial.feature][train],
+                                    true[train], environment[train], plan["ontology"])
+                else:
+                    model = _fitted(trial, features[trial.feature][train],
+                                    true[train], environment[train])
+                fits += getattr(model, "fit_count_", 1)
                 predictions[validation] = _predict_indices(
                     model, features[trial.feature][validation], len(labels))
                 entry["folds"].append({
@@ -375,7 +435,16 @@ def run_design(task_spec: Mapping | TaskSpec,
                                if budget_exhausted else "NO_ELIGIBLE_DESIGN")
         receipt["model_delivered"] = False
         raise IndustrialDesignRejected(receipt)
-    if fits >= budget["max_fits"] or time.process_time() - begun > budget["max_cpu_seconds"]:
+    if budget_exhausted:
+        # Refuse a truncated portfolio: an earlier eligible arm cannot mask
+        # an unevaluated candidate after the predeclared fit budget expires.
+        receipt["decision"] = "BUDGET_EXHAUSTED_BEFORE_FINAL_REFIT"
+        receipt["model_delivered"] = False
+        raise IndustrialDesignRejected(receipt)
+    final_refit_cost = (1 if selected[1].topology == "direct"
+                        else _factorized_fit_cost(plan["ontology"]))
+    if (fits + final_refit_cost > budget["max_fits"]
+            or time.process_time() - begun > budget["max_cpu_seconds"]):
         receipt["decision"] = "BUDGET_EXHAUSTED_BEFORE_FINAL_REFIT"
         receipt["model_delivered"] = False
         raise IndustrialDesignRejected(receipt)
@@ -383,8 +452,12 @@ def run_design(task_spec: Mapping | TaskSpec,
     # Refitting only the selected candidate on the original TRAIN data is not
     # another validation run. It does not revise any candidate thresholds.
     try:
-        trained = _fitted(trial, features[trial.feature], true, environment)
-        fits += 1
+        if trial.topology == "factorized":
+            trained = _fitted(trial, features[trial.feature], true,
+                              environment, plan["ontology"])
+        else:
+            trained = _fitted(trial, features[trial.feature], true, environment)
+        fits += getattr(trained, "fit_count_", 1)
     except Exception as exc:
         receipt["decision"] = "SELECTED_REFIT_FAILED"
         receipt["failure"] = repr(exc)
