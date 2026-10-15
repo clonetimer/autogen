@@ -28,6 +28,8 @@ records, receipt = intake_train_source(
     staged["manifest"],
     "reviewed_physical_map.json",
     native_binding_path="campaign/runtime_binding.json",
+    native_source_checkout_root="/reviewed/native-simulation-project",
+    native_wheel_factory_file="/reviewed/Basilisk/utilities/simIncludeRW.py",
 )
 # For bsk-backed datasets, verify physical construction and runtime linkage
 # independently. 'receipt' DOES NOT make that verification by itself.
@@ -67,8 +69,13 @@ or operating families*, not overlapping windows from one run.
 For `native_basilisk` + `simulation`, R82 additionally requires a
 `runtime_binding.json` with existing source references and SHA-256
 values for the native runtime, fault-effect source, and Basilisk wheel
-factory. It does not execute Basilisk or recheck that those hashes
-correspond to physical simulation behavior. `real_equipment_unreviewed`
+factory. The reviewer MUST also provide an actual source checkout and the
+installed Basilisk `simIncludeRW.py` file. The intake verifies all three
+on-disk files against their declared SHA-256 and checks exact expected
+source-relative paths. Missing files, bad hashes or substituted paths are
+rejected. **Matching source hashes are still not evidence that the
+corresponding simulation was executed, that its dynamics are correct, or
+that the source was independently authenticated.** `real_equipment_unreviewed`
 + `real_unreviewed` may enter a **research TRAIN** experiment but is
 never called qualified equipment evidence merely because it was ingested.
 `software_synthetic`, missing binding, unknown roles and oracle-only
