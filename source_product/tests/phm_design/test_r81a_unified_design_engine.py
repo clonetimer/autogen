@@ -211,3 +211,19 @@ def test_exact_trajectory_cannot_be_renamed_as_independent_machine_or_world():
     with pytest.raises(TaskSpecRejected,
                        match="DUPLICATE_TRAJECTORY_ACROSS_PHYSICAL_GROUPS"):
         run_design(spec, records)
+
+
+def test_neural_model_can_predict_deployment_only_time_and_sensor_rows():
+    spec = task("industrial_bearing_classification_demo.json",
+                compare=("tcn",))
+    records = synthetic_records(spec)
+    result = run_design(spec, records, acceptance=FUNCTIONAL_SCREEN)
+    assert result.trial.learner == "torch_tcn"
+    assert result.audit["independent_qualification"] is False
+    predicted = result.predict(records[3]["measurements"])
+    assert len(predicted) == 1
+    assert predicted[0] in spec["task"]["labels"]
+    forbidden = copy.deepcopy(records[3]["measurements"])
+    forbidden[0]["environment_family"] = 9
+    with pytest.raises(TaskSpecRejected, match="UNDECLARED_OR_PROTECTED_OBSERVATION"):
+        result.predict(forbidden)
