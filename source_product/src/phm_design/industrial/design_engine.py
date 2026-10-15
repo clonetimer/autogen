@@ -403,6 +403,7 @@ class IndustrialDesignArtifact:
             "training_manifest_sha256": self.audit["training_manifest_sha256"],
             "training_observations_sha256": self.audit["training_observations_sha256"],
             "trial_selection_audit": self.audit,
+            "trial_selection_audit_sha256": _sha(self.audit),
             "model_sha256": binary_hash,
             "calibration_state": (asdict(self.calibrator)
                                   if self.calibrator is not None else None),
