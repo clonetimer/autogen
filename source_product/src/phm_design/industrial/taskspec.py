@@ -257,13 +257,30 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
                       required=("candidate_max", "compare", "objectives",
                                 "allow_refusal", "budget"),
                       allowed=("candidate_max", "compare", "objectives",
-                               "allow_refusal", "budget"))
+                               "allow_refusal", "budget", "representations", "topologies"))
     max_trials = _positive_int(design["candidate_max"], "design.candidate_max",
                                maximum=128)
     backbones = _nonempty_strings(design["compare"], "design.compare")
     objectives = _nonempty_strings(design["objectives"], "design.objectives")
     if not set(backbones).issubset(BACKBONES) or not set(objectives).issubset(OBJECTIVES):
         _reject("UNREGISTERED_ARCHITECTURE_OR_TRAINING_OBJECTIVE")
+    representations = _nonempty_strings(
+        design.get("representations", ["temporal_bins"]),
+        "design.representations")
+    if not set(representations).issubset(
+            {"temporal_bins", "random_kernels", "difference_kernels"}):
+        _reject("UNREGISTERED_FEATURE_PROGRAM")
+    topologies = _nonempty_strings(
+        design.get("topologies", ["direct"]), "design.topologies")
+    if not set(topologies).issubset({"direct", "factorized"}):
+        _reject("UNREGISTERED_DIAGNOSIS_TOPOLOGY")
+    if "factorized" in topologies and kind != "joint_diagnosis":
+        _reject("FACTORIZED_REQUIRES_JOINT_DIAGNOSIS")
+    if "factorized" in topologies:
+        pairs = [(attrs[label]["component"], attrs[label]["mechanism"])
+                 for label in labels if label != task["healthy_label"]]
+        if len(pairs) != len(set(pairs)):
+            _reject("FACTORIZED_DUPLICATE_COMPONENT_MECHANISM_PAIR")
     if not _bool(design["allow_refusal"], "design.allow_refusal"):
         _reject("DESIGN_REFUSAL_MUST_BE_AVAILABLE")
     budget = _mapping(design["budget"], "design.budget",
@@ -278,10 +295,14 @@ def compile_task_spec(source: Mapping | TaskSpec, *, train_manifest: Sequence[Ma
     for backbone in backbones:
         for objective in objectives:
             if objective != "ERM" and backbone not in NEURAL:
-                continue  # A tree/linear model does not implement backprop DG.
-            grid.append({"representation": ("learned_sequence" if backbone in NEURAL
-                                            else "tabular_signal_summary"),
-                         "backbone": backbone, "objective": objective})
+                continue  # Tree and linear models cannot use backprop DG.
+            choices = (["learned_sequence"] if backbone in NEURAL
+                       else representations)
+            for representation in choices:
+                for topology in topologies:
+                    grid.append({"representation": representation,
+                                 "backbone": backbone, "objective": objective,
+                                 "topology": topology})
     if not grid:
         _reject("AUTO_NO_VALID_PLAN")
     if max_fits < max_trials:
