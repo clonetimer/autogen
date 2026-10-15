@@ -81,6 +81,56 @@ concatenation. Adaptive `FeedbackPlanner` mutation remains in the older
 grammar rather than implying closed-loop program proposal has been unified.
 Neural learned front-end composition is also not implemented.
 
+## R81c third slice — source TRAIN OOF feedback-driven program search
+
+The optional `design.adaptive_feature_search` enables a **bounded**, genuinely
+feedback-guided selection order, integrated into the **same**
+`run_design` executor. It extends the existing `open_design.FeedbackPlanner`
+with a finite `bounded_feedback` mode. Two declared singleton seeds are
+evaluated first; subsequent candidates are chosen based on prior completed
+**TRAIN-source LOEO OOF class errors**, rather than a fixed list order.
+
+```json
+{
+  "design": {
+    "candidate_max": 3,
+    "compare": ["linear"],
+    "objectives": ["ERM"],
+    "topologies": ["direct"],
+    "adaptive_feature_search": {
+      "atoms": ["temporal_bins", "random_kernels", "difference_kernels"],
+      "max_programs": 3
+    }
+  }
+}
+```
+
+Add this `adaptive_feature_search` block within the existing full TaskSpec,
+keeping the other required fields. This declares exactly **3 proposals** from
+a fixed **7-program pool** (all 1–3 atom subsets). The pool is fully hashed
+before training and accepts only registered existing atoms, a single
+classical learner/template, one diagnosis topology, and ERM. Adaptive search
+cannot also declare `representations` or static `feature_programs`.
+Every proposal actually trains and competes on the same source TRAIN
+environment-OOF folds; the next program depends on the preceding OOF loss.
+
+`adaptive_trace` records each proposed program, parent program, source TRAIN
+class errors, risk loss, proposal step, immutable candidate-grid index,
+rejected trials and untested pool count. Selection and refit are still subject
+to the **same** bounded fit/CPU budgets and prior acceptance/refusal policy.
+
+**Scientific restriction:** adaptive reuse of source TRAIN heldout folds makes
+their metrics *optimization feedback*, never an unbiased independent test.
+Unexplored programs in the declared pool are not certified inferior. Results
+are development selection only, with no claim of online causality or real
+machine OOD generalization. This slice does **not** yet implement adaptive
+learner/topology mutation or availability-aware per-atom ensemble training.
+
+```bash
+cd source_product
+python -m pytest -q tests/phm_design/test_r81c_adaptive_feature_search.py
+```
+
 ### Trusted research inference replay (not independent retraining)
 
 The `phm_design.industrial.artifact_io.load_trusted_artifact` API can
@@ -125,7 +175,7 @@ python -m pytest -q tests/phm_design/test_r81c_feature_program_composition.py
   multi-head fits conservatively charge their full planned head count to avoid
   undercounting partially attempted training. These are
   **best-effort machine-dependent measurements**, not FLOPs-equivalent budgets.
-- R81c still does not provide availability-aware/adaptive feature-program search,
+- R81c still does not provide availability-aware feature-program ensembles,
   parameter/FLOPs/peak-memory ledgers, full provenance replay, or a sealed FINAL steward.
 
 ## Local regression
