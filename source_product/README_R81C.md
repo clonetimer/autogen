@@ -73,13 +73,11 @@ are no implicit extra classical feature candidates. Both may be explicitly
 declared to compare single-atom and multi-atom programs. Learned sequence
 models continue to use their established `learned_sequence` representation.
 
-**Not yet implemented:** availability-aware `available_stack` or
-`available_average` requires an inner physical-group-OOF per-atom training
-contract, so such programs are explicitly rejected rather than faked by
-concatenation. Adaptive `FeedbackPlanner` mutation remains in the older
-`open_design` path; this slice integrates the safe, predeclared program
-grammar rather than implying closed-loop program proposal has been unified.
-Neural learned front-end composition is also not implemented.
+The fourth slice below adds availability-aware `available_stack` and
+`available_average` with explicit measured validity channels, while the
+third slice integrates a bounded `FeedbackPlanner` mode. These are separate
+predeclared candidate pathways, not arbitrary executable programs.
+Neural learned front-end composition is still not implemented.
 
 ## R81c third slice — source TRAIN OOF feedback-driven program search
 
@@ -124,7 +122,8 @@ their metrics *optimization feedback*, never an unbiased independent test.
 Unexplored programs in the declared pool are not certified inferior. Results
 are development selection only, with no claim of online causality or real
 machine OOD generalization. This slice does **not** yet implement adaptive
-learner/topology mutation or availability-aware per-atom ensemble training.
+learner/topology mutation. The later fourth slice provides fixed-form
+availability-aware ensembles, not adaptive availability search.
 
 ```bash
 cd source_product
@@ -242,8 +241,9 @@ python -m pytest -q tests/phm_design/test_r81c_available_late_fusion.py
   multi-head fits conservatively charge their full planned head count to avoid
   undercounting partially attempted training. These are
   **best-effort machine-dependent measurements**, not FLOPs-equivalent budgets.
-- R81c still does not provide availability-aware feature-program ensembles,
-  parameter/FLOPs/peak-memory ledgers, full provenance replay, or a sealed FINAL steward.
+- R81c still does not provide dynamic per-sample availability, neural
+  availability-aware feature composition, parameter/FLOPs/peak-memory ledgers,
+  full training provenance replay, or a sealed FINAL steward.
 
 ## Local regression
 
