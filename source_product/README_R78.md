@@ -51,6 +51,16 @@ GroupDRO-TCN and V-REx-TCN use fixed seeds and roughly equal optimizer-step
 budgets. The target is generated *only after* training is complete and is not
 used for model selection.
 
+The first frozen run at commit `3d7979d` is available in
+[Actions run 38685417982](https://github.com/clonetimer/autogen/actions/runs/38685417982).
+Mean unseen synthetic accuracies: ERM-TCN 5.36%, GroupDRO-TCN 1.79%,
+V-REx-TCN 1.79%; all three healthy false-alarm rates were 100%. These
+are **failures**, not positive OOD evidence. The synthetic target has now
+been revealed. The automatically repeated OOD scoring step has been
+removed from Dev Guard to prevent repeated feedback from contaminating
+subsequent neural architecture design. The original script and audit remain
+for reproducing a revealed development result, never for new qualification.
+
 This **is not Basilisk**, is not a faithful satellite-thermal dynamics
 simulation, and does not provide independence after a human has examined the
 target outcomes. All outputs must be treated as REVEALED_SYNTHETIC_DEV_STRESS
