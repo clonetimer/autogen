@@ -619,7 +619,9 @@ def run_design(task_spec: Mapping | TaskSpec,
             break
     receipt["fold_model_fits"] = fits
     if planner is not None:
-        receipt["adaptive_trace"] = {
+        # Normalize tuple-valued Program atoms before exposing the in-memory
+        # audit: JSON export and trusted reload must preserve the same shape.
+        receipt["adaptive_trace"] = json.loads(json.dumps({
             "schema": "phm.industrial.source-feedback-search.v0",
             "proposal_count": len(planner.proposals),
             "candidate_pool_count": len(plan["candidate_grid"]),
@@ -630,7 +632,7 @@ def run_design(task_spec: Mapping | TaskSpec,
             "proposals": planner.proposals,
             "archive": planner.archive(),
             "development_selection_not_independent_validation": True,
-        }
+        }, sort_keys=True, allow_nan=False))
     receipt["total_cpu_seconds_at_selection"] = round(time.process_time() - begun, 5)
     receipt["acceptance_policy"] = asdict(acceptance)
     if selected is None:
