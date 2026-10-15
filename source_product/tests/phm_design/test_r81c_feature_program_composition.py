@@ -92,6 +92,9 @@ def test_combined_program_runs_real_fold_fits_and_deployment_without_labels(tmp_
     assert audit["candidate_grid_sha256"] == artifact.audit["candidate_grid_sha256"]
     assert audit["training_manifest_sha256"] == artifact.audit["training_manifest_sha256"]
     assert audit["independent_qualification"] is False
+    assert audit["runtime_fingerprint"]["packages"]["numpy"]
+    assert audit["runtime_fingerprint"]["packages"]["scikit-learn"]
+    assert audit["runtime_fingerprint"]["provenance_authenticated"] is False
     with pytest.raises(ValueError, match="EXPLICIT_TRUST_REQUIRED"):
         load_trusted_artifact(tmp_path / "feature_program_model")
     restored = load_trusted_artifact(tmp_path / "feature_program_model",
