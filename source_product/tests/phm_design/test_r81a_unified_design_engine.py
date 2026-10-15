@@ -201,3 +201,13 @@ def test_no_r71_r78_or_final_targets_in_any_design_record():
     assert result.audit["independent_qualification"] is False
     assert result.audit["final_evaluation_performed"] is False
     assert result.audit["search_budget"]["max_cpu_seconds"] > 0
+
+
+def test_exact_trajectory_cannot_be_renamed_as_independent_machine_or_world():
+    spec = task("industrial_bearing_classification_demo.json",
+                compare=("linear",))
+    records = synthetic_records(spec)
+    records[1]["measurements"] = copy.deepcopy(records[0]["measurements"])
+    with pytest.raises(TaskSpecRejected,
+                       match="DUPLICATE_TRAJECTORY_ACROSS_PHYSICAL_GROUPS"):
+        run_design(spec, records)
