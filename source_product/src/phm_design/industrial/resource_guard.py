@@ -52,6 +52,39 @@ def _terminate(process):
         process.join(timeout=1)
 
 
+def _invoke_worker(target, args, limit):
+    """Parent-enforced spawn deadline for a top-level worker callable.
+
+    Keeping the timeout mechanism separate from model training allows a
+    deterministic blocked-worker regression, independent of host speed.
+    """
+    ctx = mp.get_context("spawn")
+    reader, writer = ctx.Pipe(duplex=False)
+    child = ctx.Process(target=target, args=(writer, *args))
+    started = time.monotonic()
+    try:
+        child.start()
+        writer.close()
+        remaining = max(0.0, limit - (time.monotonic() - started))
+        if not reader.poll(remaining):
+            _terminate(child)
+            raise GuardedDesignTimeout(limit)
+        try:
+            status, result = reader.recv()
+        except EOFError as exc:
+            raise RuntimeError("GUARDED_WORKER_EXITED_WITHOUT_AUDIT") from exc
+        if time.monotonic() - started > limit:
+            _terminate(child)
+            raise GuardedDesignTimeout(limit)
+        return status, result
+    finally:
+        reader.close()
+        writer.close()
+        if child.pid is not None:
+            _terminate(child)
+            child.join(timeout=1)
+
+
 def run_design_guarded(task_spec, records, *, acceptance=None):
     """Train in a separate process under an opt-in HARD wall time bound.
 
@@ -72,34 +105,12 @@ def run_design_guarded(task_spec, records, *, acceptance=None):
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_DESIGN_ACCEPTANCE_TYPE")
 
-    ctx = mp.get_context("spawn")
-    reader, writer = ctx.Pipe(duplex=False)
-    child = ctx.Process(target=_worker, args=(writer, raw, records, acceptance))
-    started = time.monotonic()
-    try:
-        child.start()
-        writer.close()
-        remaining = max(0.0, limit - (time.monotonic() - started))
-        if not reader.poll(remaining):
-            _terminate(child)
-            raise GuardedDesignTimeout(limit)
-        try:
-            status, result = reader.recv()
-        except EOFError as exc:
-            raise RuntimeError("GUARDED_WORKER_EXITED_WITHOUT_AUDIT") from exc
-        if time.monotonic() - started > limit:
-            _terminate(child)
-            raise GuardedDesignTimeout(limit)
-        if status == "refused":
-            raise IndustrialDesignRejected(result)
-        if status == "failed":
-            raise RuntimeError("GUARDED_WORKER_FAILED:" + str(result))
-        if status != "delivered":
-            raise RuntimeError("UNKNOWN_GUARDED_WORKER_RESULT")
-        return result
-    finally:
-        reader.close()
-        writer.close()
-        if child.pid is not None:
-            _terminate(child)
-            child.join(timeout=1)
+    status, result = _invoke_worker(
+        _worker, (raw, records, acceptance), limit)
+    if status == "refused":
+        raise IndustrialDesignRejected(result)
+    if status == "failed":
+        raise RuntimeError("GUARDED_WORKER_FAILED:" + str(result))
+    if status != "delivered":
+        raise RuntimeError("UNKNOWN_GUARDED_WORKER_RESULT")
+    return result
