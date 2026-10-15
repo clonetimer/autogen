@@ -59,6 +59,7 @@ jobs:
           with ZipFile(w) as z:
               contents=set(z.namelist())
               assert 'phm_design/industrial/taskspec.py' in contents
+              assert 'phm_design/industrial/design_engine.py' in contents
               assert 'phm_design/industrial/__main__.py' in contents
               assert 'phm_design/industrial/__init__.py' in contents
               print('Wheel includes R80 industrial compiler')
