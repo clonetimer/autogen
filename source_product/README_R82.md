@@ -85,6 +85,61 @@ never called qualified equipment evidence merely because it was ingested.
 `software_synthetic`, missing binding, unknown roles and oracle-only
 channels are rejected.
 
+## R82.3 — native producer execution and evidence collection
+
+R82.3 adds an **opt-in trusted operator-side** launcher for the real
+`SatAgentSimulation` RW data generator. Execute it in the same Python
+environment as the physically installed `bsk` runtime:
+
+```bash
+# Python package sat-sim and the installed Basilisk wheel must already work.
+cd /path/to/autogen/source_product
+python -m phm_design.industrial.native_campaign_execution \
+  --source-checkout /path/to/SatAgentSimulation \
+  --config /path/to/SatAgentSimulation/configs/integration/rw_dataset_factory.json \
+  --output /separate-data/rw_native_campaign \
+  --evidence-dir /separate-data/rw_native_execution_evidence
+```
+
+The launch refuses proxy-enabled configurations, unexpected fault labels,
+missing source files, modified tracked files, uncommitted source revisions,
+missing installed Basilisk or versions outside the producer-approved
+`2.11.0` / `2.11.0+satfix1` range. It runs the producer's existing
+`generate_astrograph_rw_fault_dataset.py --fail-fast` using the **current
+Python interpreter**. No dependency is silently installed or simulated.
+
+The review receipt stores the source Git revision, generator/native-module
+and installed `simIncludeRW.py` SHA-256, claimed installed BSK version,
+factory configuration hash, generator exit code/log hash, dataset index hash
+and source TRAIN candidate-audit results. Runtime candidate review must pass
+after the producer exits successfully. Otherwise the receipt records
+`REFUSED`; there is no model delivery and no claim of actual physical
+qualification.
+
+The default upstream source config requests 9 TRAIN, 3 VALIDATION and
+3 TEST pairs **per declared fault**, each with corresponding nominal cases.
+This is a producer configuration, not observed completed case counts.
+The trusted producer necessarily creates multiple split roles; the later
+AutoDesign worker receives **only the isolated TRAIN view**.
+`source_intake` and `r82_rw_study` remain separate, explicit steps.
+
+**Important:** This runner does **not** establish independent physical
+provenance, provide a sealed FINAL steward, or prove transferability.
+The runner is an execution/evidence aid rather than a hardware or flight
+model validator. Its GitHub CI tests use mocked subprocesses and fake module
+files and are expressly **not** Basilisk execution tests.
+
+For an official-wheel `2.11.0+satfix1` environment, upstream provides
+`scripts/build_bsk_compat_wheels.py` to change only compatible wheel
+distribution metadata while retaining the original Basilisk payload bytes.
+Do not relabel, silently substitute versions or claim compatibility
+without inspecting the actual installed environment and wheel build report.
+
+```bash
+cd source_product
+python -m pytest -q tests/phm_design/test_r82_native_campaign_execution.py
+```
+
 ## R82.2 — Basilisk candidate physics gate before data preparation
 
 In the connected SatAgentSimulation producer,
