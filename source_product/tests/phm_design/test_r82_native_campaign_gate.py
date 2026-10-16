@@ -182,7 +182,7 @@ def test_identical_telemetry_bytes_across_split_are_rejected(tmp_path):
     from shutil import copyfile
     campaign = campaign_fixture(tmp_path / "campaign")
     from_file = _contract(campaign, role="nominal", split="train").parent.parent / "trace.csv"
-    to_file = _contract(campaign, role="fault", split="test").parent.parent / "trace.csv"
+    to_file = _contract(campaign, role="fault", split="validation").parent.parent / "trace.csv"
     copyfile(from_file, to_file)
     with pytest.raises(ValueError, match="CROSS_SPLIT_LEAKAGE"):
         prepare(campaign, tmp_path / "prepared")
