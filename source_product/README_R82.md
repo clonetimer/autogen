@@ -85,6 +85,50 @@ never called qualified equipment evidence merely because it was ingested.
 `software_synthetic`, missing binding, unknown roles and oracle-only
 channels are rejected.
 
+## R82.2 — Basilisk candidate physics gate before data preparation
+
+In the connected SatAgentSimulation producer,
+`classify_simulation_fidelity` records `A_ENGINEERING_BASILISK_NATIVE`,
+actual connected/recorded module counts and runtime truth status. The paired
+validation agents separately mark `formal_training_qualified`,
+`physics_candidate_ready`, `diagnostic_validation_passed` and
+`basilisk_diagnostic_candidate`. **R82.2 now checks these recorded results**
+before the fixed-wheel adapter copies any case to a model-ready manifest.
+
+The trusted campaign preflight also checks every TRAIN fault/nominal pair:
+matched parameters and seed, the original (not AstroGraph oracle projection)
+source trace columns, sampling cadence and row count, and consistency between
+the case contract and the simulation runtime report. Failure refuses the
+whole native research preparation, not just the affected case.
+
+```bash
+cd source_product
+python -m phm_design.industrial.native_campaign_gate \
+  --campaign /data/actual_basilisk_campaign \
+  --report /data/native_train_candidate_review.json
+
+# This repeats the gate automatically before preparing any model-ready CSV:
+python -c "from phm_design.adapters.sat_rw import prepare; prepare('/data/actual_basilisk_campaign', '/data/rw_prepared')"
+```
+
+The preflight inspects source TRAIN contract/task/report/trace only. It does
+not read VALIDATION or TEST telemetry. The trusted `sat_rw.prepare` stage
+can then process all declared splits, but **requires the native candidate
+flags on every case**. The actual research TRAIN worker remains isolated
+from heldout roles.
+
+**Scientific boundary:** producer self-reported fidelity and physics
+candidate status do not equal expert approval. `training_ready` and
+`formal_diagnostic_qualified` may remain false while independent review
+is pending; R82.2 does not override either value. The report explicitly
+records `physical_execution_independently_attested=false` and
+`independent_qualification=false`. Real Basilisk execution still requires
+the campaign files and the correct installed `bsk` version.
+
+```bash
+python -m pytest -q tests/phm_design/test_r82_native_campaign_gate.py
+```
+
 ## R82.1 — executable six-channel native reaction-wheel TRAIN pilot
 
 The six-channel TaskSpec is now supplied at
