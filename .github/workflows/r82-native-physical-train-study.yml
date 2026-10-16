@@ -1,11 +1,6 @@
 name: R82 native physical TRAIN AutoDesign study
 
-on:
-  pull_request:
-    paths:
-      - ".github/workflows/r82-native-physical-train-study.yml"
-  workflow_dispatch:
-
+# Deliberately manual: real physics studies are costly and an eligible-model\n# refusal is valid scientific evidence, not a CI software regression.\non:\n  workflow_dispatch:\n
 permissions:
   contents: read
 
