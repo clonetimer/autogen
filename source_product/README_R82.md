@@ -1,5 +1,21 @@
 # R82.0 — reviewed TRAIN-source intake (development-only)
 
+> **Updated real-data status (2026-10-16):** The original
+> `SatAgentSimulation` native fault generator has now executed successfully
+> under hash-verified `bsk==2.11.0+satfix1`: 33 fault/nominal pairs across
+> TRAIN/VALIDATION/TEST, with 27 pairs (54 real Basilisk trajectories)
+> available to the research TRAIN worker. Source pair-physics and diagnostic
+> candidate checks passed. Unified AutoDesign performed genuine TRAIN-only
+> environment OOF but **refused both eligible-model candidates**, preserving
+> the original 90% accuracy / 80% worst-class recall gate. The verified
+> distinction between successful source generation and unsuccessful model
+> acceptance is documented in
+> [`evidence/R82_NATIVE_TRAIN_STUDY_20261016.md`](evidence/R82_NATIVE_TRAIN_STUDY_20261016.md).
+> Physical expert qualification, genuine cross-equipment OOD, and sealed
+> FINAL testing remain open.
+
+
+
 **Status:** stacked draft on R81c; this is a source-contract/gating slice,
 not a Basilisk simulation run, real bearing experiment, or independent OOD
 qualification.
