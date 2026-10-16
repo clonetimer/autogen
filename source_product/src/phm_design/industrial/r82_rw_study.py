@@ -79,18 +79,20 @@ def run_rw_train_study(*, task_spec, development_manifest, physical_map,
             report["model_delivered"] = True
             report["research_model_audit_sha256"] = sha_file(
                 trained / "audit.json")
+            chosen = next(
+                item for item in model.audit["attempts"]
+                if item.get("trial") == model.audit["selected_trial"])
             report["source_oof_selection"] = {
                 "selected_trial": model.audit["selected_trial"],
                 "decision": model.audit["decision"],
-                "source_heldout_metrics": model.audit["selected_metrics"],
+                "source_heldout_metrics": chosen["metrics"],
                 "independent_qualification": False,
             }
-    except (IndustrialDesignRejected, GuardedDesignTimeout, Exception) as exc:
+    except Exception as exc:
         report["status"] = "REFUSED"
         report["refusal_code"] = (getattr(exc, "code", None) or
-                                   getattr(exc, "audit", {}).get("decision")
-                                   if hasattr(exc, "audit") else
-                                   getattr(exc, "code", type(exc).__name__))
+                                  getattr(exc, "audit", {}).get("decision") or
+                                  type(exc).__name__)
         report["model_delivered"] = False
         write_json(output / "research_report.json", report)
         raise
