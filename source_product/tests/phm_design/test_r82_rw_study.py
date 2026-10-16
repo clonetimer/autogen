@@ -143,3 +143,31 @@ def test_non_native_prepared_manifest_refuses_without_creating_study(tmp_path):
     with pytest.raises(ValueError, match="R82_REQUIRES_PREPARED_SIX_CHANNEL_NATIVE_RW"):
         run_rw_train_study(**args, output=tmp_path / "forbidden")
     assert not (tmp_path / "forbidden").exists()
+
+
+def test_review_map_draft_cannot_be_submitted_as_approved_operating_regimes(tmp_path):
+    from phm_design.industrial.source_intake import (
+        draft_reviewed_physical_map, intake_train_source)
+    args = rw_fixture(tmp_path)
+    draft_path = tmp_path / "unreviewed_map.json"
+    audit = draft_reviewed_physical_map(
+        read_json(args["task_spec"]), args["development_manifest"], draft_path)
+    assert audit["model_ready"] is False
+    draft = read_json(draft_path)
+    assert len(draft["records"]) == 24
+    assert all(item["operating_regime"] == "REVIEW_REQUIRED"
+               for item in draft["records"].values())
+    with pytest.raises(ValueError, match="R82_PHYSICAL_MAP_FIELDS_INVALID"):
+        intake_train_source(
+            read_json(args["task_spec"]), args["development_manifest"], draft_path,
+            native_binding_path=args["runtime_binding"],
+            native_source_checkout_root=args["native_source_checkout"],
+            native_wheel_factory_file=args["basilisk_wheel_factory"])
+
+
+def test_rw_train_study_guards_against_existing_output(tmp_path):
+    args = rw_fixture(tmp_path)
+    output = tmp_path / "preexisting"
+    output.mkdir()
+    with pytest.raises(FileExistsError, match="R82_STUDY_OUTPUT_EXISTS"):
+        run_rw_train_study(**args, output=output, validate_only=True)
