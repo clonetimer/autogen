@@ -1,11 +1,6 @@
 name: R82 original Basilisk RW fault campaign
 
-on:
-  pull_request:
-    paths:
-      - ".github/workflows/r82-native-original-fault-campaign.yml"
-  workflow_dispatch:
-
+# Deliberately manual: real physics studies are costly and an eligible-model\n# refusal is valid scientific evidence, not a CI software regression.\non:\n  workflow_dispatch:\n
 permissions:
   contents: read
 
