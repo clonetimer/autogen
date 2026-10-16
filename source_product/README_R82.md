@@ -85,6 +85,91 @@ never called qualified equipment evidence merely because it was ingested.
 `software_synthetic`, missing binding, unknown roles and oracle-only
 channels are rejected.
 
+## R82.1 — executable six-channel native reaction-wheel TRAIN pilot
+
+The six-channel TaskSpec is now supplied at
+`examples/industrial/satellite_rw_native_offline_train.json`.
+It matches the existing fixed-wheel `sat_rw.prepare()` adapter:
+three observable wheel speeds (`rad/s`) followed by three **controller
+command** torques (`N*m`). Neither actual wheel torque nor a simulator's
+fault-injection truth is an input. The supervised labels are
+NOMINAL/FRICTION_INCREASE/JAM/TORQUE_AUTHORITY_LOSS.
+
+This workflow is ready to use **when a real, auditable source campaign has
+been produced**. In a trusted data-preparation environment, first run:
+
+```bash
+cd source_product
+python -c "from phm_design.adapters.sat_rw import prepare; prepare('/campaign/native_rw', '/study/prepared_rw')"
+```
+
+The preparer creates separate development (TRAIN/VALIDATION) and TEST
+manifests. Only the development manifest is ever supplied to this R82
+training workflow. For a review worksheet, first isolate the TRAIN files:
+
+```python
+from phm_design.industrial.source_intake import (
+    stage_train_only_view, draft_reviewed_physical_map)
+from phm_design.io import read_json
+
+staged = stage_train_only_view(
+    "/study/prepared_rw/development/dataset.json", "/study/train_for_review")
+draft_reviewed_physical_map(
+    read_json("examples/industrial/satellite_rw_native_offline_train.json"),
+    staged["manifest"], "/study/physical_map_REVIEW.json")
+```
+
+The worksheet contains the exact existing native `group_id` and
+`operating_regime: REVIEW_REQUIRED` for each TRAIN case. A reviewer **must**
+replace each placeholder with a supported, documented operating condition.
+The program explicitly rejects any remaining `REVIEW_REQUIRED` value;
+neither labels nor array/trajectory indices choose environment bins.
+
+After reviewing the map and generating a binding receipt from the **actual**
+installed Basilisk environment, the R82 research runner can preflight and fit:
+
+```bash
+python -m phm_design.industrial.r82_rw_study \
+  --task-spec examples/industrial/satellite_rw_native_offline_train.json \
+  --development-manifest /study/prepared_rw/development/dataset.json \
+  --physical-map /study/physical_map_REVIEWED.json \
+  --runtime-binding /study/prepared_rw/runtime_binding.json \
+  --native-source-checkout /sat/SatAgentSimulation \
+  --basilisk-wheel-factory /venv/lib/pythonX.Y/site-packages/Basilisk/utilities/simIncludeRW.py \
+  --output /study/r82_preflight --validate-only
+
+# Repeat with a NEW --output directory and omit --validate-only to fit.
+```
+
+The path `/study/prepared_rw/runtime_binding.json` is illustrative:
+the basic six-channel `sat_rw.prepare` alone **does not emit this file**.
+It can be produced by the separate mechanism-review workflow or by an
+audited native source-binding collector; it must match the actual source
+checkout and installed Basilisk wheel-factory module. Do not copy a hash from
+some other checkout simply to pass intake.
+
+The output `research_report.json` records either accepted TRAIN-only
+intake, a TRAIN OOF research model selection (with a bounded child process),
+or an explicit refusal. It always sets `independent_qualification=false`
+and `actual_basilisk_execution_attested=false`, even if source SHA-256
+matches. This is a **research executor**, not an independent source steward.
+
+**Important version blocker**: the current connected
+`clonetimer/SatAgentSimulation` main branch pins
+`bsk==2.11.0+satfix1`, while autogen's original simulation extra uses
+`bsk==2.11.0` and earlier platform work used `2.10.2`.
+R82 does not silently upgrade/downgrade these environments. A real
+campaign must be reproduced in its actual pinned source environment, and
+its `simIncludeRW.py` hash verified against that installed environment.
+
+```bash
+python -m pytest -q tests/phm_design/test_r82_rw_study.py
+```
+
+These tests deliberately synthesize all telemetry and mocked source files
+to verify plumbing. They provide **zero evidence** of executed Basilisk
+dynamics or field generalization.
+
 ## Reproducibility and scientific limits
 
 The receipt contains source manifest hash, physical map hash, optional
