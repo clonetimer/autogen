@@ -85,6 +85,64 @@ never called qualified equipment evidence merely because it was ingested.
 `software_synthetic`, missing binding, unknown roles and oracle-only
 channels are rejected.
 
+## R82.4 — independently executed *native* RW dynamics smoke
+
+On 2026-10-16, the development environment received the **original
+Linux x86-64 Basilisk `bsk==2.11.0` wheel**. Its SHA-256 exactly
+matches the source producer's pinned official wheel digest:
+
+```
+d51fe1ffa1b0b03dc415034b210497b28a2504428d4d8e71b481542a08c08a0a
+```
+
+Unlike previous CI contract mocks, we **actually imported and executed**
+`spacecraft.Spacecraft`,
+`reactionWheelStateEffector.ReactionWheelStateEffector`, a three-wheel
+`simIncludeRW.rwFactory` and an `ArrayMotorTorqueMsg`. Importantly,
+the wheel effector must be linked to BOTH the spacecraft *and* the
+Basilisk simulation Task. Otherwise the wheel speed stays unchanged
+because its motor-command update never runs.
+
+The standalone 12-second run recorded 121 time samples per case:
+
+| Basilisk wheel 0 commanded torque | measured speed delta |
+|---|---|
+| +0.02 N·m | +3.017893 rad/s |
+| 0 N·m | 0 rad/s |
+| −0.02 N·m | −3.017893 rad/s |
+
+The smoke script is
+[`research/r82_basilisk_native_rw_smoke.py`](research/r82_basilisk_native_rw_smoke.py).
+Source-local audit details are in
+[`evidence/r82_native_bsk211_local_smoke_20261016.json`](evidence/r82_native_bsk211_local_smoke_20261016.json).
+
+A separate GitHub Actions workflow
+[`R82 native Basilisk RW physics smoke`](../.github/workflows/r82-native-basilisk-physics.yml)
+downloads the official `2.11.0` Linux wheel, verifies the same pinned
+SHA-256, installs declared dependencies and performs the **three actual
+native simulator runs** on Linux/Python3.13. Native runtime correctness is
+verified by the causal wheel-speed response, not by an import-only test.
+It is an independently executed *software runtime* smoke, **not independent
+physical model qualification**.
+
+The upstream simulation platform pins `bsk==2.11.0+satfix1`. The exact
+official wheel has a Pillow `<=12.2.0` metadata constraint, whereas
+`+satfix1` uses `pillow<13`. The upstream
+`SatAgentSimulation/scripts/build_bsk_compat_wheels.py` performs a
+**metadata-only repack**. A local repack of the hash-verified official
+Linux wheel was successfully installed and the same three native runs
+repeated without changed wheel-speed trajectories. All **880 non-dist-info
+payload files** were byte-identical. This metadata change is not a Basilisk
+physics code patch; it does not supply missing original campaign data.
+
+**Critical limitation:** these smoke cases are not the upstream
+SatAgentSimulation ADCS fault-dataset campaign. No real friction, jam or
+torque-authority fault trial, source TRAIN group separation, OOD study,
+independent steward or FINAL evaluation has yet been completed. The next
+meaningful R82 milestone is to run the original campaign producer under
+the now-available native wheel environment and review its actual
+candidate evidence rather than treating this smoke CSV as training data.
+
 ## R82.3 — native producer execution and evidence collection
 
 R82.3 adds an **opt-in trusted operator-side** launcher for the real
