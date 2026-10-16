@@ -214,3 +214,36 @@ def test_native_binding_collector_fails_without_required_source(tmp_path):
     with pytest.raises(FileNotFoundError, match="R82_NATIVE_SOURCE_NOT_FOUND"):
         collect_native_source_binding(tmp_path, tmp_path / "no_binding.json")
     assert not (tmp_path / "no_binding.json").exists()
+
+
+def test_rejected_real_candidate_preserves_all_train_oof_reasons(tmp_path, monkeypatch):
+    from phm_design.industrial.design_engine import IndustrialDesignRejected
+    from phm_design.io import read_json
+    import phm_design.industrial.r82_rw_study as study
+
+    src = rw_fixture(tmp_path)
+    injected = {
+        "decision": "NO_ELIGIBLE_DESIGN",
+        "model_delivered": False,
+        "source_data_role": "TRAIN_ONLY",
+        "attempts": [
+            {"status": "REJECTED_BY_POLICY",
+             "metrics": {"mean_accuracy": 0.31},
+             "acceptance": {"eligible": False}}
+        ],
+        "target_feedback_used": False,
+        "final_evaluation_performed": False,
+    }
+    def fail_closed(*args, **kwargs):
+        raise IndustrialDesignRejected(injected)
+    monkeypatch.setattr(study, "run_design_guarded", fail_closed)
+    with pytest.raises(IndustrialDesignRejected):
+        run_rw_train_study(**src, output=tmp_path / "refused_model")
+    report = read_json(tmp_path / "refused_model/research_report.json")
+    assert report["refusal_code"] == "NO_ELIGIBLE_DESIGN"
+    assert report["model_delivered"] is False
+    assert report["native_source_binding_reviewed"] is True
+    assert report["design_refusal_audit"] == injected
+    assert report["source_train_oof_only"] is True
+    assert report["independent_final_evaluation"] is False
+    assert not (tmp_path / "refused_model/research_model").exists()
