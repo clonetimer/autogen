@@ -176,3 +176,23 @@ def review_native_rw_train_campaign(campaign):
         "model_trained": False,
         "independent_qualification": False,
     }
+
+
+def main(argv=None):
+    """CLI is a trusted preparation-side review, not an AutoDesign worker."""
+    import argparse
+    from ..io import write_json
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--campaign", required=True, type=Path)
+    parser.add_argument("--report", required=True, type=Path)
+    args = parser.parse_args(argv)
+    if args.report.exists():
+        raise FileExistsError("R82_NATIVE_CAMPAIGN_REVIEW_EXISTS")
+    reviewed = review_native_rw_train_campaign(args.campaign)
+    write_json(args.report, reviewed)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
