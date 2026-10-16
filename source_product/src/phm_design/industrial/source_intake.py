@@ -75,6 +75,44 @@ def stage_train_only_view(development_manifest, destination):
     }
 
 
+def draft_reviewed_physical_map(task_spec, train_manifest, destination):
+    """Prepare a NON-EXECUTABLE physical-group review worksheet.
+
+    Copies the source's existing group identity only; every operating regime
+    is REVIEW_REQUIRED, so it is impossible to train until independently
+    reviewed regimes have been written. No trace bytes or fault labels used.
+    """
+    from ..io import write_json
+
+    raw = (task_spec.to_dict() if isinstance(task_spec, TaskSpec)
+           else TaskSpec.from_dict(task_spec).to_dict())
+    plan = compile_task_spec(raw)
+    if len(plan["train_data_contract"]["group_keys"]) != 1:
+        raise ValueError("R82_REVIEW_MAP_REQUIRES_ONE_PHYSICAL_GROUP_KEY")
+    data = Dataset(train_manifest, allowed_splits={"train"})
+    if any(item["split"] != "train" for item in data.samples):
+        raise ValueError("R82_PHYSICAL_MAP_DRAFT_REQUIRES_TRAIN_ONLY")
+    group = plan["train_data_contract"]["group_keys"][0]
+    env_keys = plan["train_data_contract"]["environment_axes"]
+    worksheet = {
+        "schema": "phm.industrial.source-physical-map.v1",
+        "records": {
+            sample["id"]: {
+                group: sample["group_id"],
+                **{key: "REVIEW_REQUIRED" for key in env_keys},
+            }
+            for sample in data.samples
+        },
+    }
+    path = Path(destination)
+    if path.exists():
+        raise FileExistsError("R82_PHYSICAL_MAP_DRAFT_ALREADY_EXISTS")
+    write_json(path, worksheet)
+    return {"draft_path": str(path), "sample_count": len(data.samples),
+            "review_required": True, "model_ready": False,
+            "provenance_self_reported": True}
+
+
 def verify_native_source_binding(binding, project_root, wheel_factory_file):
     """Hash actual source files; verify identity, NOT executed physics or authorship.
 
@@ -191,7 +229,8 @@ def intake_train_source(task_spec, manifest_path, physical_map_path, *,
     for sample in data.samples:
         assigned = metadata_map[sample["id"]]
         if (not isinstance(assigned, dict) or set(assigned) != required or
-                any(type(value) is not str or not value.strip()
+                any(type(value) is not str or not value.strip() or
+                    value == "REVIEW_REQUIRED"
                     for value in assigned.values())):
             raise ValueError("R82_PHYSICAL_MAP_FIELDS_INVALID")
         # Group identity must match the already recorded physical lineage.
