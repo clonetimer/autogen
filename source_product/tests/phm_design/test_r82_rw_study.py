@@ -171,3 +171,46 @@ def test_rw_train_study_guards_against_existing_output(tmp_path):
     output.mkdir()
     with pytest.raises(FileExistsError, match="R82_STUDY_OUTPUT_EXISTS"):
         run_rw_train_study(**args, output=output, validate_only=True)
+
+
+def test_runtime_binding_collector_hashes_imported_installed_module(tmp_path, monkeypatch):
+    """Mocked installed-module API: this does not run Basilisk physics."""
+    import sys
+    import types
+    from phm_design.industrial.native_binding_collector import (
+        collect_native_source_binding)
+    from phm_design.industrial.source_intake import verify_native_source_binding
+    binding_path, root, wheel = native_code_fixture(tmp_path)
+
+    bsk = types.ModuleType("Basilisk")
+    bsk.__path__ = []
+    utilities = types.ModuleType("Basilisk.utilities")
+    utilities.__path__ = []
+    sim = types.ModuleType("Basilisk.utilities.simIncludeRW")
+    sim.__file__ = str(wheel)
+    utilities.simIncludeRW = sim
+    bsk.utilities = utilities
+    monkeypatch.setitem(sys.modules, "Basilisk", bsk)
+    monkeypatch.setitem(sys.modules, "Basilisk.utilities", utilities)
+    monkeypatch.setitem(sys.modules, "Basilisk.utilities.simIncludeRW", sim)
+    monkeypatch.setattr(
+        "phm_design.industrial.native_binding_collector.md.version",
+        lambda name: "2.11.0+satfix1" if name == "bsk" else None)
+    out = tmp_path / "collected_native.json"
+    record = collect_native_source_binding(root, out)
+    assert read_json(out) == record
+    assert record["installed_bsk_version"] == "2.11.0+satfix1"
+    assert record["physical_source_independently_attested"] is False
+    assert record["basilisk_physics_executed_by_collector"] is False
+    verified = verify_native_source_binding(record, root, wheel)
+    assert verified["wheel_factory_source"] == sha_file(wheel)
+    with pytest.raises(FileExistsError, match="R82_NATIVE_BINDING_ALREADY_EXISTS"):
+        collect_native_source_binding(root, out)
+
+
+def test_native_binding_collector_fails_without_required_source(tmp_path):
+    from phm_design.industrial.native_binding_collector import (
+        collect_native_source_binding)
+    with pytest.raises(FileNotFoundError, match="R82_NATIVE_SOURCE_NOT_FOUND"):
+        collect_native_source_binding(tmp_path, tmp_path / "no_binding.json")
+    assert not (tmp_path / "no_binding.json").exists()
