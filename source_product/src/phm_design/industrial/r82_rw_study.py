@@ -68,6 +68,8 @@ def run_rw_train_study(*, task_spec, development_manifest, physical_map,
         if intake["native_source_file_hashes_verified"] is None:
             raise ValueError("R82_RW_MISSING_SOURCE_HASH_RECEIPT")
         report["intake"] = intake
+        report["native_source_binding_reviewed"] = bool(
+            intake.get("native_source_file_hashes_verified"))
         report["status"] = "TRAIN_INTAKE_ACCEPTED"
         if not validate_only:
             # Use the declared nonzero acceptance policy in DesignAcceptance;
@@ -94,6 +96,14 @@ def run_rw_train_study(*, task_spec, development_manifest, physical_map,
                                   getattr(exc, "audit", {}).get("decision") or
                                   type(exc).__name__)
         report["model_delivered"] = False
+        if isinstance(exc, IndustrialDesignRejected):
+            # Preserve all SOURCE TRAIN OOF candidate metrics and refusal
+            # diagnostics. The caller must not soften policy/selection gates
+            # to turn a physical-domain refusal into an artificial PASS.
+            report["design_refusal_audit"] = exc.audit
+            report["source_train_oof_only"] = True
+        elif isinstance(exc, GuardedDesignTimeout):
+            report["resource_guard_audit"] = exc.audit
         write_json(output / "research_report.json", report)
         raise
     write_json(output / "research_report.json", report)
