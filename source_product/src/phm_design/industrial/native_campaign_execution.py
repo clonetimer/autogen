@@ -149,6 +149,15 @@ def execute_native_rw_campaign(*, source_checkout, config, output,
             raise RuntimeError("R82_NATIVE_CAMPAIGN_DRY_RUN_ONLY")
         receipt["producer_index_sha256"] = sha_file(index)
         source_review = review_native_rw_train_campaign(output)
+        expected_pairs = (
+            read_json(config)["counts"]["train"] *
+            len(read_json(config)["fault_ids"])
+        )
+        if source_review["train_pairs"] != expected_pairs:
+            raise RuntimeError("R82_NATIVE_TRAIN_PAIR_COUNT_MISMATCH")
+        if source_review["source_bsk_version_claimed"] != prereq["bsk_version"]:
+            raise RuntimeError("R82_NATIVE_CAMPAIGN_RUNTIME_VERSION_MISMATCH")
+        receipt["expected_train_pairs"] = expected_pairs
         receipt["train_candidate_review"] = source_review
         receipt["status"] = "NATIVE_TRAIN_CANDIDATE_REVIEWED"
         receipt["native_execution_performed"] = True
