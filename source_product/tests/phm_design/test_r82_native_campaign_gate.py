@@ -51,7 +51,7 @@ def campaign_fixture(root, *, splits=("train", "validation", "test")):
                 "dataset_id": case_id, "split": split, "status": "complete",
                 "pairing": {"pair_id": f"{split}-rw", "case_role": role},
                 "ground_truth": {
-                    "class_id": ("ADCS_RW_JAM" if role == "fault" else "NOMINAL"),
+                    "class_id": ("ADCS_RW_JAM" if role == "fault" else "NORMAL"),
                     "pair_id": f"{split}-rw"},
                 "simulation": {
                     "capability_id": "subsystem.adcs_unified_native.v1",
@@ -87,6 +87,15 @@ def campaign_fixture(root, *, splits=("train", "validation", "test")):
 def _contract(root, *, role="fault", split="train"):
     return root / "cases" / f"{split}-rw-{role}" / (
         "astrograph/dataset_contract.json")
+
+
+def test_upstream_normal_to_downstream_nominal_is_label_only_mapping(tmp_path):
+    campaign = campaign_fixture(tmp_path / "campaign", splits=("train",))
+    contract = read_json(_contract(campaign, role="nominal"))
+    assert contract["ground_truth"]["class_id"] == "NORMAL"
+    assert review_native_rw_train_campaign(campaign)["train_pairs"] == 1
+    from phm_design.adapters.sat_rw import CLASSES
+    assert "NOMINAL" in CLASSES and "NORMAL" not in CLASSES
 
 
 def test_complete_candidate_pair_checks_train_only_and_prepares_six_channels(tmp_path):
