@@ -50,3 +50,4 @@ jobs:
           tests/phm_design/test_r82_rw_study.py
           tests/phm_design/test_r82_native_campaign_gate.py
           tests/phm_design/test_r82_native_campaign_execution.py
+          tests/phm_design/test_r82_native_regime_map.py
