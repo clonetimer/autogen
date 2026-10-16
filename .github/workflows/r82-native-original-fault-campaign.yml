@@ -1,0 +1,135 @@
+name: R82 original Basilisk RW fault campaign
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/r82-native-original-fault-campaign.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-native-train-fault-pairs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Checkout AutoDesign research branch
+        uses: actions/checkout@v4
+      - name: Checkout pinned native producer
+        uses: actions/checkout@v4
+        with:
+          repository: clonetimer/SatAgentSimulation
+          ref: 1f709beeae97baec65db9ca13ae373d88728f87d
+          path: satagent
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Verify official native wheel and repackage metadata ONLY
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/official" "$RUNNER_TEMP/compat"
+          python -m pip download --only-binary=:all: --no-deps \
+            --dest "$RUNNER_TEMP/official" "bsk==2.11.0"
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          files = list((Path(os.environ["RUNNER_TEMP"]) / "official").glob("bsk-2.11.0-*.whl"))
+          if len(files) != 1:
+              raise RuntimeError("R82_EXPECTED_EXACTLY_ONE_ORIGINAL_BSK_WHEEL")
+          sha = hashlib.sha256(files[0].read_bytes()).hexdigest()
+          if sha != "d51fe1ffa1b0b03dc415034b210497b28a2504428d4d8e71b481542a08c08a0a":
+              raise RuntimeError("R82_ORIGINAL_BSK_WHEEL_HASH_MISMATCH:" + sha)
+          print("ORIGINAL_NATIVE_BSK_SHA256", sha)
+          PY
+          python satagent/scripts/build_bsk_compat_wheels.py \
+            "$RUNNER_TEMP"/official/bsk-2.11.0-*.whl \
+            --output-dir "$RUNNER_TEMP/compat" \
+            --report "$RUNNER_TEMP/bsk_compat_build_report.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          d = json.loads((Path(os.environ["RUNNER_TEMP"]) / "bsk_compat_build_report.json").read_text())
+          a = d["results"][0]
+          if not a["payload_bytes_unchanged"] or a["payload_file_count"] < 800:
+              raise RuntimeError("R82_BSK_NATIVE_PAYLOAD_NOT_PRESERVED")
+          print("BASILISK_COMPAT_PAYLOAD_IDENTICAL", a["payload_file_count"])
+          PY
+      - name: Install pinned native producer runtime
+        shell: bash
+        run: |
+          python -m pip install "$RUNNER_TEMP"/compat/bsk-2.11.0+satfix1-*.whl
+          python -m pip install -e ./satagent
+          python -m pip install -e ./source_product
+          python - <<'PY'
+          from importlib.metadata import version
+          from Basilisk.simulation import reactionWheelStateEffector
+          from Basilisk.utilities import simIncludeRW
+          import sat_sim
+          assert version("bsk") == "2.11.0+satfix1"
+          print("R82_NATIVE_PRODUCER_RUNTIME", version("bsk"), simIncludeRW.__file__)
+          PY
+      - name: Prepare bounded real producer TRAIN-only pilot config
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["GITHUB_WORKSPACE"])
+          data = json.loads((root / "satagent/configs/integration/rw_dataset_factory.json").read_text())
+          # 3 fault IDs x 1 pair each = six ACTUAL Basilisk native cases.
+          # Keep original 60-second physical duration; no proxy.
+          data["campaign_id"] = "r82_bsk_native_train_pilot"
+          data["counts"] = {"train": 1, "validation": 0, "test": 0}
+          data["allow_test_proxy"] = False
+          data["simulation_backend"] = "basilisk"
+          data["duration_s"] = 60.0
+          path = root / "r82_native_train_pilot.json"
+          path.write_text(json.dumps(data, indent=2) + "\n")
+          print("NATIVE_FACTORY_PILOT", data["counts"], data["fault_ids"])
+          PY
+      - name: Actually run original SatAgentSimulation native fault factory
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/r82_case_evidence"
+          cd satagent
+          python scripts/generate_astrograph_rw_fault_dataset.py \
+            --config "$GITHUB_WORKSPACE/r82_native_train_pilot.json" \
+            --output "$RUNNER_TEMP/r82_real_native_campaign" --fail-fast \
+            2>&1 | tee "$RUNNER_TEMP/r82_case_evidence/producer.log"
+      - name: Cross-check real candidate physics, training roles and case count
+        shell: bash
+        run: |
+          python -m phm_design.industrial.native_campaign_gate \
+            --campaign "$RUNNER_TEMP/r82_real_native_campaign" \
+            --report "$RUNNER_TEMP/r82_case_evidence/native_train_candidate_review.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"])
+          d = json.loads((root / "r82_case_evidence/native_train_candidate_review.json").read_text())
+          if d["train_pairs"] != 3 or d["train_cases"] != 6:
+              raise RuntimeError("R82_WRONG_NUMBER_OF_NATIVE_TRAIN_PAIRS")
+          if d["source_bsk_version_claimed"] != "2.11.0+satfix1":
+              raise RuntimeError("R82_UPSTREAM_RUNTIME_VERSION_DISAGREEMENT")
+          if d["physical_execution_independently_attested"]:
+              raise RuntimeError("R82_IMPROPER_INDEPENDENT_ATTESTATION")
+          print("R82_ORIGINAL_NATIVE_CAMPAIGN_TRAIN_GATE_PASS",
+                d["train_pairs"], d["train_cases"])
+          PY
+      - name: Archive real producer report and limited case evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r82-original-native-rw-train-campaign-evidence
+          path: |
+            ${{ runner.temp }}/bsk_compat_build_report.json
+            ${{ runner.temp }}/r82_case_evidence/
+            ${{ runner.temp }}/r82_real_native_campaign/astrograph_dataset_index.json
+            ${{ runner.temp }}/r82_real_native_campaign/cases/*/astrograph/dataset_contract.json
+            ${{ runner.temp }}/r82_real_native_campaign/cases/*/astrograph/simulation_report.json
+            ${{ runner.temp }}/r82_real_native_campaign/cases/*/manifest.json
+            ${{ runner.temp }}/r82_real_native_campaign/cases/*/task_spec.json
+          if-no-files-found: warn
+          retention-days: 7
