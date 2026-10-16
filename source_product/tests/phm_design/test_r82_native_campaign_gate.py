@@ -67,8 +67,9 @@ def campaign_fixture(root, *, splits=("train", "validation", "test")):
                 writer = csv.DictWriter(stream, fieldnames=fields)
                 writer.writeheader()
                 for t in range(20):
-                    row = {name: float(index + int(role == "fault") + t * .1)
-                           for name in fields[1:]}
+                    row = {name: float(100 * index + 7 * int(role == "fault") +
+                                   channel * .01 + t * .1)
+                           for channel, name in enumerate(fields[1:])}
                     writer.writerow({"time_s": float(t), **row})
             write_json(folder / "task_spec.json", spec)
             write_json(folder / "astrograph/dataset_contract.json", c)
@@ -174,3 +175,14 @@ def test_native_train_gate_does_not_open_test_or_validation_files(tmp_path):
     # Full preparation, unlike TRAIN gate, must refuse invalid non-TRAIN cases.
     with pytest.raises(ValueError, match="R82_NATIVE_RUNTIME_CANDIDATE_EVIDENCE_REQUIRED"):
         prepare(campaign, tmp_path / "full_prepared")
+
+
+def test_identical_telemetry_bytes_across_split_are_rejected(tmp_path):
+    """Preserve existing Dataset CROSS_SPLIT_LEAKAGE gate; no weakening."""
+    from shutil import copyfile
+    campaign = campaign_fixture(tmp_path / "campaign")
+    from_file = _contract(campaign, role="nominal", split="train").parent.parent / "trace.csv"
+    to_file = _contract(campaign, role="fault", split="test").parent.parent / "trace.csv"
+    copyfile(from_file, to_file)
+    with pytest.raises(ValueError, match="CROSS_SPLIT_LEAKAGE"):
+        prepare(campaign, tmp_path / "prepared")
