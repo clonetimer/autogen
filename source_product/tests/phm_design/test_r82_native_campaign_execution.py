@@ -156,3 +156,40 @@ def test_no_success_if_producer_claims_pass_without_index(tmp_path, monkeypatch)
     receipt = read_json(tmp_path / "evidence" / "execution_receipt.json")
     assert receipt["status"] == "REFUSED"
     assert receipt["native_execution_performed"] is False
+
+
+def test_mocked_producer_requires_expected_train_pairs_and_runtime_parity(
+        tmp_path, monkeypatch):
+    """Mocked output is NOT a Basilisk run; checks receipt gates only."""
+    source, config = fixture_source(tmp_path, monkeypatch)
+    def fake_run(argv, *, cwd=None, text=None, capture_output=None,
+                 check=None, timeout=None, stdout=None, stderr=None):
+        if argv[:2] == ["git", "rev-parse"]:
+            return subprocess.CompletedProcess(argv, 0, "a" * 40 + "\n", "")
+        if argv[:2] == ["git", "status"]:
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        if argv and argv[0] == sys.executable:
+            output = __import__("pathlib").Path(argv[argv.index("--output") + 1])
+            output.mkdir(parents=True)
+            write_json(output / "astrograph_dataset_index.json",
+                       {"dry_run": False})
+            stdout.write("MOCK INDEX, NO PHYSICS EXECUTION\n")
+            return subprocess.CompletedProcess(argv, 0)
+        raise AssertionError("unknown process")
+    monkeypatch.setattr(
+        "phm_design.industrial.native_campaign_execution.subprocess.run",
+        fake_run)
+    for pairs, version, error in (
+        (8, "2.11.0+satfix1", "R82_NATIVE_TRAIN_PAIR_COUNT_MISMATCH"),
+        (9, "2.11.0", "R82_NATIVE_CAMPAIGN_RUNTIME_VERSION_MISMATCH"),
+    ):
+        monkeypatch.setattr(
+            "phm_design.industrial.native_campaign_execution.review_native_rw_train_campaign",
+            lambda path, count=pairs, bsk=version: {
+                "train_pairs": count, "source_bsk_version_claimed": bsk})
+        receipt_dir = tmp_path / error
+        with pytest.raises(RuntimeError, match=error):
+            execute_native_rw_campaign(
+                source_checkout=source, config=config,
+                output=tmp_path / ("campaign_" + error), evidence_dir=receipt_dir)
+        assert read_json(receipt_dir / "execution_receipt.json")["status"] == "REFUSED"
