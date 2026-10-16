@@ -1,5 +1,17 @@
 # R82 Physical Data Verification — Required Materials
 
+**2026-10-16 update:** The original RW campaign **has now been executed**
+with 27 TRAIN, 3 VALIDATION and 3 TEST fault/nominal pairs, using the
+SHA-pinned original Basilisk 2.11.0 payload with upstream satfix1 metadata.
+Do **not** ask the user to upload another basic RW campaign merely to prove
+that native data exist: [native campaign evidence and actual TRAIN OOF
+refusal](evidence/R82_NATIVE_TRAIN_STUDY_20261016.md). Additional material
+will be needed only for independent simulator-physics expert review, a more
+representative physical operating envelope, a genuine industrial bearing
+experiment and sealed independent OOD/FINAL qualification. None is necessary
+to rerun the now-established **research** TRAIN workflow.
+
+
 **Development scope only.** R82.0 software intake tests cannot establish Basilisk
 physics fidelity, observational validity, industrial bearing generalization, or
 FINAL qualification. Do not upload independent FINAL/TEST datasets to the
