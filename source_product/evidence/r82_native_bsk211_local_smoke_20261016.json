@@ -1,0 +1,54 @@
+{
+  "schema": "phm.industrial.r82-standalone-native-smoke-evidence.v1",
+  "date": "2026-10-16",
+  "producer": "isolated container Python3.13 and user-supplied official Basilisk 2.11.0 Linux wheel",
+  "source": "standalone native spacecraft+reactionWheelStateEffector smoke, NOT SatAgentSimulation campaign",
+  "approved_wheel_sha256": "d51fe1ffa1b0b03dc415034b210497b28a2504428d4d8e71b481542a08c08a0a",
+  "wheel_factory_python_sha256": "1724e3c67f13d1a664150bc81bfa5642dc802bdf37ddc84216bf9ad7bce0ab81",
+  "bsk": "2.11.0",
+  "sgp4": "2.25",
+  "colorama": "0.4.6",
+  "native_models": [
+    "Basilisk.simulation.spacecraft.Spacecraft",
+    "Basilisk.simulation.reactionWheelStateEffector.ReactionWheelStateEffector"
+  ],
+  "native_messages": [
+    "Basilisk.architecture.messaging.ArrayMotorTorqueMsg",
+    "RWArraySpeedMsg"
+  ],
+  "three_wheel_factory_count": 3,
+  "three_wheel_effector_count_after_initialize": 3,
+  "effector_registered_in_both_spacecraft_and_simulation_task": true,
+  "telemetry": [
+    {
+      "command_torque_nm": 0.02,
+      "time_s": 12,
+      "rows": 121,
+      "rw0_speed_delta_rad_s": 3.017892818741082,
+      "source_csv_sha256": "c811d6438b4dc31256ae8a539081b7c462fa64f1bf2a0ddcf79194c14e88b480"
+    },
+    {
+      "command_torque_nm": 0,
+      "time_s": 12,
+      "rows": 121,
+      "rw0_speed_delta_rad_s": 0,
+      "source_csv_sha256": "0f3563aa5f1143d2603555bf27bb9c2fe6e835ec206d944f84ead68640a73a8f"
+    },
+    {
+      "command_torque_nm": -0.02,
+      "time_s": 12,
+      "rows": 121,
+      "rw0_speed_delta_rad_s": -3.0178927319441335,
+      "source_csv_sha256": "95155699b5b6a1ab4564b3317aeb06b64d79335913af7ae596e261c5800322d3"
+    }
+  ],
+  "baseline_pillow_dependency_discrepancy": "pillow 12.3.0 installed; official wheel declares pillow<=12.2.0, so this validates only the native smoke, NOT the full declared dependency closure",
+  "qualification": {
+    "native_rw_motor_causality_smoke_passed": true,
+    "upstream_SatAgentSimulation_campaign_executed": false,
+    "fault_mode_physical_validation_performed": false,
+    "independently_attested": false,
+    "ood_or_final_qualification": false
+  },
+  "local_procedure": "See standalone reproduction script linked in source_product/research/r82_basilisk_native_rw_smoke.py and new pinned-wheel GitHub Actions"
+}
