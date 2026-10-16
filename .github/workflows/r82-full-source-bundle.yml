@@ -1,0 +1,68 @@
+name: R82 complete AutoDesign source bundle
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/r82-full-source-bundle.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Archive exactly the checked-out source commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/r82-delivery"
+          python - <<'PY'
+          import os, subprocess, json, pathlib, hashlib, zipfile
+          head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          tracked = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
+          tracked = [p for p in tracked if p]
+          prefix = f"autogen-R82-development-{head[:12]}/"
+          output = pathlib.Path(os.environ["RUNNER_TEMP"]) / "r82-delivery" / f"autogen-R82-full-project-{head[:12]}.zip"
+          subprocess.run(["git", "archive", "--format=zip", f"--prefix={prefix}", f"--output={output}", head], check=True)
+          with zipfile.ZipFile(output) as z:
+              errors = z.testzip()
+              if errors:
+                  raise RuntimeError(f"ZIP_CORRUPTION:{errors}")
+              archived = [n[len(prefix):] for n in z.namelist() if n.startswith(prefix) and not n.endswith("/")]
+              if set(archived) != set(tracked):
+                  missing = sorted(set(tracked) - set(archived))
+                  surplus = sorted(set(archived) - set(tracked))
+                  raise RuntimeError(f"INCOMPLETE_SOURCE_ARCHIVE:missing={missing[:20]},surplus={surplus[:20]}")
+              if not {"README.md", "source_product/pyproject.toml", ".github/workflows/r82-full-source-bundle.yml"}.issubset(archived):
+                  raise RuntimeError("MISSING_REQUIRED_PROJECT_PATHS")
+          digest = hashlib.sha256(output.read_bytes()).hexdigest()
+          meta = {
+              "repository": "clonetimer/autogen",
+              "reference": "feature/r82-reviewed-source-intake",
+              "commit": head,
+              "archive_filename": output.name,
+              "archive_sha256": digest,
+              "tracked_file_count": len(tracked),
+              "archived_file_count": len(archived),
+              "included": "all tracked repository files at exact commit; no Git history/.git metadata",
+              "model_qualification": "development candidate; R82 physical source validated, AutoDesign model not accepted",
+          }
+          directory = output.parent
+          (directory / "DELIVERY_MANIFEST.json").write_text(json.dumps(meta, indent=2) + "\n")
+          (directory / "SHA256SUMS.txt").write_text(f"{digest}  {output.name}\n")
+          print("R82_COMPLETE_SOURCE_ARCHIVE_VERIFIED", json.dumps(meta))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r82-complete-autodesign-repository
+          path: ${{ runner.temp }}/r82-delivery/
+          retention-days: 14
+          if-no-files-found: error
