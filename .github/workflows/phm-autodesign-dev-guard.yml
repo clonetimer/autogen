@@ -47,3 +47,4 @@ jobs:
           tests/phm_design/test_r81c_resource_guard.py
           tests/phm_design/test_r81c_closure_matrix.py
           tests/phm_design/test_r82_reviewed_source_intake.py
+          tests/phm_design/test_r82_rw_study.py
