@@ -82,8 +82,8 @@ def review_native_rw_train_campaign(campaign):
         label = c.get("ground_truth", {}).get("class_id")
         if (not isinstance(pair_id, str) or not pair_id or
                 role not in ("fault", "nominal") or
-                label not in _RW_CLASSES | {"NOMINAL"} or
-                (role == "nominal") != (label == "NOMINAL") or
+                label not in _RW_CLASSES | {"NORMAL"} or
+                (role == "nominal") != (label == "NORMAL") or
                 role in pairs[pair_id] or
                 c.get("ground_truth", {}).get("pair_id") != pair_id):
             raise ValueError("R82_RW_TRAIN_PAIR_CLASS_MISMATCH")
@@ -160,7 +160,7 @@ def review_native_rw_train_campaign(campaign):
             raise ValueError("R82_NATIVE_RW_PAIR_INCOMPLETE")
         fault = pair["fault"]
         nominal = pair["nominal"]
-        if fault[0] not in _RW_CLASSES or nominal[0] != "NOMINAL" or (
+        if fault[0] not in _RW_CLASSES or nominal[0] != "NORMAL" or (
                 fault[1], fault[2]) != (nominal[1], nominal[2]):
             raise ValueError("R82_RW_PAIR_PARAMETER_SEED_MISMATCH")
     return {
