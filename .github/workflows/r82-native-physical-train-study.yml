@@ -1,0 +1,192 @@
+name: R82 native physical TRAIN AutoDesign study
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/r82-native-physical-train-study.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-rw-source-train-design:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: clonetimer/SatAgentSimulation
+          ref: 1f709beeae97baec65db9ca13ae373d88728f87d
+          path: satagent
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Verify and repackage official unchanged Basilisk physics payload
+        shell: bash
+        run: |
+          python -m pip download --only-binary=:all: --no-deps \
+            --dest "$RUNNER_TEMP" "bsk==2.11.0"
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          wheels = list(Path(os.environ["RUNNER_TEMP"]).glob("bsk-2.11.0-*.whl"))
+          if len(wheels) != 1:
+              raise RuntimeError("UNEXPECTED_OFFICIAL_WHEEL_COUNT")
+          digest = hashlib.sha256(wheels[0].read_bytes()).hexdigest()
+          assert digest == "d51fe1ffa1b0b03dc415034b210497b28a2504428d4d8e71b481542a08c08a0a", digest
+          print("R82_OFFICIAL_WHEEL_HASH_VERIFIED", digest)
+          PY
+          python satagent/scripts/build_bsk_compat_wheels.py \
+            "$RUNNER_TEMP"/bsk-2.11.0-*.whl \
+            --output-dir "$RUNNER_TEMP/repacked" \
+            --report "$RUNNER_TEMP/bsk_build_report.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          d = json.loads((Path(os.environ["RUNNER_TEMP"]) / "bsk_build_report.json").read_text())
+          assert d["results"][0]["payload_bytes_unchanged"]
+          assert d["results"][0]["payload_file_count"] >= 800
+          print("R82_UNCHANGED_NATIVE_PAYLOAD_FILES", d["results"][0]["payload_file_count"])
+          PY
+      - name: Install locked native producer and research engine
+        shell: bash
+        run: |
+          python -m pip install "$RUNNER_TEMP"/repacked/bsk-2.11.0+satfix1-*.whl
+          python -m pip install -e ./satagent
+          python -m pip install -e ./source_product
+          python - <<'PY'
+          from importlib.metadata import version
+          from Basilisk.utilities import simIncludeRW
+          assert version("bsk") == "2.11.0+satfix1"
+          print("R82_ACTUAL_NATIVE_ENVIRONMENT", version("bsk"), simIncludeRW.__file__)
+          PY
+      - name: Freeze physically generated source split configuration
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["GITHUB_WORKSPACE"])
+          config = json.loads((root / "satagent/configs/integration/rw_dataset_factory.json").read_text())
+          # All source-group and environment boundaries are specified BEFORE
+          # any model outcome or test role is inspected.
+          config["campaign_id"] = "r82_native_train9_val1_test1"
+          config["counts"] = {"train": 9, "validation": 1, "test": 1}
+          config["simulation_backend"] = "basilisk"
+          config["allow_test_proxy"] = False
+          config["duration_s"] = 60.0
+          (root / "r82_native_full_config.json").write_text(json.dumps(config, indent=2) + "\n")
+          print("R82_PREDECLARED_COUNTS", config["counts"], config["fault_ids"])
+          PY
+      - name: Actually run source native fault/nominal campaign
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/r82_full_evidence"
+          cd satagent
+          python scripts/generate_astrograph_rw_fault_dataset.py \
+            --config "$GITHUB_WORKSPACE/r82_native_full_config.json" \
+            --output "$RUNNER_TEMP/r82_full_native_campaign" \
+            --fail-fast 2>&1 | tee "$RUNNER_TEMP/r82_full_evidence/native_producer.log"
+      - name: Validate source physics evidence and every TRAIN pair
+        shell: bash
+        run: |
+          python -m phm_design.industrial.native_campaign_gate \
+            --campaign "$RUNNER_TEMP/r82_full_native_campaign" \
+            --report "$RUNNER_TEMP/r82_full_evidence/native_train_candidate_review.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"])
+          d = json.loads((root / "r82_full_evidence/native_train_candidate_review.json").read_text())
+          if d["train_pairs"] != 27 or d["train_cases"] != 54:
+              raise RuntimeError("R82_NATIVE_FULL_TRAIN_PAIR_COVERAGE_INCOMPLETE")
+          assert d["source_bsk_version_claimed"] == "2.11.0+satfix1"
+          assert not d["physical_execution_independently_attested"]
+          print("R82_ACTUAL_PHYSICS_TRAIN_PAIRS", d["train_pairs"])
+          PY
+      - name: Prepare native six-channel source with sealed research splits
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from phm_design.adapters.sat_rw import prepare
+          root = Path(os.environ["RUNNER_TEMP"])
+          report = prepare(root / "r82_full_native_campaign",
+                           root / "r82_prepared")
+          print("R82_ACTUAL_NATIVE_PREPARED", report["counts"])
+          assert report["channel_count"] == 6
+          assert report["fit_receives_holdout"] is False
+          PY
+      - name: Collect actual installed source-module identity
+        shell: bash
+        run: |
+          python -m phm_design.industrial.native_binding_collector \
+            --native-source-checkout satagent \
+            --output "$RUNNER_TEMP/r82_full_evidence/runtime_binding.json"
+      - name: Build prespecified, unqualified TRAIN inclination regimes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from phm_design.io import read_json
+          from phm_design.industrial.source_intake import stage_train_only_view
+          from phm_design.industrial.r82_native_regime_map import (
+              create_prespecified_native_regime_map)
+          root = Path(os.environ["RUNNER_TEMP"])
+          s = stage_train_only_view(root / "r82_prepared/development/dataset.json",
+                                    root / "r82_research_train_only")
+          a = create_prespecified_native_regime_map(
+              source_campaign=root / "r82_full_native_campaign",
+              preparation_report=root / "r82_prepared/preparation_report.json",
+              train_manifest=s["manifest"],
+              task_spec=Path("source_product/examples/industrial/satellite_rw_native_offline_train.json"),
+              output=root / "r82_full_evidence/physical_regime_map.json",
+              research_only=True)
+          print("R82_PREDECLARED_PHYSICAL_REGIMES", a["count_by_regime"])
+          assert a["source_labels_not_used_in_mapping"]
+          assert not a["operating_regime_expert_reviewed"]
+          PY
+      - name: Run source TRAIN-only guarded AutoDesign study
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r82_rw_study \
+            --task-spec source_product/examples/industrial/satellite_rw_native_offline_train.json \
+            --development-manifest "$RUNNER_TEMP/r82_prepared/development/dataset.json" \
+            --physical-map "$RUNNER_TEMP/r82_full_evidence/physical_regime_map.json" \
+            --runtime-binding "$RUNNER_TEMP/r82_full_evidence/runtime_binding.json" \
+            --native-source-checkout satagent \
+            --basilisk-wheel-factory "$(python -c 'from Basilisk.utilities import simIncludeRW; print(simIncludeRW.__file__)')" \
+            --output "$RUNNER_TEMP/r82_real_train_design"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ["RUNNER_TEMP"]) / "r82_real_train_design/research_report.json"
+          d = json.loads(p.read_text())
+          if d["status"] != "RESEARCH_TRAIN_FIT_ONLY" or not d["model_delivered"]:
+              raise RuntimeError("R82_NATIVE_TRAIN_NO_RESEARCH_MODEL_DELIVERED")
+          print("R82_NATIVE_RESEARCH_TRAIN_ONLY_FIT", d["source_oof_selection"])
+          PY
+      - name: Archive real raw TRAIN telemetry and evidence even on refusal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r82-full-native-rw-train-and-autodesign-research
+          path: |
+            ${{ runner.temp }}/bsk_build_report.json
+            ${{ runner.temp }}/r82_full_evidence/
+            ${{ runner.temp }}/r82_full_native_campaign/astrograph_dataset_index.json
+            ${{ runner.temp }}/r82_full_native_campaign/cases/*-train-*/trace.csv
+            ${{ runner.temp }}/r82_full_native_campaign/cases/*-train-*/astrograph/dataset_contract.json
+            ${{ runner.temp }}/r82_full_native_campaign/cases/*-train-*/astrograph/simulation_report.json
+            ${{ runner.temp }}/r82_full_native_campaign/cases/*-train-*/task_spec.json
+            ${{ runner.temp }}/r82_prepared/development/dataset.json
+            ${{ runner.temp }}/r82_prepared/preparation_report.json
+            ${{ runner.temp }}/r82_real_train_design/research_report.json
+            ${{ runner.temp }}/r82_real_train_design/research_model/audit.json
+          if-no-files-found: warn
+          retention-days: 7
