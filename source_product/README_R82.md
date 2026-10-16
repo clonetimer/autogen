@@ -125,15 +125,29 @@ replace each placeholder with a supported, documented operating condition.
 The program explicitly rejects any remaining `REVIEW_REQUIRED` value;
 neither labels nor array/trajectory indices choose environment bins.
 
-After reviewing the map and generating a binding receipt from the **actual**
-installed Basilisk environment, the R82 research runner can preflight and fit:
+After reviewing the map, generate a native-source binding receipt from
+the **actual installed Basilisk environment** (not from a downloaded Python
+source file alone):
+
+```bash
+python -m phm_design.industrial.native_binding_collector \
+  --native-source-checkout /sat/SatAgentSimulation \
+  --output /study/runtime_binding.json
+```
+
+This collector imports `Basilisk.utilities.simIncludeRW` from the active
+Python environment, captures its installed module file SHA-256 and `bsk`
+package version, and hashes the local SatAgentSimulation runtime and effect
+modules. It does **not** execute a simulation or certify physical fidelity.
+
+The R82 research runner can then preflight and fit:
 
 ```bash
 python -m phm_design.industrial.r82_rw_study \
   --task-spec examples/industrial/satellite_rw_native_offline_train.json \
   --development-manifest /study/prepared_rw/development/dataset.json \
   --physical-map /study/physical_map_REVIEWED.json \
-  --runtime-binding /study/prepared_rw/runtime_binding.json \
+  --runtime-binding /study/runtime_binding.json \
   --native-source-checkout /sat/SatAgentSimulation \
   --basilisk-wheel-factory /venv/lib/pythonX.Y/site-packages/Basilisk/utilities/simIncludeRW.py \
   --output /study/r82_preflight --validate-only
@@ -141,12 +155,10 @@ python -m phm_design.industrial.r82_rw_study \
 # Repeat with a NEW --output directory and omit --validate-only to fit.
 ```
 
-The path `/study/prepared_rw/runtime_binding.json` is illustrative:
-the basic six-channel `sat_rw.prepare` alone **does not emit this file**.
-It can be produced by the separate mechanism-review workflow or by an
-audited native source-binding collector; it must match the actual source
-checkout and installed Basilisk wheel-factory module. Do not copy a hash from
-some other checkout simply to pass intake.
+The basic six-channel `sat_rw.prepare` **does not emit a binding
+receipt**. Use the collector above or an independently audited source-binding
+receipt from the same environment that produced the campaign. Do not copy
+hashes from a different checkout simply to pass intake.
 
 The output `research_report.json` records either accepted TRAIN-only
 intake, a TRAIN OOF research model selection (with a bounded child process),
