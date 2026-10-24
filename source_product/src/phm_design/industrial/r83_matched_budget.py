@@ -218,6 +218,7 @@ def run_matched_source_train_study(
             "equal_candidate_slots": True,
             "equal_neural_epochs": True,
             "shared_predeclared_candidate_selection_rule": "r83_matched_train_loss",
+            "shared_candidate_seed_schedule": "base_seed_plus_candidate_index",
             "same_independent_group_support_gate": True,
             "search_reuse_is_unbiased_evaluation": False,
             "equal_flops": False, "equal_cpu_seconds": False,
@@ -235,7 +236,8 @@ def run_matched_source_train_study(
             fixed, records, acceptance=acceptance,
             selection_rule="r83_matched_train_loss")),
         ("self_organizing", evolved, lambda: run_self_organizing_design_guarded(
-            evolved, records, policy=policy, acceptance=acceptance)),
+            evolved, records, policy=policy, acceptance=acceptance,
+            seed_schedule="r83_matched_train")),
     ):
         started = time.monotonic()
         try:
