@@ -86,11 +86,55 @@ prove it. Running the evaluator repeatedly and tuning on the results
 would destroy its independent-validation interpretation. A sealed R84
 FINAL test with separate data custody remains required before release.
 
+## Native VAL-only manifest and reviewer CLI
+
+Unlike the raw-record API, R83c now also supports a separate, hash-checked
+**VALIDATION-only** Dataset manifest in the existing R82 schema. This is a
+trusted stewardship operation, not part of model design. It will REFUSE a
+manifest containing TRAIN, TEST or FINAL samples. It checks every CSV SHA,
+exact sensor-only columns and sampling period, physical group IDs against a
+separately reviewed map, and pinned Basilisk/native source identity hashes.
+These checks do **not** prove that simulations were really executed, or that
+groups have physically independent provenance. The external steward must
+review those facts.
+
+For a reviewed manifest under /input/validation/dataset.json containing
+**only** validation-split rows and its companion physical map:
+
+~~~bash
+cd source_product
+python -m phm_design.industrial.r83_frozen_validation \
+  --train-research-report /input/r83b_train/research_report.json \
+  --task-spec examples/industrial/satellite_rw_native_r83_matched_train.json \
+  --frozen-models /input/r83b_train/research_models \
+  --validation-manifest /input/validation/dataset.json \
+  --validation-physical-map /input/validation/physical_map_REVIEWED.json \
+  --runtime-binding /input/native/runtime_binding.json \
+  --native-source-checkout /input/SatAgentSimulation \
+  --basilisk-wheel-factory /path/to/Basilisk/utilities/simIncludeRW.py \
+  --output /results/r83c_first_validation \
+  --trust-fixed-pickle
+~~~
+
+The command writes validation_report.json to a **new, previously nonexistent
+directory**. It refuses overwriting an existing report, so an earlier
+independent validation receipt is not accidentally replaced. Repeated
+execution into a different destination remains possible and is an external
+study-governance issue. --trust-fixed-pickle is required because the original
+fixed TCN/GRU/ExtraTrees artifact is joblib/Pickle; never use it on
+untrusted archives. An absence of this flag fails closed.
+
+The existing R82 source manifest that contains TRAIN+VALIDATION together is
+NOT accepted directly here. A separate stewardship/export process must
+materialize a reviewed VALIDATION-only manifest and copy only those CSV
+files. Never give this reviewer the hidden FINAL tree.
+
 ## Verification
 
 ~~~bash
 cd source_product
 python -m pytest -q tests/phm_design/test_r83c_frozen_validation.py \
+    tests/phm_design/test_r83c_native_validation_intake.py \
     tests/phm_design/test_r83b_matched_budget.py \
     tests/phm_design/test_r83b_guard.py
 ~~~
