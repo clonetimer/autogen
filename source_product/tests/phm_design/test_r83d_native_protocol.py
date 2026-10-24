@@ -201,8 +201,9 @@ def test_two_nominal_fault_pairs_cannot_forge_one_physical_group(tmp_path):
     raw = read_json(manifest)
     sample_a = raw["samples"][0]
     sample_b = next(x for x in raw["samples"]
-                    if x["group_id"] != sample_a["group_id"]
+                    if x["group_id"].endswith("-003")
                     and x["split"] == sample_a["split"])
+    # Cases 000 and 003 were preregistered in the *same* inclination bin.
     # Same physical lineage renamed onto a different pair must never raise
     # independent per-class support; rejection happens before reading traces.
     sample_b["group_id"] = sample_a["group_id"]
