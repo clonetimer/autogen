@@ -147,7 +147,9 @@ jobs:
           assert doc["status"]=="TRAIN_EXPLORATION_COMPLETE_NO_VALIDATION"
           assert not result["validation_test_or_final_telemetry_read"]
           assert not result["fairness_gate"]["performance_claim_allowed"]
-          assert result["frozen_r83f_source"]["source_train_physical_groups"]==60
+          assert result["frozen_r83f_source"]["source_train_records"]==60
+          assert result["frozen_r83f_source"]["source_train_physical_groups"]==45
+          assert result["frozen_r83f_source"]["paired_nominal_fault_groups"]==15
           assert result["fairness_gate"]["comparison_allowed_train_research_only"]
           for kind in ("zero_padded_raw","causal_command_response"):
               arm=result["arms"][kind]
