@@ -161,7 +161,8 @@ def run_matched_source_train_study(
         "interpretation": "SOURCE_TRAIN_SEARCH_FEEDBACK_ONLY",
         "fairness": {
             "same_records": True, "same_group_folds": True,
-            "equal_estimator_fits": True, "equal_candidate_slots": True,
+            "equal_estimator_fit_cap": True, "equal_actual_fit_count_if_failed": False,
+            "equal_candidate_slots": True,
             "equal_neural_epochs": True,
             "equal_flops": False, "equal_cpu_seconds": False,
             "equal_parameter_count": False,
