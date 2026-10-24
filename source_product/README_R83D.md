@@ -65,6 +65,12 @@ must still be independently checked.
    only if all are eligible/frozen, runs the read-only VAL steward.
    Artifacts contain real-case evidence and explicit refusal receipts.
 
+The plan receipt also writes frozen_plan_canonical_sha256, computed from
+sorted-key UTF-8 JSON rather than platform-specific file bytes. The
+automatic CI asserts this semantic digest, prints it in each matrix job,
+and archives the exact planned tasks for review. Native source binaries
+and full physical campaign receipts must be verified separately.
+
 The manual workflow cannot be started through an ordinary PR CI push.
 GitHub normally requires workflow_dispatch definitions to be discoverable
 from the default branch; do NOT merge this research workflow into Stable
