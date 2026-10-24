@@ -98,6 +98,30 @@ These checks do **not** prove that simulations were really executed, or that
 groups have physically independent provenance. The external steward must
 review those facts.
 
+### Preparing an isolated VAL-only view without opening TRAIN telemetry
+
+A trusted source steward can stage only VALIDATION traces from a
+development (TRAIN + VALIDATION) Dataset manifest without hashing, reading
+or copying a TRAIN telemetry file:
+
+~~~python
+from phm_design.industrial.r83_frozen_validation import (
+    stage_reviewer_validation_only_view,
+)
+receipt = stage_reviewer_validation_only_view(
+    "/input/development/dataset.json",
+    "/input/isolated_validation",
+)
+# receipt["train_telemetry_accessed"] == False
+~~~
+
+The preparer rejects TEST/FINAL descriptors and verifies every copied VAL
+source SHA-256. The source's reviewed physical-map file must be prepared
+separately for the selected VALIDATION sample IDs and approved environment
+identities; the code does **not** invent regimes from fault labels or
+telemetry. The next CLI step checks that reviewed map against the already
+recorded independent lineage IDs.
+
 For a reviewed manifest under /input/validation/dataset.json containing
 **only** validation-split rows and its companion physical map:
 
