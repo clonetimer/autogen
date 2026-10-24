@@ -160,8 +160,6 @@ def test_real_frozen_models_scored_on_separate_validation_only(tmp_path):
             tampered, spec, frozen, heldout, trusted_fixed_pickle=True)
 
     extra = copy.deepcopy(heldout)
-    extra[1]["metadata"][spec["data"]["group_keys"][0]] = extra[0]["metadata"][
-        spec["data"]["group_keys"][0]]
     extra[1]["measurements"] = copy.deepcopy(extra[0]["measurements"])
     with pytest.raises(TaskSpecRejected, match="RELABELED_DUPLICATE_TRAJECTORY"):
         evaluate_r83_frozen_validation(
