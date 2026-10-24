@@ -95,4 +95,9 @@ jobs:
                      in ("train", "validation") for case in cases)
           assert all(case["overrides"]["parameters"]["inclination_deg"]
                      in (29.0, 47.0, 65.0) for case in cases)
+          from phm_design.io import digest
+          audit = json.loads((Path(os.environ["RUNNER_TEMP"]) /
+                              "r83d_native_task_plan.audit.json").read_text())
+          assert audit["frozen_plan_canonical_sha256"] == digest(obj)
+          print("R83D_PLAN_CANONICAL_SHA256", digest(obj))
           print("R83D_PLAN_ONLY_NO_PHYSICS_OR_MODEL_CLAIM", len(cases))
