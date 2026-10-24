@@ -19,12 +19,20 @@ def prepare(campaign: str | Path, output: str | Path) -> dict:
     contracts = sorted((campaign / "cases").glob("*/astrograph/dataset_contract.json"))
     if not contracts:
         raise ValueError("NO_CASE_CONTRACTS")
+    # Trusted data preparation: reject proxy/Basilisk-in-name-only sources.
+    # TRAIN-only source reports and paired physical evidence are reviewed
+    # before copying any model-ready CSV.
+    from ..industrial.native_campaign_gate import (
+        review_native_rw_train_campaign, require_native_rw_candidate,
+    )
+    candidate_gate = review_native_rw_train_campaign(campaign)
     records, source_records, sample_s = [], [], None
     output.mkdir(parents=True)
     for cp in contracts:
         c = read_json(cp)
         root = cp.parent.parent
         simulation = c["simulation"]
+        require_native_rw_candidate(c)
         if c.get("status") != "complete" or simulation.get("backend") != "basilisk" or simulation.get("capability_id") != "subsystem.adcs_unified_native.v1":
             raise ValueError("NATIVE_COMPLETE_ADCS_REQUIRED")
         if sample_s is not None and float(simulation["sample_s"]) != sample_s:
@@ -79,7 +87,8 @@ def prepare(campaign: str | Path, output: str | Path) -> dict:
     summary = {"status": "PREPARED", "counts": {**dev.counts(), **test.counts()},
                "channel_count": len(CHANNELS), "oracle_wheel_remapping": False,
                "actual_torque_input": False, "source_records": source_records,
-               "fit_receives_holdout": False, "scope": contract["scope"]}
+               "fit_receives_holdout": False, "scope": contract["scope"],
+               "native_train_candidate_gate": candidate_gate}
     write_json(output / "preparation_report.json", summary)
     write_json(output / "units.json", {c["name"]: c["unit"] for c in CHANNELS})
     return summary

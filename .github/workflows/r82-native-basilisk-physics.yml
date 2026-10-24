@@ -1,0 +1,88 @@
+name: R82 native Basilisk RW physics smoke
+
+on:
+  pull_request:
+    paths:
+      - "source_product/research/r82_basilisk_native_rw_smoke.py"
+      - ".github/workflows/r82-native-basilisk-physics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-reaction-wheel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Fetch approved original Basilisk 2.11.0 wheel
+        shell: bash
+        run: |
+          python -m pip download --no-deps --only-binary=:all: --dest "$RUNNER_TEMP/bsk_wheels" "bsk==2.11.0"
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          wheelhouse = Path(os.environ["RUNNER_TEMP"]) / "bsk_wheels"
+          wheels = list(wheelhouse.glob("bsk-2.11.0-*.whl"))
+          if len(wheels) != 1:
+              raise RuntimeError("EXPECTED_ONE_OFFICIAL_BSK_WHEEL")
+          digest = hashlib.sha256(wheels[0].read_bytes()).hexdigest()
+          expected = "d51fe1ffa1b0b03dc415034b210497b28a2504428d4d8e71b481542a08c08a0a"
+          if digest != expected:
+              raise RuntimeError(f"OFFICIAL_LINUX_WHEEL_SHA256_MISMATCH:{digest}")
+          print("approved Basilisk wheel SHA256", digest)
+          PY
+      - name: Install approved wheel and its declared dependencies
+        shell: bash
+        run: |
+          python -m pip install "$RUNNER_TEMP"/bsk_wheels/bsk-2.11.0-*.whl
+          python - <<'PY'
+          import Basilisk
+          assert Basilisk.__version__ == "2.11.0", Basilisk.__version__
+          from Basilisk.simulation import spacecraft, reactionWheelStateEffector
+          from Basilisk.utilities import simIncludeRW
+          print("NATIVE_RUNTIME_OK", Basilisk.__version__)
+          PY
+      - name: Run three actual Basilisk simulator cases
+        shell: bash
+        run: |
+          python source_product/research/r82_basilisk_native_rw_smoke.py \
+            --output "$RUNNER_TEMP/rw_positive.csv" --torque-x 0.02
+          python source_product/research/r82_basilisk_native_rw_smoke.py \
+            --output "$RUNNER_TEMP/rw_zero.csv" --torque-x 0.0
+          python source_product/research/r82_basilisk_native_rw_smoke.py \
+            --output "$RUNNER_TEMP/rw_negative.csv" --torque-x -0.02
+          python - <<'PY'
+          import csv
+          import os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"])
+          changes = {}
+          for key in ("positive", "zero", "negative"):
+              with (root / f"rw_{key}.csv").open(newline="") as stream:
+                  rows = list(csv.DictReader(stream))
+              if len(rows) != 121:
+                  raise RuntimeError(f"BAD_NATIVE_OUTPUT_LENGTH:{key}")
+              speed = "adcs.rw.speed_rad_s_0"
+              changes[key] = float(rows[-1][speed]) - float(rows[0][speed])
+          if not (changes["positive"] > 0.01 and
+                  changes["negative"] < -0.01 and
+                  abs(changes["zero"]) < 1e-6):
+              raise RuntimeError(f"NATIVE_BSK_TORQUE_CAUSALITY_FAILED:{changes}")
+          print("NATIVE_BSK_RW_PHYSICS_PASS", changes)
+          print("Not a SatAgentSimulation campaign or independent qualification")
+          PY
+      - name: Archive genuine native telemetry
+        uses: actions/upload-artifact@v4
+        with:
+          name: r82-native-bsk-211-smoke-telemetry
+          path: |
+            ${{ runner.temp }}/rw_positive.csv
+            ${{ runner.temp }}/rw_zero.csv
+            ${{ runner.temp }}/rw_negative.csv
+          retention-days: 14

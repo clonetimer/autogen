@@ -102,6 +102,19 @@ def _json_digest(value) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _physical_group_id(value, context):
+    """Accept native SHA-256 lineage IDs as physical group identifiers.
+
+    Source adapters may represent a physical run by its SHA-256 of seed and
+    parameter lineage, including a leading digit. All other group identifiers
+    retain the existing TaskSpec identity grammar. This never changes labels,
+    field names, environment axes, or deployment observations.
+    """
+    if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value):
+        return value
+    return _identity(value, context)
+
+
 def _channel_name(name, context):
     name = _identity(name, context)
     lower = name.lower()
@@ -539,7 +552,8 @@ def audit_train_manifest(task_spec: Mapping, records: Sequence[Mapping]) -> dict
             _reject("DESIGN_WORKER_PROTECTED_ROLE", str(i))
         if r["label"] not in labels:
             _reject("UNKNOWN_TRAINING_LABEL", str(i))
-        ids = tuple(_identity(r[key], "group." + key) for key in group_keys)
+        ids = tuple(_physical_group_id(r[key], "group." + key)
+                    for key in group_keys)
         env = tuple(_identity(r[key], "environment." + key) for key in env_keys)
         if ids in group_env and group_env[ids] != env:
             _reject("PHYSICAL_GROUP_CROSSES_ENVIRONMENTS", str(ids))
