@@ -26,7 +26,7 @@ def _reject(reason):
     raise TaskSpecRejected(reason)
 
 
-def _measure(case_root, wheel, onset):
+def _measure(case_root, wheel, onset, original_hw_limit):
     """Use only pinned original TRAIN case CSVs, no external source folders."""
     source = case_root/"trace.csv"
     c=f"adcs.rw.command_torque_nm_{wheel}"
@@ -54,15 +54,25 @@ def _measure(case_root, wheel, onset):
             rows.append(vals)
     if len(rows)!=61 or any(abs(row["time_s"]-i)>1e-8 for i,row in enumerate(rows)):
         _reject("R83I_NATIVE_TRACE_SAMPLE_CONTRACT_CHANGED")
-    if any(row[f"adcs.rw.effective_max_torque_nm_{i}"]<=0
+    if not math.isfinite(original_hw_limit) or original_hw_limit<=0:
+        _reject("R83I_INVALID_ORIGINAL_RW_HARDWARE_RATING")
+    # A genuine jam/torque-failure may make EFFECTIVE (faulted) capability
+    # exactly zero. That is physics evidence, NOT malformed original hardware.
+    if any(row[f"adcs.rw.effective_max_torque_nm_{i}"]<0
            for row in rows for i in range(3)):
-        _reject("R83I_NONPOSITIVE_ACTUATOR_RATING")
+        _reject("R83I_NEGATIVE_EFFECTIVE_ACTUATOR_CAPACITY")
     post=[row for row in rows if row["time_s"]>=onset]
     if len(post)<2 or len(post)>58:
         _reject("R83I_NATIVE_FAULT_ONSET_OUTSIDE_SOURCE")
     return {
         "trace_sha256":sha_file(source),
-        "post_mean_abs_command_to_rated":statistics.fmean(abs(row[c])/row[rating] for row in post),
+        "post_mean_abs_command_to_rated":statistics.fmean(
+            abs(row[c])/original_hw_limit for row in post),
+        "original_hardware_rating_nm":original_hw_limit,
+        "full_case_zero_effective_capacity_wheel_samples":sum(
+            row[f"adcs.rw.effective_max_torque_nm_{i}"]==0
+            for row in rows for i in range(3)),
+        "fault_effective_capacity_zeros_are_physical_not_division_denominator":True,
         "post_mean_abs_command_nm":statistics.fmean(abs(row[c]) for row in post),
         "post_mean_abs_command_applied_gap_nm":statistics.fmean(
             abs(row[c]-row[applied]) for row in post),
@@ -72,12 +82,10 @@ def _measure(case_root, wheel, onset):
             abs(row[f"adcs.rw.speed_rad_s_{i}"])
             for row in rows for i in range(3)),
         "max_full_case_abs_command_to_rated":max(
-            abs(row[f"adcs.rw.command_torque_nm_{i}"]) /
-            row[f"adcs.rw.effective_max_torque_nm_{i}"]
+            abs(row[f"adcs.rw.command_torque_nm_{i}"]) / original_hw_limit
             for row in rows for i in range(3)),
         "max_full_case_abs_applied_to_rated":max(
-            abs(row[f"adcs.control.applied_torque_nm_{i}"]) /
-            row[f"adcs.rw.effective_max_torque_nm_{i}"]
+            abs(row[f"adcs.control.applied_torque_nm_{i}"]) / original_hw_limit
             for row in rows for i in range(3)),
         "safety_checked_all_three_native_reaction_wheels":True,
         "full_case_source_rows":len(rows),
@@ -158,8 +166,8 @@ def review_real_native_gain_pilot(*, campaign, planned_spec, output):
         onset,wheel=a["onset"],a["wheel"]
         if onset is None or wheel not in (0,1,2) or not 0<onset<60:
             _reject("R83I_INVALID_ORIGINAL_FAULT_ONSET")
-        fa=_measure(a["case_root"],wheel,onset)
-        no=_measure(b["case_root"],wheel,onset)
+        fa=_measure(a["case_root"],wheel,onset,a["hardware_limit"])
+        no=_measure(b["case_root"],wheel,onset,b["hardware_limit"])
         report.append({
             "original_physical_parent":parent,"arm":arm,
             "fault_class":a["fault_class"],
@@ -208,6 +216,14 @@ def review_real_native_gain_pilot(*, campaign, planned_spec, output):
     max_speed=max(row[role]["max_full_case_abs_speed_rad_s"]
                   for row in report for role in ("fault_trace_physics_only",
                                                  "nominal_trace_physics_only"))
+    max_applied_ratio=max(x[role]["max_full_case_abs_applied_to_rated"]
+                          for row in report for role in ("fault_trace_physics_only",
+                                                         "nominal_trace_physics_only")
+                          for x in (row,))
+    zero_effective_samples=sum(
+        row[role]["full_case_zero_effective_capacity_wheel_samples"]
+        for row in report for role in ("fault_trace_physics_only",
+                                       "nominal_trace_physics_only"))
     return_result={
         "schema":SCHEMA,
         "source_kind":"ACTUAL_BASILISK_NATIVE_STATIC_GAIN_ENGINEERING_PILOT",
@@ -224,6 +240,10 @@ def review_real_native_gain_pilot(*, campaign, planned_spec, output):
             max_speed<=SPEED_BOUND_RAD_S and max_ratio<=1.00001),
         "observed_max_target_speed_rad_s":max_speed,
         "observed_max_command_to_rated_ratio":max_ratio,
+        "observed_max_applied_to_original_hardware_rated_ratio":max_applied_ratio,
+        "zero_effective_capacity_samples_due_to_physical_fault":zero_effective_samples,
+        "applied_motor_torque_within_original_hw_rating_observed":max_applied_ratio<=1.00001,
+        "commanded_torque_is_prelimiter_request_not_applied_torque":True,
         "physical_excitation_by_mechanism":by_fault,
         "original_pairs":report,
     }
