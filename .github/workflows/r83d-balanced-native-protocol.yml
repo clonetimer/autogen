@@ -1,0 +1,66 @@
+name: R83d Balanced Native Protocol
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r83d_native_protocol.py'
+      - 'source_product/tests/phm_design/test_r83d_native_protocol.py'
+      - 'source_product/README_R83D.md'
+      - '.github/workflows/r83d-balanced-native-protocol.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preregistration:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout exactly pinned SatAgentSimulation native producer
+        uses: actions/checkout@v4
+        with:
+          repository: clonetimer/SatAgentSimulation
+          ref: 1f709beeae97baec65db9ca13ae373d88728f87d
+          path: satagent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install source-design dependencies (NO simulator execution)
+        run: python -m pip install -e './source_product[dev]'
+      - name: Deterministic pair/regime selection and leak rejection tests
+        run: python -m pytest -q source_product/tests/phm_design/test_r83d_native_protocol.py
+      - name: Actual SatAgentSimulation factory produces predeclared native plan
+        env:
+          PYTHONPATH: ${{ github.workspace }}/satagent/src
+        run: >-
+          python -m phm_design.industrial.r83d_native_protocol
+          --mode plan
+          --factory-config satagent/configs/integration/rw_dataset_factory.json
+          --output "${{ runner.temp }}/r83d_native_task_plan.json"
+      - name: Review planned cases only; do NOT claim Basilisk was executed
+        shell: python
+        run: |
+          import json
+          import os
+          from pathlib import Path
+          src = Path(os.environ["RUNNER_TEMP"]) / "r83d_native_task_plan.json"
+          obj = json.loads(src.read_text())
+          cases = obj["campaign"]["cases"]
+          assert len(cases) == 126
+          assert obj["campaign"]["max_cases"] == 126
+          assert obj["metadata"]["r83d_preregistration"]["physical_execution_attested"] is False
+          assert all(case["overrides"]["metadata"]["astrograph_split"]
+                     in ("train", "validation") for case in cases)
+          assert all(case["overrides"]["parameters"]["inclination_deg"]
+                     in (29.0, 47.0, 65.0) for case in cases)
+          print("R83D_PLAN_ONLY_NO_PHYSICS_OR_MODEL_CLAIM", len(cases))
