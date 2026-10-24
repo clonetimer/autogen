@@ -140,8 +140,12 @@ def test_invalid_budget_non_train_or_search_grammar_refused_before_fit(monkeypat
         run_matched_source_train_study(spec, bad_role)
     bad_signal = copy.deepcopy(rows)
     bad_signal[0]["measurements"][0]["injected_truth"] = 1
-    # Input validation must refuse inside worker; no score is permissible.
-    # This check is explicitly in R81 core and mirrored by R83.
+    with pytest.raises(TaskSpecRejected, match="UNDECLARED_OR_PROTECTED_OBSERVATION"):
+        run_matched_source_train_study(spec, bad_signal)
+    duplicate = copy.deepcopy(rows)
+    duplicate[1]["measurements"] = copy.deepcopy(duplicate[0]["measurements"])
+    with pytest.raises(TaskSpecRejected, match="DUPLICATE_TRAJECTORY"):
+        run_matched_source_train_study(spec, duplicate)
     altered = copy.deepcopy(spec)
     altered["design"]["objectives"] = ["GroupDRO"]
     with pytest.raises(TaskSpecRejected, match="PLAIN_ERM_DIRECT"):
