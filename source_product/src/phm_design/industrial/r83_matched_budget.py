@@ -10,6 +10,9 @@ from __future__ import annotations
 
 from dataclasses import asdict
 import copy
+import hashlib
+
+import numpy as np
 import json
 from pathlib import Path
 import time
@@ -19,7 +22,7 @@ from .design_engine import DesignAcceptance, IndustrialDesignRejected, _sha
 from .resource_guard import GuardedDesignTimeout, run_design_guarded
 from .self_organizing import EvolutionPolicy, _risk
 from .self_organizing_guard import run_self_organizing_design_guarded
-from .taskspec import TaskSpec, TaskSpecRejected, compile_task_spec
+from .taskspec import TaskSpec, TaskSpecRejected, compile_task_spec, validate_observations
 from .source_intake import stage_train_only_view, intake_train_source
 from ..io import read_json, write_json, sha_file
 
@@ -49,12 +52,29 @@ def _preflight(task_spec, records, policy):
     if "max_wall_seconds" not in design["budget"]:
         raise TaskSpecRejected("MATCHED_STUDY_REQUIRES_HARD_WALL_GUARD")
     metadata = []
+    groups_by_environment = {}
+    fingerprints = {}
+    fields = [raw["observations"]["time"]["field"]] + [
+        channel["name"] for channel in raw["observations"]["channels"]]
     for record in records:
         if not isinstance(record, Mapping) or set(record) != {"measurements", "metadata"}:
             raise TaskSpecRejected("INVALID_MATCHED_STUDY_RECORD")
         if not isinstance(record["metadata"], Mapping):
             raise TaskSpecRejected("INVALID_MATCHED_STUDY_METADATA")
-        metadata.append(dict(record["metadata"]))
+        validate_observations(raw, record["measurements"])
+        item = dict(record["metadata"])
+        metadata.append(item)
+        group = "|".join(str(item.get(k)) for k in raw["data"]["group_keys"])
+        env = "|".join(str(item.get(k)) for k in raw["data"]["environment_axes"])
+        if group in groups_by_environment and groups_by_environment[group] != env:
+            raise TaskSpecRejected("PHYSICAL_GROUP_CROSSES_ENVIRONMENTS")
+        groups_by_environment[group] = env
+        matrix = np.asarray([[r[key] for key in fields]
+                             for r in record["measurements"]], dtype="<f8")
+        fingerprint = hashlib.sha256(np.ascontiguousarray(matrix).tobytes()).hexdigest()
+        if fingerprint in fingerprints and fingerprints[fingerprint] != group:
+            raise TaskSpecRejected("DUPLICATE_TRAJECTORY_ACROSS_PHYSICAL_GROUPS")
+        fingerprints[fingerprint] = group
     plan = compile_task_spec(raw, train_manifest=metadata)
     cols = plan["train_data_contract"]["environment_axes"]
     envs = {"|".join(m[column] for column in cols) for m in metadata}
