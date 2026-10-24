@@ -1,6 +1,10 @@
 name: R82 native physical TRAIN AutoDesign study
 
-# Deliberately manual: real physics studies are costly and an eligible-model\n# refusal is valid scientific evidence, not a CI software regression.\non:\n  workflow_dispatch:\n
+# Deliberately manual: real physics studies are costly and an eligible-model
+# refusal is valid scientific evidence, not a CI software regression.
+on:
+  workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -72,7 +76,8 @@ jobs:
           config["simulation_backend"] = "basilisk"
           config["allow_test_proxy"] = False
           config["duration_s"] = 60.0
-          (root / "r82_native_full_config.json").write_text(json.dumps(config, indent=2) + "\n")
+          (root / "r82_native_full_config.json").write_text(json.dumps(config, indent=2) + "
+")
           print("R82_PREDECLARED_COUNTS", config["counts"], config["fault_ids"])
           PY
       - name: Actually run source native fault/nominal campaign
