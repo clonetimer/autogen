@@ -108,6 +108,7 @@ jobs:
           python -m pip install "$RUNNER_TEMP"/compat/bsk-2.11.0+satfix1-*.whl
           python -m pip install -e ./satagent
           python -m pip install -e ./source_product
+          python -m pip install 'pytest>=8,<10'
           python - <<'PY'
           from importlib.metadata import version
           from Basilisk.utilities import simIncludeRW
