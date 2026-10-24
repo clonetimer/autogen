@@ -70,6 +70,11 @@ decision = restored.predict(deployment_measurements)
 # label, confidence_uncalibrated, independent_qualification=False
 ~~~
 
+The existing TaskSpec must declare compare=[tcn], objectives=[ERM],
+topologies=[direct] (or omit topologies), and candidate_max >=
+policy.max_candidates. This opt-in pilot does not override the source TaskSpec
+trial budget or quietly reinterpret a different learner/objective.
+
 Only finite topology configurations are accepted, and every fold plus
 final refit counts against declared design.budget.max_fits. Best-effort
 CPU use is checked after fitting and before final delivery against
