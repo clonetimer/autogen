@@ -1,0 +1,222 @@
+name: R83d REAL Basilisk Balanced RW Campaign (manual, costly)
+
+# Real physical simulations must never run on ordinary PR pushes.
+# PR CI only validates source-plan construction and synthetic interfaces.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-balanced-r83d:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 175
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout pinned native source ONLY
+        uses: actions/checkout@v4
+        with:
+          repository: clonetimer/SatAgentSimulation
+          ref: 1f709beeae97baec65db9ca13ae373d88728f87d
+          path: satagent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Verify official Basilisk wheel SHA and repack metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/official" "$RUNNER_TEMP/compat"
+          python -m pip download --only-binary=:all: --no-deps \
+            --dest "$RUNNER_TEMP/official" "bsk==2.11.0"
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          candidates = list((Path(os.environ["RUNNER_TEMP"]) / "official").glob("bsk-2.11.0-*.whl"))
+          if len(candidates) != 1:
+              raise RuntimeError("R83D_MUST_USE_EXACT_ONE_ORIGINAL_BSK_WHEEL")
+          sha = hashlib.sha256(candidates[0].read_bytes()).hexdigest()
+          expected = "d51fe1ffa1b0b03dc415034b210497b28a2504428d4d8e71b481542a08c08a0a"
+          if sha != expected:
+              raise RuntimeError("R83D_BASILISK_ORIGINAL_WHEEL_HASH_CHANGED:" + sha)
+          print("BASILISK_ORIGINAL_WHEEL_SHA256", sha)
+          PY
+          python satagent/scripts/build_bsk_compat_wheels.py \
+            "$RUNNER_TEMP"/official/bsk-2.11.0-*.whl \
+            --output-dir "$RUNNER_TEMP/compat" \
+            --report "$RUNNER_TEMP/compat_report.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          result = json.loads((Path(os.environ["RUNNER_TEMP"]) / "compat_report.json").read_text())["results"][0]
+          if not result["payload_bytes_unchanged"] or result["payload_file_count"] < 800:
+              raise RuntimeError("R83D_NATIVE_PHYSICS_PAYLOAD_TAMPERED")
+          PY
+      - name: Install native Basilisk physics and exact pinned SatAgent source
+        shell: bash
+        run: |
+          python -m pip install "$RUNNER_TEMP"/compat/bsk-2.11.0+satfix1-*.whl
+          python -m pip install -e ./satagent
+          python -m pip install -e ./source_product
+          python - <<'PY'
+          from importlib.metadata import version
+          from Basilisk.simulation import reactionWheelStateEffector
+          from Basilisk.utilities import simIncludeRW
+          assert version("bsk") == "2.11.0+satfix1"
+          print("R83D_REAL_BASILISK_AVAILABLE", version("bsk"), simIncludeRW.__file__)
+          PY
+      - name: Freeze actual upstream factory cases BEFORE simulation/labels
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83d_native_protocol \
+            --mode plan \
+            --factory-config satagent/configs/integration/rw_dataset_factory.json \
+            --output "$RUNNER_TEMP/r83d_frozen_native_plan.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          spec=json.loads((Path(os.environ["RUNNER_TEMP"])/"r83d_frozen_native_plan.json").read_text())
+          assert len(spec["campaign"]["cases"])==126
+          print("R83D_FROZEN_FACTORY_CASE_COUNT", len(spec["campaign"]["cases"]))
+          PY
+      - name: Run REAL paired native Basilisk campaign (126 cases)
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/r83d_evidence"
+          python - <<'PY' 2>&1 | tee "$RUNNER_TEMP/r83d_evidence/native_execution.log"
+          import json, os
+          from pathlib import Path
+          from sat_sim.fault_dataset_factory import run_fault_dataset_campaign
+          root=Path(os.environ["RUNNER_TEMP"])
+          plan=json.loads((root/"r83d_frozen_native_plan.json").read_text())
+          result=run_fault_dataset_campaign(plan,
+              output_root=root/"r83d_actual_basilisk_cases",
+              continue_on_error=False, dry_run=False)
+          if result.campaign.summary.get("failure_count",0):
+              raise RuntimeError("R83D_NATIVE_CASE_FAILURE")
+          print("R83D_REAL_CASES_COMPLETE", result.campaign.summary)
+          PY
+      - name: Check native physics candidate runtime and TRAIN pairing
+        shell: bash
+        run: |
+          python -m phm_design.industrial.native_campaign_gate \
+            --campaign "$RUNNER_TEMP/r83d_actual_basilisk_cases" \
+            --report "$RUNNER_TEMP/r83d_evidence/native_candidate_review.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          r=json.loads((Path(os.environ["RUNNER_TEMP"])/"r83d_evidence/native_candidate_review.json").read_text())
+          if r["train_pairs"]!=45 or r["train_cases"]!=90:
+              raise RuntimeError("R83D_NATIVE_TRAIN_PHYSICS_INCOMPLETE")
+          if r["physical_execution_independently_attested"]:
+              raise RuntimeError("R83D_FALSE_PHYSICAL_ATTESTATION")
+          print("R83D_45_REAL_TRAIN_PAIRS_CHECKED")
+          PY
+      - name: Prepare unchanged six-channel real Basilisk RW observations
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from phm_design.adapters.sat_rw import prepare
+          root=Path(os.environ["RUNNER_TEMP"])
+          result=prepare(root/"r83d_actual_basilisk_cases",
+                         root/"r83d_prepared")
+          if result["channel_count"] != 6 or result["fit_receives_holdout"]:
+              raise RuntimeError("R83D_ORACLE_TELEMETRY_OR_HOLDOUT_LEAKAGE")
+          print("R83D_NATIVE_SIX_SENSOR_INPUTS", result["counts"])
+          PY
+      - name: Collect producer/runtime native source hashes
+        shell: bash
+        run: |
+          python -m phm_design.industrial.native_binding_collector \
+            --native-source-checkout satagent \
+            --output "$RUNNER_TEMP/r83d_evidence/runtime_binding.json"
+      - name: Materialize prespecified class-balanced TRAIN/VAL development cohort
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83d_native_protocol \
+            --mode balance \
+            --plan "$RUNNER_TEMP/r83d_frozen_native_plan.json" \
+            --prepared-manifest "$RUNNER_TEMP/r83d_prepared/development/dataset.json" \
+            --preparation-report "$RUNNER_TEMP/r83d_prepared/preparation_report.json" \
+            --output "$RUNNER_TEMP/r83d_balanced_dev"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=json.loads((Path(os.environ["RUNNER_TEMP"])/"r83d_balanced_dev/review/balance_audit.json").read_text())
+          if r["train_selected"] != 60 or r["validation_selected"] != 24:
+              raise RuntimeError("R83D_BALANCE_FAILED")
+          assert not r["source_outcome_or_telemetry_guided_selection"]
+          print("R83D_BALANCED_60_TRAIN_24_VALIDATION",r["class_regime_support"])
+          PY
+      - name: Run PREDECLARED three-arm research TRAIN only (never soften screen)
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83_matched_budget \
+            --task-spec source_product/examples/industrial/satellite_rw_native_r83_matched_train.json \
+            --development-manifest "$RUNNER_TEMP/r83d_balanced_dev/dataset.json" \
+            --physical-map "$RUNNER_TEMP/r83d_balanced_dev/review/train_physical_map.json" \
+            --runtime-binding "$RUNNER_TEMP/r83d_evidence/runtime_binding.json" \
+            --native-source-checkout satagent \
+            --basilisk-wheel-factory "$(python -c 'from Basilisk.utilities import simIncludeRW; print(simIncludeRW.__file__)')" \
+            --output "$RUNNER_TEMP/r83d_three_arm_train"
+      - name: Evaluate frozen models ONLY when all three passed TRAIN eligibility
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from phm_design.industrial.r83_frozen_validation import (
+              stage_reviewer_validation_only_view,
+              run_native_r83_validation_once)
+          root=Path(os.environ["RUNNER_TEMP"])
+          models=root/"r83d_three_arm_train/research_models"
+          arms=("fixed_portfolio","static_topology","self_organizing")
+          ready=all((models/arm).exists() for arm in arms)
+          if not ready:
+              print("R83D_NO_COMPLETE_ELIGIBLE_THREE_ARM_MODELS; SKIPPING_VAL")
+          else:
+              receipt=stage_reviewer_validation_only_view(
+                  root/"r83d_balanced_dev/dataset.json",
+                  root/"r83d_val_only")
+              print("R83D_STAGED_VAL", receipt["validation_cases"])
+              run_native_r83_validation_once(
+                  train_research_report=root/"r83d_three_arm_train/research_report.json",
+                  task_spec=Path("source_product/examples/industrial/satellite_rw_native_r83_matched_train.json"),
+                  frozen_models=models,
+                  validation_manifest=root/"r83d_val_only/dataset.json",
+                  validation_physical_map=root/"r83d_balanced_dev/review/validation_physical_map.json",
+                  runtime_binding=root/"r83d_evidence/runtime_binding.json",
+                  native_source_checkout=Path("satagent"),
+                  basilisk_wheel_factory=__import__("Basilisk.utilities",fromlist=["simIncludeRW"]).simIncludeRW.__file__,
+                  output=root/"r83d_reviewed_val_report",
+                  trusted_fixed_pickle=True)
+              print("R83D_VALIDATION_READ_ONLY_NO_FINAL")
+          PY
+      - name: Archive full original case contracts and selected actual telemetry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83d-genuine-basilisk-balanced-training-research
+          retention-days: 21
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/compat_report.json
+            ${{ runner.temp }}/r83d_frozen_native_plan.json
+            ${{ runner.temp }}/r83d_frozen_native_plan.audit.json
+            ${{ runner.temp }}/r83d_evidence/
+            ${{ runner.temp }}/r83d_actual_basilisk_cases/astrograph_dataset_index.json
+            ${{ runner.temp }}/r83d_actual_basilisk_cases/cases/*/astrograph/dataset_contract.json
+            ${{ runner.temp }}/r83d_actual_basilisk_cases/cases/*/astrograph/simulation_report.json
+            ${{ runner.temp }}/r83d_balanced_dev/dataset.json
+            ${{ runner.temp }}/r83d_balanced_dev/review/
+            ${{ runner.temp }}/r83d_balanced_dev/observations/
+            ${{ runner.temp }}/r83d_three_arm_train/research_report.json
+            ${{ runner.temp }}/r83d_three_arm_train/research_models/
+            ${{ runner.temp }}/r83d_reviewed_val_report/validation_report.json
