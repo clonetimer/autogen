@@ -52,6 +52,23 @@ jobs:
           --mode plan
           --factory-config satagent/configs/integration/rw_dataset_factory.json
           --output "${{ runner.temp }}/r83d_native_task_plan.json"
+      - name: Upstream campaign scheduler DRY-RUN (no Basilisk physics)
+        shell: python
+        env:
+          PYTHONPATH: ${{ github.workspace }}/satagent/src
+        run: |
+          import json
+          import os
+          from pathlib import Path
+          from sat_sim.fault_dataset_factory import run_fault_dataset_campaign
+          root = Path(os.environ["RUNNER_TEMP"])
+          plan = json.loads((root / "r83d_native_task_plan.json").read_text())
+          result = run_fault_dataset_campaign(
+              plan, output_root=root / "r83d_scheduler_dryrun",
+              continue_on_error=False, dry_run=True)
+          assert len(result.campaign.plan.cases) == 126
+          assert result.dataset_index["dry_run"] is True
+          print("R83D_ACTUAL_UPSTREAM_SCHEDULER_PLAN_ONLY", len(result.campaign.plan.cases))
       - name: Review planned cases only; do NOT claim Basilisk was executed
         shell: python
         run: |
