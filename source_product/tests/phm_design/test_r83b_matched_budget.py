@@ -37,6 +37,7 @@ def _fixed_model(*args, **kwargs):
     assert spec["design"]["candidate_max"] == 3
     assert spec["design"]["budget"]["max_fits"] == 10
     assert spec["design"]["budget"]["max_wall_seconds"] == 180
+    assert kwargs.get("selection_rule") == "r83_matched_train_loss"
     return SimpleNamespace(audit={
         "decision": "TRAIN_ONLY_SELECTION_REFITTED", "model_delivered": True,
         "total_model_fits": 10,
@@ -92,6 +93,10 @@ def test_both_arms_equal_fit_cap_and_identical_train_records(monkeypatch):
     assert out["model_delivered_to_deployment"] is False
     assert out["fairness"]["equal_flops"] is False
     assert out["fairness"]["equal_estimator_fit_cap"] is True
+    assert out["fairness"]["shared_predeclared_candidate_selection_rule"] == (
+        "r83_matched_train_loss")
+    assert out["independent_physical_class_group_support"]["regime_0"] == {
+        key: 2 for key in spec["task"]["labels"]}
     assert received == [("fixed", records), ("evolved", records)]
     assert out["arms"]["fixed_portfolio"]["charged_fits"] == 10
     assert out["arms"]["self_organizing"]["charged_fits"] == 10
@@ -134,6 +139,10 @@ def test_invalid_budget_non_train_or_search_grammar_refused_before_fit(monkeypat
     too_small["design"]["budget"]["max_fits"] = 9
     with pytest.raises(TaskSpecRejected, match="FIT_BUDGET_TOO_SMALL"):
         run_matched_source_train_study(too_small, rows)
+    too_few_trials = copy.deepcopy(spec)
+    too_few_trials["design"]["candidate_max"] = 2
+    with pytest.raises(TaskSpecRejected, match="SOURCE_TRIAL_SLOTS_BELOW_THREE"):
+        run_matched_source_train_study(too_few_trials, rows)
     bad_role = copy.deepcopy(rows)
     bad_role[0]["metadata"]["role"] = "FINAL_OOD"
     with pytest.raises(TaskSpecRejected, match="DESIGN_WORKER_PROTECTED_ROLE"):
@@ -146,6 +155,14 @@ def test_invalid_budget_non_train_or_search_grammar_refused_before_fit(monkeypat
     duplicate[1]["measurements"] = copy.deepcopy(duplicate[0]["measurements"])
     with pytest.raises(TaskSpecRejected, match="DUPLICATE_TRAJECTORY"):
         run_matched_source_train_study(spec, duplicate)
+    no_support = copy.deepcopy(rows)
+    label = spec["task"]["labels"][-1]
+    no_support = [r for r in no_support if not (
+        r["metadata"]["label"] == label and
+        r["metadata"]["speed_regime"] == "regime_2" and
+        r["metadata"]["bearing_instance_id"].endswith("_1"))]
+    with pytest.raises(TaskSpecRejected, match="INSUFFICIENT_PHYSICAL_CLASS_GROUPS"):
+        run_matched_source_train_study(spec, no_support)
     altered = copy.deepcopy(spec)
     altered["design"]["objectives"] = ["GroupDRO"]
     with pytest.raises(TaskSpecRejected, match="PLAIN_ERM_DIRECT"):
@@ -154,6 +171,16 @@ def test_invalid_budget_non_train_or_search_grammar_refused_before_fit(monkeypat
 
 def test_r82_native_staging_and_binding_before_benchmark(tmp_path):
     args = rw_fixture(tmp_path)
+    from pathlib import Path
+    from phm_design.io import read_json, write_json
+    new_spec = read_json(args["task_spec"])
+    new_spec["id"] += ".r83matched"
+    new_spec["design"]["candidate_max"] = 3
+    new_spec["design"]["compare"] = ["tcn", "gru", "tree"]
+    new_spec["design"]["budget"]["max_fits"] = 10
+    new_spec_path = tmp_path / "r83_matched_spec.json"
+    write_json(new_spec_path, new_spec)
+    args["task_spec"] = new_spec_path
     out = run_native_rw_matched_study(
         **args, output=tmp_path / "native_train_study", validate_only=True)
     assert out["status"] == "TRAIN_SOURCE_ACCEPTED"
@@ -162,3 +189,12 @@ def test_r82_native_staging_and_binding_before_benchmark(tmp_path):
     assert out["validation_telemetry_accessed"] is False
     assert out["source_intake"]["records"] == 24
     assert not (tmp_path / "native_train_study" / "comparison.json").exists()
+
+
+def test_legacy_two_candidate_rw_taskspec_refused_even_for_validate_only(tmp_path):
+    args = rw_fixture(tmp_path)
+    with pytest.raises(TaskSpecRejected, match="SOURCE_TRIAL_SLOTS_BELOW_THREE"):
+        run_native_rw_matched_study(
+            **args, output=tmp_path / "incorrect_r82_contract",
+            validate_only=True)
+    assert not (tmp_path / "incorrect_r82_contract").exists()
