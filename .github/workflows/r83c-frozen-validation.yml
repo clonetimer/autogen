@@ -5,6 +5,7 @@ on:
       - 'source_product/src/phm_design/industrial/r83_frozen_validation.py'
       - 'source_product/src/phm_design/industrial/r83_matched_budget.py'
       - 'source_product/tests/phm_design/test_r83c_frozen_validation.py'
+      - 'source_product/tests/phm_design/test_r83c_native_validation_intake.py'
       - 'source_product/README_R83C.md'
       - '.github/workflows/r83c-frozen-validation.yml'
   workflow_dispatch:
@@ -37,5 +38,6 @@ jobs:
         run: >-
           python -m pytest -q
           tests/phm_design/test_r83c_frozen_validation.py
+          tests/phm_design/test_r83c_native_validation_intake.py
           tests/phm_design/test_r83b_matched_budget.py
           tests/phm_design/test_r83b_guard.py
