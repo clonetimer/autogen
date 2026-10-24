@@ -28,6 +28,44 @@
   either model-selection worker can access observations. It does not read
   validation/TEST traces or rewrite fault labels.
 
+## R83c fairness audit and new mandatory study contract
+
+**Do not reuse the original R82 two-candidate TaskSpec for R83.** Use the
+new frozen research declaration
+`examples/industrial/satellite_rw_native_r83_matched_train.json`,
+which explicitly declares three candidate slots and a sufficient fit
+budget. The benchmark never increases a caller's two-slot search budget
+implicitly. All TaskSpecs are compiled before any training.
+
+Both arms now select the fitted champion using **exactly the same**
+predeclared source TRAIN loss:
+0.45 * (1 - accuracy)
++ 0.40 * (1 - worst regime/class recall)
++ 0.15 * healthy false alarm.
+The fixed arm's previous legacy selection ranking remains the default for
+every non-R83 caller; this comparison opts in explicitly. Candidate seed
+schedule (base seed + candidate index, held constant across all OOF folds
+and the final refit) is identical in both arms. This does NOT mean model
+initializations are mathematically identical for different architectures.
+
+Independent physical group support is reviewed at the environment×fault-class
+level. Every environment/class cell must contain **at least 2 distinct
+physical groups**, and within-environment class counts cannot differ by
+more than 2×. Data with insufficient class support are refused **before**
+either model receives observations. The known R82 high-inclination class
+with a single example therefore **cannot be claimed as a fair R83
+benchmark**; its distribution must be regenerated rather than post-hoc
+reweighted. A minimum of **5 groups per cell** is recorded as the
+*recommended confirmatory experiment target*, not a claim of
+statistical power or sufficient confidence interval coverage.
+
+The result now contains a `fairness_gate`. If either arm fails to
+evaluate all three declared source TRAIN candidates, the report explicitly
+sets `source_train_comparison_allowed=false`. Even when true, it is only
+an *optimization-feedback comparison*, not unbiased OOD/generalization
+evidence. Training both arms under equal fit caps is a baseline software
+control, not an equal-GPU-hours, wall-time or FLOPs study.
+
 ## Why this is not a claim of equivalent compute
 
 Estimator-fit limits and candidate slots are equal, but FLOPs, parameter
@@ -62,7 +100,7 @@ source hashes, execute the same source review/staging path:
 ~~~bash
 cd source_product
 python -m phm_design.industrial.r83_matched_budget \
-  --task-spec examples/industrial/satellite_rw_native_offline_train.json \
+  --task-spec examples/industrial/satellite_rw_native_r83_matched_train.json \
   --development-manifest /source/prepared/development/dataset.json \
   --physical-map /source/physical_map_REVIEWED.json \
   --runtime-binding /source/runtime_binding.json \
