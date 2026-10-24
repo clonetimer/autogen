@@ -34,7 +34,12 @@ All 45 TRAIN and 18 VALIDATION fault/nominal pairs remain in the raw
 simulation campaign. To avoid a **3:1 nominal class excess**, AutoDesign's
 trusted preparation keeps ALL 45 TRAIN fault records and ALL 18 VAL fault
 records, but subsamples nominal twins deterministically from preexisting
-pair IDs (SHA256 order) at the same per-regime count as any fault class.
+pair IDs (SHA256 order), with a predeclared rotating quota across the three
+original fault templates. For TRAIN this is 2/2/1 source mechanisms per
+regime, rotated so all mechanisms contribute 5 normal examples in total
+across regimes; for VALIDATION this is 1/1/0, rotated so all contribute 2.
+This avoids accidentally selecting all healthy examples from one mechanism
+template while maintaining the same per-regime count as any fault class.
 The balanced cohort is therefore 60 TRAIN (5 × 3 regimes × 4 classes) and
 24 VALIDATION (2 × 3 regimes × 4 classes). The excluded normal cases remain
 available in the original unmodified native case evidence for audit.
