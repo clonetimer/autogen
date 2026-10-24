@@ -19,12 +19,13 @@ from .self_organizing import (
 from .resource_guard import GuardedDesignTimeout, _invoke_worker
 
 
-def _self_organizing_worker(conn, raw, records, policy, acceptance):
+def _self_organizing_worker(conn, raw, records, policy, acceptance,
+                            seed_schedule="legacy"):
     """Spawn-safe top-level training worker, no persistent background process."""
     try:
         result = run_self_organizing_design(
             raw, records, policy=policy, acceptance=acceptance,
-            _guarded_execution=True,
+            _guarded_execution=True, seed_schedule=seed_schedule,
         )
         # Do not Pipe.send() live Torch tensors: PyTorch shares their storage
         # through child-owned file descriptors that can disappear at worker exit.
@@ -51,6 +52,7 @@ def run_self_organizing_design_guarded(
     *,
     policy: EvolutionPolicy = EvolutionPolicy(),
     acceptance: DesignAcceptance = DesignAcceptance(),
+    seed_schedule: str = "legacy",
 ) -> SelfOrganizingArtifact:
     """Only documented hard-wall execution entry for R83 self-organization.
 
@@ -61,6 +63,8 @@ def run_self_organizing_design_guarded(
     """
     if not isinstance(policy, EvolutionPolicy):
         raise ValueError("INVALID_EVOLUTION_POLICY_TYPE")
+    if seed_schedule not in ("legacy", "r83_matched_train"):
+        raise ValueError("UNREGISTERED_SELF_ORGANIZING_SEED_SCHEDULE")
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_DESIGN_ACCEPTANCE_TYPE")
     raw = (task_spec.to_dict() if isinstance(task_spec, TaskSpec)
@@ -73,7 +77,8 @@ def run_self_organizing_design_guarded(
         raise TaskSpecRejected("SELF_ORGANIZING_TRIAL_BUDGET_EXCEEDED")
 
     status, result = _invoke_worker(
-        _self_organizing_worker, (raw, records, policy, acceptance), limit
+        _self_organizing_worker, (raw, records, policy, acceptance,
+                                  seed_schedule), limit
     )
     if status == "refused":
         raise IndustrialDesignRejected(result)
