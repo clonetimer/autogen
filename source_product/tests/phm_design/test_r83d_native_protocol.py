@@ -59,6 +59,7 @@ def test_freeze_equal_strata_preserves_all_native_nominal_fault_twins():
     assert receipt["planned_cases"] == 126
     assert receipt["planned_pairs"] == 63
     assert receipt["physics_executed"] is False
+    assert len(receipt["frozen_plan_canonical_sha256"]) == 64
     assert spec["metadata"]["r83d_preregistration"]["train_or_validation_scores_used"] is False
     for split in ("train", "validation"):
         for fault in FAULTS:
@@ -70,6 +71,8 @@ def test_freeze_equal_strata_preserves_all_native_nominal_fault_twins():
     again, audit = freeze_balanced_campaign(_config(), campaign_builder=_factory)
     assert spec == again
     assert receipt == audit
+    from phm_design.io import digest
+    assert receipt["frozen_plan_canonical_sha256"] == digest(spec)
 
     wrong = _config()
     wrong["allow_test_proxy"] = True
