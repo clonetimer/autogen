@@ -51,6 +51,8 @@ def _preflight(task_spec, records, policy):
         raise TaskSpecRejected("MATCHED_STUDY_REQUIRES_PLAIN_ERM_DIRECT")
     if "max_wall_seconds" not in design["budget"]:
         raise TaskSpecRejected("MATCHED_STUDY_REQUIRES_HARD_WALL_GUARD")
+    if design["candidate_max"] < ARM_COUNT:
+        raise TaskSpecRejected("MATCHED_STUDY_SOURCE_TRIAL_SLOTS_BELOW_THREE")
     metadata = []
     groups_by_environment = {}
     fingerprints = {}
@@ -76,6 +78,22 @@ def _preflight(task_spec, records, policy):
             raise TaskSpecRejected("DUPLICATE_TRAJECTORY_ACROSS_PHYSICAL_GROUPS")
         fingerprints[fingerprint] = group
     plan = compile_task_spec(raw, train_manifest=metadata)
+    group_cols = plan["train_data_contract"]["group_keys"]
+    env_cols = plan["train_data_contract"]["environment_axes"]
+    class_support = {}
+    for item in metadata:
+        environment = "|".join(item[key] for key in env_cols)
+        physical_group = "|".join(item[key] for key in group_cols)
+        class_support.setdefault(environment, {}).setdefault(
+            item["label"], set()).add(physical_group)
+    for environment, counts in class_support.items():
+        if set(counts) != set(raw["task"]["labels"]):
+            raise TaskSpecRejected("MATCHED_STUDY_INCOMPLETE_ENVIRONMENT_CLASSES")
+        values = [len(counts[label]) for label in raw["task"]["labels"]]
+        if min(values) < 2:
+            raise TaskSpecRejected("MATCHED_STUDY_INSUFFICIENT_PHYSICAL_CLASS_GROUPS")
+        if max(values) > 2 * min(values):
+            raise TaskSpecRejected("MATCHED_STUDY_IMBALANCED_SOURCE_CLASS_GROUPS")
     cols = plan["train_data_contract"]["environment_axes"]
     envs = {"|".join(m[column] for column in cols) for m in metadata}
     if len(envs) < 3:
@@ -83,7 +101,10 @@ def _preflight(task_spec, records, policy):
     fit_cap = ARM_COUNT * len(envs) + 1
     if plan["budget"]["max_fits"] < fit_cap:
         raise TaskSpecRejected("MATCHED_STUDY_SOURCE_FIT_BUDGET_TOO_SMALL")
-    return raw, len(envs), fit_cap
+    return raw, len(envs), fit_cap, {
+        env: {label: len(groups) for label, groups in counts.items()}
+        for env, counts in sorted(class_support.items())
+    }
 
 
 def _candidate_rows(audit, *, evolved):
@@ -115,7 +136,16 @@ def _result(audit, *, evolved):
     eligible = [row for row in rows if row["eligible"]]
     winner = (min(eligible, key=lambda row: (
         row["predeclared_loss"],
-        _sha(row["candidate"]))) if eligible else None)
+        row["candidate"]["genome_sha256"] if evolved else _sha(row["candidate"])))
+        if eligible else None)
+    if winner is not None and audit.get("model_delivered") is True:
+        selected = (audit.get("selected_genome_sha256") if evolved
+                    else audit.get("selected_trial_sha256"))
+        if selected is not None:
+            expected = (winner["candidate"]["genome_sha256"] if evolved
+                        else _sha(winner["candidate"]))
+            if selected != expected:
+                raise ValueError("MATCHED_STUDY_SELECTED_MODEL_DIFFERS_FROM_COMMON_RANK")
     return {
         "decision": audit.get("decision"),
         "source_train_candidate_count": len(rows),
@@ -147,7 +177,7 @@ def run_matched_source_train_study(
     """
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_ACCEPTANCE_POLICY")
-    raw, env_count, fits = _preflight(task_spec, records, policy)
+    raw, env_count, fits, class_support = _preflight(task_spec, records, policy)
     fixed = copy.deepcopy(raw)
     fixed["design"]["compare"] = list(FIXED)
     fixed["design"]["candidate_max"] = ARM_COUNT
@@ -169,6 +199,9 @@ def run_matched_source_train_study(
         "source_train_manifest_sha256": _sha(train_manifest),
         "source_data_role": "TRAIN_ONLY",
         "source_environment_count": env_count,
+        "independent_physical_class_group_support": class_support,
+        "minimum_physical_group_per_environment_class": 2,
+        "maximum_within_environment_class_support_ratio": 2.0,
         "source_physical_group_axes": raw["data"]["group_keys"],
         "source_environment_axes": raw["data"]["environment_axes"],
         "candidate_budget_per_arm": ARM_COUNT,
@@ -184,6 +217,9 @@ def run_matched_source_train_study(
             "equal_estimator_fit_cap": True, "equal_actual_fit_count_if_failed": False,
             "equal_candidate_slots": True,
             "equal_neural_epochs": True,
+            "shared_predeclared_candidate_selection_rule": "r83_matched_train_loss",
+            "same_independent_group_support_gate": True,
+            "search_reuse_is_unbiased_evaluation": False,
             "equal_flops": False, "equal_cpu_seconds": False,
             "equal_parameter_count": False,
             "baseline_tree_neural_epochs_applicable": False,
@@ -196,7 +232,8 @@ def run_matched_source_train_study(
     }
     for name, spec, executor in (
         ("fixed_portfolio", fixed, lambda: run_design_guarded(
-            fixed, records, acceptance=acceptance)),
+            fixed, records, acceptance=acceptance,
+            selection_rule="r83_matched_train_loss")),
         ("self_organizing", evolved, lambda: run_self_organizing_design_guarded(
             evolved, records, policy=policy, acceptance=acceptance)),
     ):
