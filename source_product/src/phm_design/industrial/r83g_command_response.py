@@ -91,17 +91,32 @@ def _source_integrity(raw, records, research_report):
         for record in records]
     if _observations_digest(sequences) != NATIVE_TRAIN_OBSERVATIONS_SHA:
         _reject("R83G_NATIVE_TRAIN_TELEMETRY_CHANGED")
-    groups = set()
+    # Native RW nominal/fault twins deliberately SHARE one physical lineage.
+    # Correct statistical unit is the physical group, never one CSV row.
+    # R83f selected 15 healthy twins + 45 faults = 60 records from 45 groups.
+    grouped = {}
+    group_environment = {}
     for row in records:
-        key = tuple(row["metadata"][k] for k in group_fields)
-        if key in groups:
-            _reject("R83G_DUPLICATE_PHYSICAL_GROUP")
-        groups.add(key)
-    if len(groups) != 60:
-        _reject("R83G_INDEPENDENT_PHYSICAL_GROUP_COUNT_CHANGED")
+        meta = row["metadata"]
+        key = tuple(meta[k] for k in group_fields)
+        environment = tuple(meta[k] for k in raw["data"]["environment_axes"])
+        if key in group_environment and group_environment[key] != environment:
+            _reject("R83G_PHYSICAL_GROUP_CROSSES_REGIMES")
+        group_environment[key] = environment
+        labels = grouped.setdefault(key, set())
+        if meta["label"] in labels:
+            _reject("R83G_REUSED_GROUP_AND_CLASS")
+        labels.add(meta["label"])
+        if len(labels) > 2 or (len(labels) == 2 and
+                               raw["task"]["healthy_label"] not in labels):
+            _reject("R83G_INVALID_NOMINAL_FAULT_TWIN_GROUP")
+    if len(grouped) != 45 or sum(len(labels) == 2 for labels in grouped.values()) != 15:
+        _reject("R83G_R83F_PHYSICAL_PAIR_STRUCTURE_CHANGED")
     return {"source_train_observations_sha256": NATIVE_TRAIN_OBSERVATIONS_SHA,
             "source_train_manifest_sha256": NATIVE_TRAIN_METADATA_SHA,
-            "source_train_physical_groups": 60}
+            "source_train_records": 60,
+            "source_train_physical_groups": 45,
+            "paired_nominal_fault_groups": 15}
 
 
 def _expand_spec(raw):
