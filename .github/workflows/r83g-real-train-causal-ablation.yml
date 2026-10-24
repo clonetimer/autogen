@@ -47,12 +47,14 @@ jobs:
           root=Path(os.environ["RUNNER_TEMP"])/"r83f_immutable"
           ids={
             "r83d_balanced_dev/dataset.json":"a2eb934fa4c76dfc2a92200cd6b455bb5ca7706559d19f2a2d645e3c105d39df",
-            "r83d_balanced_dev/review/train_physical_map.json":"5b732383ca58ca2201a7ac4bc638ac29fa78de74e22307252668b30",
+            "r83d_balanced_dev/review/train_physical_map.json":"5b732383ca58ca2201a7ac4bc638ac29fa78de74e22307252668f6f456a68b30",
             "r83d_three_arm_train/research_report.json":"b9951695f528b8d22f7192d520316067197fe20194e5aaf258534ddc0a0dd128",
             "r83d_evidence/runtime_binding.json":"8e7c62bd0641c7b79c3a5fe54aaf5ae6579bc34c55e640beceb771637727241d",
           }
           for relative,expected in ids.items():
               f=root/relative
+              if len(expected)!=64:
+                  raise RuntimeError("R83G_INVALID_EXPECTED_SHA256_LENGTH:"+relative)
               exists=f.is_file()
               found=hashlib.sha256(f.read_bytes()).hexdigest() if exists else "MISSING"
               if not exists or found!=expected:
