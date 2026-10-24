@@ -1,0 +1,33 @@
+name: R83 Self-Organizing Neural Research Guard
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/self_organizing.py'
+      - 'source_product/tests/phm_design/test_r83_self_organizing.py'
+      - 'source_product/README_R83.md'
+      - '.github/workflows/r83-self-organizing-neural.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  neural-prototype:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12']
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev]'
+      - name: R83 topology evolution / real synthetic training / leakage and export
+        run: python -m pytest -q tests/phm_design/test_r83_self_organizing.py
+      - name: R81 source-TRAIN regression
+        run: python -m pytest -q tests/phm_design/test_r81c_adaptive_feature_search.py
