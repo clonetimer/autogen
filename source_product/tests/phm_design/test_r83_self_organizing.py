@@ -21,6 +21,7 @@ OPEN_SCREEN = DesignAcceptance(
 
 def case_spec():
     spec = task("industrial_bearing_classification_demo.json", compare=("tcn",))
+    spec["design"]["candidate_max"] = 3
     spec["design"]["budget"]["max_fits"] = 16
     spec["design"]["budget"]["max_cpu_seconds"] = 120
     return spec
@@ -163,6 +164,19 @@ def test_strict_screen_refuses_without_final_refit(monkeypatch):
     assert error.value.audit["charged_fits"] == 6
     assert len(error.value.audit["attempts"]) == 2
     monkeypatch.setattr(evolving.EvolvingTemporalEstimator, "predict_proba", orig)
+
+
+def test_task_budget_and_objective_must_match_neural_search():
+    spec = case_spec()
+    spec["design"]["candidate_max"] = 2
+    with pytest.raises(TaskSpecRejected, match="SELF_ORGANIZING_TRIAL_BUDGET_EXCEEDED"):
+        run_self_organizing_design(
+            spec, synthetic_records(spec, environment_count=3),
+            policy=EvolutionPolicy(max_candidates=3))
+    spec = case_spec()
+    spec["design"]["compare"] = ["tree"]
+    with pytest.raises(TaskSpecRejected, match="SELF_ORGANIZING_REQUIRES_TCN_DIRECT_ERM_TEMPLATE"):
+        run_self_organizing_design(spec, synthetic_records(spec, environment_count=3))
 
 
 def test_causal_mode_wall_guard_and_unobservable_class_are_refused():
