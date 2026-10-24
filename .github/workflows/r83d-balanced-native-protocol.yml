@@ -1,0 +1,103 @@
+name: R83d Balanced Native Protocol
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r83d_native_protocol.py'
+      - 'source_product/tests/phm_design/test_r83d_native_protocol.py'
+      - 'source_product/README_R83D.md'
+      - '.github/workflows/r83d-balanced-native-protocol.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preregistration:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout exactly pinned SatAgentSimulation native producer
+        uses: actions/checkout@v4
+        with:
+          repository: clonetimer/SatAgentSimulation
+          ref: 1f709beeae97baec65db9ca13ae373d88728f87d
+          path: satagent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install source-design dependencies (NO simulator execution)
+        run: python -m pip install -e './source_product[dev]'
+      - name: Install pinned SatAgent planning imports (no Basilisk physics)
+        run: >-
+          python -m pip install
+          PyYAML==6.0.3 pydantic==2.13.4 jsonschema==4.26.0
+          sgp4==2.25 colorama==0.4.6
+      - name: Deterministic pair/regime selection and leak rejection tests
+        run: python -m pytest -q source_product/tests/phm_design/test_r83d_native_protocol.py
+      - name: Actual SatAgentSimulation factory produces predeclared native plan
+        env:
+          PYTHONPATH: ${{ github.workspace }}/satagent/src
+        run: >-
+          python -m phm_design.industrial.r83d_native_protocol
+          --mode plan
+          --factory-config satagent/configs/integration/rw_dataset_factory.json
+          --output "${{ runner.temp }}/r83d_native_task_plan.json"
+      - name: Upstream campaign scheduler DRY-RUN (no Basilisk physics)
+        shell: python
+        env:
+          PYTHONPATH: ${{ github.workspace }}/satagent/src
+        run: |
+          import json
+          import os
+          from pathlib import Path
+          from sat_sim.fault_dataset_factory import run_fault_dataset_campaign
+          root = Path(os.environ["RUNNER_TEMP"])
+          plan = json.loads((root / "r83d_native_task_plan.json").read_text())
+          result = run_fault_dataset_campaign(
+              plan, output_root=root / "r83d_scheduler_dryrun",
+              continue_on_error=False, dry_run=True)
+          assert len(result.campaign.plan.cases) == 126
+          assert result.dataset_index["dry_run"] is True
+          print("R83D_ACTUAL_UPSTREAM_SCHEDULER_PLAN_ONLY", len(result.campaign.plan.cases))
+      - name: Archive exact pinned factory plan (NOT physical results)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83d-preregistered-plan-only-${{ matrix.os }}-py${{ matrix.python-version }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/r83d_native_task_plan.json
+            ${{ runner.temp }}/r83d_native_task_plan.audit.json
+      - name: Review planned cases only; do NOT claim Basilisk was executed
+        shell: python
+        run: |
+          import json
+          import os
+          from pathlib import Path
+          src = Path(os.environ["RUNNER_TEMP"]) / "r83d_native_task_plan.json"
+          obj = json.loads(src.read_text())
+          cases = obj["campaign"]["cases"]
+          assert len(cases) == 126
+          assert obj["campaign"]["max_cases"] == 126
+          assert obj["metadata"]["r83d_preregistration"]["physical_execution_attested"] is False
+          assert all(case["overrides"]["metadata"]["astrograph_split"]
+                     in ("train", "validation") for case in cases)
+          assert all(case["overrides"]["parameters"]["inclination_deg"]
+                     in (29.0, 47.0, 65.0) for case in cases)
+          from phm_design.io import digest
+          audit = json.loads((Path(os.environ["RUNNER_TEMP"]) /
+                              "r83d_native_task_plan.audit.json").read_text())
+          assert audit["frozen_plan_canonical_sha256"] == digest(obj)
+          print("R83D_PLAN_CANONICAL_SHA256", digest(obj))
+          print("R83D_PLAN_ONLY_NO_PHYSICS_OR_MODEL_CLAIM", len(cases))
