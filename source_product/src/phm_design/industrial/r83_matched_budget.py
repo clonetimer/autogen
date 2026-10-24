@@ -20,7 +20,7 @@ from pathlib import Path
 import time
 from typing import Mapping, Sequence
 
-from .design_engine import DesignAcceptance, IndustrialDesignRejected, _sha
+from .design_engine import DesignAcceptance, IndustrialDesignRejected, _sha, _observations_digest
 from .resource_guard import GuardedDesignTimeout, run_design_guarded
 from .self_organizing import EvolutionPolicy, _risk
 from .self_organizing_guard import run_self_organizing_design_guarded
@@ -217,6 +217,10 @@ def run_matched_source_train_study(
         "schema": SCHEMA,
         "source_task_spec_sha256": TaskSpec.from_dict(raw).sha256,
         "source_train_manifest_sha256": _sha(train_manifest),
+        "source_train_observations_sha256": _observations_digest([
+            np.asarray([[q[field] for field in sensor_fields]
+                        for q in row["measurements"]], dtype=np.float64)
+            for row in records]),
         "source_data_role": "TRAIN_ONLY",
         "source_environment_count": env_count,
         "source_train_physical_group_sha256": physical_hashes,
