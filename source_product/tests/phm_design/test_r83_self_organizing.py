@@ -186,7 +186,7 @@ def test_causal_mode_wall_guard_and_unobservable_class_are_refused():
         run_self_organizing_design(spec, synthetic_records(spec, environment_count=3))
     spec = case_spec()
     spec["design"]["budget"]["max_wall_seconds"] = 60
-    with pytest.raises(TaskSpecRejected, match="SELF_ORGANIZING_WALL_GUARD_NOT_IMPLEMENTED"):
+    with pytest.raises(TaskSpecRejected, match="SELF_ORGANIZING_REQUIRES_GUARDED_WALL_RUNNER"):
         run_self_organizing_design(spec, synthetic_records(spec, environment_count=3))
     spec = case_spec()
     rows = synthetic_records(spec, environment_count=3)
