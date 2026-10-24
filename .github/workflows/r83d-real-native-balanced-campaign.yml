@@ -126,7 +126,7 @@ jobs:
           from phm_design.adapters.sat_rw import prepare
           root=Path(os.environ["RUNNER_TEMP"])
           result=prepare(root/"r83d_actual_basilisk_cases",
-                         root/"r83d_prepared")
+                         root/"r83d_prepared", allow_empty_holdout=True)
           if result["channel_count"] != 6 or result["fit_receives_holdout"]:
               raise RuntimeError("R83D_ORACLE_TELEMETRY_OR_HOLDOUT_LEAKAGE")
           print("R83D_NATIVE_SIX_SENSOR_INPUTS", result["counts"])
