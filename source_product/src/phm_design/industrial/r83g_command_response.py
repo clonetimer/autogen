@@ -164,11 +164,18 @@ def make_matched_representation(raw_spec, records, mode):
     spec = _expand_spec(raw)
     if mode not in MODES:
         raise ValueError("R83G_UNKNOWN_PREREGISTERED_REPRESENTATION")
-    result = [{
-        "metadata": dict(rec["metadata"]),
-        "measurements": _features(rec["measurements"], mode=mode,
-                                   time_field=raw["observations"]["time"]["field"])
-    } for rec in records]
+    result = []
+    for rec in records:
+        if (set(rec) != {"metadata", "measurements"} or
+                rec["metadata"].get("role") != "TRAIN"):
+            _reject("R83G_VALIDATION_OR_PROTECTED_ROLE_ACCESS_DENIED")
+        validate_observations(raw, rec["measurements"])
+        result.append({
+            "metadata": dict(rec["metadata"]),
+            "measurements": _features(
+                rec["measurements"], mode=mode,
+                time_field=raw["observations"]["time"]["field"]),
+        })
     for rec in result:
         validate_observations(spec, rec["measurements"])
     return spec, result
@@ -226,7 +233,9 @@ def run_train_only_representations(raw_spec, records, frozen_r83f_train_comparis
         "same_stratified_ooF_partitions": same,
         "same_seed_candidate_slots_fit_and_acceptance": same,
         "same_input_channel_count": True,
-        "same_model_parameter_count_by_arm": True,
+        "same_model_parameter_count_by_arm": False,
+        "same_registered_network_grammar_and_initial_candidates": True,
+        "identical_parameter_count_on_shared_neural_genomes": True,
         "same_physical_basilisk_source": True,
         "both_search_slates_complete": bool(complete),
         "comparison_allowed_train_research_only": bool(complete),
