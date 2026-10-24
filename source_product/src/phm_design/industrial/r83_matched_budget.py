@@ -252,6 +252,30 @@ def run_matched_source_train_study(
         output["arms"][name] = arm_result
     output["complete_two_arm_comparison"] = set(output["arms"]) == {
         "fixed_portfolio", "self_organizing"}
+    # A finished pair of processes is not automatically a fair comparison:
+    # one arm might time out before its predeclared candidate slate completes.
+    source_complete = all(
+        (arm["source_train_candidate_count"] == ARM_COUNT and
+         arm["charged_fits"] is not None and
+         arm["charged_fits"] >= ARM_COUNT * env_count and
+         arm["decision"] not in (
+             "HARD_WALL_TIMEOUT", "SEARCH_FIT_BUDGET_EXHAUSTED",
+             "SEARCH_CPU_BUDGET_EXHAUSTED", "BUDGET_EXHAUSTED_BEFORE_SELECTION"))
+        for arm in output["arms"].values())
+    output["fairness_gate"] = {
+        "all_declared_candidates_evaluated": bool(source_complete),
+        "same_predeclared_selection_loss": True,
+        "same_candidate_seed_schedule": True,
+        "equal_fit_budget_but_not_equal_compute": True,
+        "statistically_independent_performance_estimate": False,
+        "source_train_comparison_allowed": bool(source_complete),
+        "independent_generalization_claim_allowed": False,
+        "minimum_observed_physical_groups_per_regime_class": min(
+            min(classes.values()) for classes in class_support.values()),
+        "minimum_recommended_groups_for_confirmatory_experiment": 5,
+        "confirmatory_sample_support_met": all(
+            min(classes.values()) >= 5 for classes in class_support.values()),
+    }
     output["independent_qualification"] = False
     return output
 
