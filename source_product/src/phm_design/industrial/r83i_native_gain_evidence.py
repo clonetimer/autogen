@@ -36,13 +36,13 @@ def _measure(case_root, wheel, onset):
     with source.open("r",encoding="utf-8",newline="") as f:
         reader=csv.DictReader(f)
         fullwheel_columns = {
-        key for i in range(3) for key in (
-            f"adcs.rw.command_torque_nm_{i}",
-            f"adcs.rw.speed_rad_s_{i}",
-            f"adcs.rw.effective_max_torque_nm_{i}",
-            f"adcs.control.applied_torque_nm_{i}")
-    }
-    required={"time_s", *fullwheel_columns}
+            key for i in range(3) for key in (
+                f"adcs.rw.command_torque_nm_{i}",
+                f"adcs.rw.speed_rad_s_{i}",
+                f"adcs.rw.effective_max_torque_nm_{i}",
+                f"adcs.control.applied_torque_nm_{i}")
+        }
+        required={"time_s", *fullwheel_columns}
         if not required.issubset(reader.fieldnames or []) or \
                 len(reader.fieldnames or [])!=len(set(reader.fieldnames or [])):
             _reject("R83I_NATIVE_SOURCE_TELEMETRY_INCOMPLETE")
