@@ -76,8 +76,7 @@ jobs:
           config["simulation_backend"] = "basilisk"
           config["allow_test_proxy"] = False
           config["duration_s"] = 60.0
-          (root / "r82_native_full_config.json").write_text(json.dumps(config, indent=2) + "
-")
+          (root / "r82_native_full_config.json").write_text(json.dumps(config, indent=2) + "\n")
           print("R82_PREDECLARED_COUNTS", config["counts"], config["fault_ids"])
           PY
       - name: Actually run source native fault/nominal campaign

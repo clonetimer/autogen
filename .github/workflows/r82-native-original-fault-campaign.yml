@@ -84,8 +84,7 @@ jobs:
           data["simulation_backend"] = "basilisk"
           data["duration_s"] = 60.0
           path = root / "r82_native_train_pilot.json"
-          path.write_text(json.dumps(data, indent=2) + "
-")
+          path.write_text(json.dumps(data, indent=2) + "\n")
           print("NATIVE_FACTORY_PILOT", data["counts"], data["fault_ids"])
           PY
       - name: Actually run original SatAgentSimulation native fault factory
