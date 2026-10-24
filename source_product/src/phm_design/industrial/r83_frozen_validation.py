@@ -52,6 +52,8 @@ def _preflight(report: Mapping, raw: dict, validation_records: Sequence[Mapping]
             report.get("complete_three_arm_comparison") is not True or
             report.get("fairness_gate", {}).get("source_train_comparison_allowed") is not True or
             set(report.get("arms", {})) != set(ARMS) or
+            not isinstance(report.get("source_train_manifest_sha256"), str) or
+            not isinstance(report.get("source_train_observations_sha256"), str) or
             report.get("source_trajectory_digest_contract") !=
             "RAW_FLOAT64_LE_NO_METADATA_V1" or
             report.get("source_group_digest_contract") != "UTF8_UNIT_SEPARATOR_V1"):
@@ -212,6 +214,16 @@ def evaluate_r83_frozen_validation(
     # registered fixed portfolio and R83 topology refit. All observation and
     # task ontology contracts must remain identical.
     for model in models.values():
+        recorded_manifest_hash = (
+            model.audit["training_manifest_sha256"] if hasattr(model, "trial")
+            else model.audit["train_manifest_sha256"])
+        recorded_observation_hash = (
+            model.audit["training_observations_sha256"] if hasattr(model, "trial")
+            else model.audit["train_observations_sha256"])
+        if (recorded_manifest_hash != report["source_train_manifest_sha256"] or
+                recorded_observation_hash !=
+                report["source_train_observations_sha256"]):
+            _fail("R83_VALIDATION_FROZEN_SOURCE_DATA_MISMATCH")
         model_task = (model.audit["source_task_spec"] if hasattr(model, "trial")
                       else model.task_spec)
         for field in ("task", "observations", "equipment", "data"):
