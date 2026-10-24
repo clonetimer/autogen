@@ -258,10 +258,13 @@ def run_self_organizing_design(
     policy: EvolutionPolicy = EvolutionPolicy(),
     acceptance: DesignAcceptance = DesignAcceptance(),
     _guarded_execution: bool = False,
+    seed_schedule: str = "legacy",
 ) -> SelfOrganizingArtifact:
     """Bounded, opt-in experiment. Not an alternate Stable/qualified entrypoint."""
     if not isinstance(policy, EvolutionPolicy) or not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_SELF_ORGANIZING_ARGUMENTS")
+    if seed_schedule not in ("legacy", "r83_matched_train"):
+        raise ValueError("UNREGISTERED_SELF_ORGANIZING_SEED_SCHEDULE")
     if not isinstance(records, (list, tuple)) or not records:
         raise TaskSpecRejected("EMPTY_DESIGN_RECORDS")
     raw = task_spec.to_dict() if isinstance(task_spec, TaskSpec) else TaskSpec.from_dict(task_spec).to_dict()
@@ -324,6 +327,7 @@ def run_self_organizing_design(
         "source_physical_group_count": len(set(groups.tolist())),
         "policy": asdict(policy),
         "seed": budget["seed"],
+        "seed_schedule": seed_schedule,
         "budget": budget,
         "attempts": [],
         "target_feedback_used": False,
@@ -354,7 +358,10 @@ def run_self_organizing_design(
                 refuse("TRAIN_FOLD_CLASS_SUPPORT_MISSING")
             charged_fits += 1  # Reserve before invoking Torch fit.
             receipt["charged_fits"] = charged_fits
-            estimator = EvolvingTemporalEstimator(genome, budget["seed"] + trial * 100 + fold_idx, policy)
+            candidate_seed = (budget["seed"] + trial
+                              if seed_schedule == "r83_matched_train"
+                              else budget["seed"] + trial * 100 + fold_idx)
+            estimator = EvolvingTemporalEstimator(genome, candidate_seed, policy)
             try:
                 estimator.fit(sequences[train], y[train])
                 current_params = estimator.training_["parameter_count"]
@@ -392,7 +399,13 @@ def run_self_organizing_design(
     charged_fits += 1
     receipt["charged_fits"] = charged_fits
     genome = NetworkGenome(**champion["genome"])
-    estimator = EvolvingTemporalEstimator(genome, budget["seed"] + 999, policy)
+    if seed_schedule == "r83_matched_train":
+        champion_index = next(i for i, entry in enumerate(receipt["attempts"])
+                              if entry["genome_sha256"] == genome.digest)
+        refit_seed = budget["seed"] + champion_index
+    else:
+        refit_seed = budget["seed"] + 999
+    estimator = EvolvingTemporalEstimator(genome, refit_seed, policy)
     try:
         estimator.fit(sequences, y)
     except (ValueError, RuntimeError, FloatingPointError) as exc:
