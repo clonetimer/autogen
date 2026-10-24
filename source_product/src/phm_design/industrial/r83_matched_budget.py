@@ -169,6 +169,7 @@ def run_matched_source_train_study(
     policy: EvolutionPolicy = EvolutionPolicy(
         max_candidates=ARM_COUNT, epochs=8, max_parameters=30_000),
     acceptance: DesignAcceptance = DesignAcceptance(),
+    artifacts_root: str | Path | None = None,
 ) -> dict:
     """Run two portfolio designs on verified TRAIN-only records.
 
@@ -180,6 +181,9 @@ def run_matched_source_train_study(
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_ACCEPTANCE_POLICY")
     raw, env_count, fits, class_support = _preflight(task_spec, records, policy)
+    frozen_root = Path(artifacts_root) if artifacts_root is not None else None
+    if frozen_root is not None and frozen_root.exists():
+        raise FileExistsError("R83_FROZEN_ARTIFACT_ROOT_EXISTS")
     fixed = copy.deepcopy(raw)
     fixed["design"]["compare"] = list(FIXED)
     fixed["design"]["candidate_max"] = ARM_COUNT
@@ -241,6 +245,8 @@ def run_matched_source_train_study(
             "only_adaptive_arm_uses_source_oof_to_propose_third_genome": True,
         },
     }
+    if frozen_root is not None:
+        frozen_root.mkdir(parents=True)
     for name, spec, executor in (
         ("fixed_portfolio", fixed, lambda: run_design_guarded(
             fixed, records, acceptance=acceptance,
@@ -255,6 +261,7 @@ def run_matched_source_train_study(
             proposal_mode="feedback")),
     ):
         started = time.monotonic()
+        artifact = None
         try:
             artifact = executor()
             audit = artifact.audit
@@ -263,6 +270,16 @@ def run_matched_source_train_study(
         except GuardedDesignTimeout as exc:
             audit = exc.audit
         arm_result = _result(audit, evolved=name != "fixed_portfolio")
+        if artifact is not None and frozen_root is not None:
+            archive_dir = frozen_root / name
+            receipt = artifact.export(archive_dir)
+            manifest_path = archive_dir / (
+                "audit.json" if name == "fixed_portfolio" else "manifest.json")
+            arm_result["frozen_research_artifact"] = {
+                "relative_directory": name,
+                "manifest_sha256": sha_file(manifest_path),
+                "qualified": False,
+            }
         arm_result["research_wall_seconds"] = round(time.monotonic() - started, 4)
         output["arms"][name] = arm_result
     output["complete_two_arm_comparison"] = set(output["arms"]) == {
@@ -347,7 +364,8 @@ def run_native_rw_matched_study(
         report["validation_telemetry_accessed"] = False
         report["status"] = "TRAIN_SOURCE_ACCEPTED"
         if not validate_only:
-            report["comparison"] = run_matched_source_train_study(raw, records)
+            report["comparison"] = run_matched_source_train_study(
+                raw, records, artifacts_root=destination / "research_models")
             report["status"] = "TRAIN_SOURCE_SEARCH_RESEARCH_ONLY"
     except Exception as exc:
         report["status"] = "REFUSED"
