@@ -285,6 +285,61 @@ def evaluate_r83_frozen_validation(
     }
 
 
+def stage_reviewer_validation_only_view(
+    development_manifest: str | Path,
+    destination: str | Path,
+) -> dict:
+    """Trusted steward: copy ONLY VAL telemetry; never open TRAIN file bytes.
+
+    A development Dataset may contain TRAIN and VALIDATION descriptors. Its
+    validation files are checked and copied to a new isolated folder. No
+    TEST/FINAL input may occur in the development manifest. Physical regime
+    review and source attestations still happen separately.
+    """
+    from shutil import copyfile
+    from ..data import Dataset
+    from ..io import safe_child
+    source = Dataset(development_manifest, allowed_splits={"train", "validation"})
+    selected = [x for x in source.samples if x["split"] == "validation"]
+    if not selected:
+        _fail("R83_NO_VALIDATION_CASES_TO_STAGE")
+    dest = Path(destination)
+    if dest.exists():
+        raise FileExistsError("R83_VAL_STAGING_DESTINATION_EXISTS")
+    # Validate all VAL file hashes before creating any destination.
+    for sample in selected:
+        path = safe_child(source.root, sample["path"])
+        if not path.is_file() or sha_file(path) != sample["sha256"]:
+            _fail("R83_VALIDATION_STAGING_FILE_HASH_MISMATCH")
+    dest.mkdir(parents=True)
+    for sample in selected:
+        target = safe_child(dest, sample["path"])
+        target.parent.mkdir(parents=True, exist_ok=True)
+        copyfile(safe_child(source.root, sample["path"]), target)
+        if sha_file(target) != sample["sha256"]:
+            _fail("R83_VALIDATION_COPY_INTEGRITY_FAILURE")
+    copied = dict(source.raw)
+    copied["dataset_id"] = source.raw["dataset_id"] + "-val-only-r83"
+    copied["samples"] = [dict(item) for item in selected]
+    copied["provenance"] = {
+        **source.raw["provenance"],
+        "validation_only_view": True,
+        "development_manifest_sha256": sha_file(Path(development_manifest)),
+        "train_telemetry_accessed": False,
+        "hidden_test_or_final_accessed": False,
+        "independent_qualification": False,
+    }
+    write_json(dest / "dataset.json", copied)
+    return {
+        "schema": "phm.r83.validation-staging.v1",
+        "validation_manifest": str(dest / "dataset.json"),
+        "validation_cases": len(selected),
+        "train_telemetry_accessed": False,
+        "hidden_test_or_final_accessed": False,
+        "physical_source_independently_attested": False,
+    }
+
+
 def load_reviewed_validation_manifest(
     task_spec: Mapping | TaskSpec,
     validation_manifest: str | Path,
