@@ -1,0 +1,117 @@
+name: R83h Genuine Basilisk TRAIN Excitation Audit
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/r83h-native-physics-excitation.yml'
+      - 'source_product/src/phm_design/industrial/r83h_physics_excitation_audit.py'
+      - 'source_product/tests/phm_design/test_r83h_physics_excitation_audit.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit-contract:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install research tests without torch/CUDA or Basilisk wheel
+        run: |
+          python -m pip install pytest
+          python -m pip install -e ./source_product --no-deps
+      - name: Test tamper-proof nominal/fault paired physics only
+        run: python -m pytest -q source_product/tests/phm_design/test_r83h_physics_excitation_audit.py
+
+  real-r83f-train-only-audit:
+    needs: audit-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Read sealed original R83f REAL Basilisk case evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: r83f-126-real-basilisk-native-balanced-research
+          run-id: 40099391872
+          repository: clonetimer/autogen
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/r83f_original
+      - name: Verify original paired TRAIN QA and predeclared campaign digests
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"r83f_original"
+          files={
+            "r83d_evidence/paired_native_observability.json":
+               "2784ad179972b63cd1b43baaa404553202f0be3c5794d8589b8531d522471b8e",
+            "r83d_frozen_native_plan.audit.json":
+               "bc7754da78fc05921f5dd1cfce9052e6310310a3dad0b6aa011e7277a75425ac",
+          }
+          for relative,expected in files.items():
+              file=root/relative
+              if len(expected)!=64 or not file.exists() or (
+                  hashlib.sha256(file.read_bytes()).hexdigest()!=expected):
+                  raise RuntimeError("R83H_FROZEN_ORIGINAL_EVIDENCE_MISMATCH:"+relative)
+          print("R83H_REAL_ORIGINAL_BASILISK_TRAIN_EVIDENCE_PINNED")
+          PY
+      - name: Install audit only, no neural training or new simulation
+        run: python -m pip install -e ./source_product --no-deps
+      - name: Audit 45 original TRAIN pairs and only TRAIN source CSV files
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83h_physics_excitation_audit \
+            --source-root "$RUNNER_TEMP/r83f_original/r83d_actual_basilisk_cases" \
+            --frozen-45-pair-audit "$RUNNER_TEMP/r83f_original/r83d_evidence/paired_native_observability.json" \
+            --frozen-plan-audit "$RUNNER_TEMP/r83f_original/r83d_frozen_native_plan.audit.json" \
+            --output "$RUNNER_TEMP/r83h_train_only_excitability_audit.json"
+      - name: Enforce truthful non-model, 15-by-3 source group report
+        shell: python
+        run: |
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"r83h_train_only_excitability_audit.json"
+          r=json.loads(p.read_text())
+          assert r["original_case_traces_read"]==90
+          assert r["original_source_train_independent_groups"]==45
+          assert r["source_validation_test_or_final_files_read"] is False
+          assert r["new_diagnostic_model_trained"] is False
+          assert len(r["per_fault_regime"])==9
+          assert all(v["independent_original_pairs"]==5
+                     for v in r["per_fault_regime"].values())
+          for k,v in r["per_fault_mechanism"].items():
+              print("R83H_NATIVE_PHYSICS",k,
+                    "median_command_to_rated",
+                    v["nominal_post_mean_abs_command_to_rating"]["median"],
+                    "median_target_speed_effect",
+                    v["post_max_abs_target_speed_delta_rad_s"]["median"])
+      - name: Archive original source-linked physical QA without VAL/TEST
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83h-real-basilisk-train-45-pairs-physics-excitation
+          if-no-files-found: warn
+          retention-days: 21
+          path: |
+            ${{ runner.temp }}/r83h_train_only_excitability_audit.json
