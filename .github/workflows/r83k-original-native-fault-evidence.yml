@@ -1,0 +1,84 @@
+name: R83k Read-Only Genuine Basilisk RW Fault Physical Proof
+
+# Original source frozen in SatAgentSimulation run #40114200932.
+# Original downstream SHA-based physical attestation run #40114750594 succeeded.
+# Re-run explicitly via workflow_dispatch, never on report-only PR updates.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  anti-fabrication-physics-proof:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install 'pytest>=8,<10'
+      - run: python -m pip install -e ./source_product --no-deps
+      - name: Do not mistake synthetic examples for original Basilisk source
+        run: python -m pytest -q source_product/tests/phm_design/test_r83k_native_fsw_fault_physics_gate.py
+
+  read-actual-original-4arm-native-bsk:
+    needs: anti-fabrication-physics-proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download ORIGINAL SatAgentSimulation 4-arm native physics from completed run
+        uses: actions/download-artifact@v4
+        with:
+          name: r83k-real-basilisk-native-fsw-faulted-rw-capacity-2x2
+          run-id: 40114200932
+          repository: clonetimer/SatAgentSimulation
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/r83k_original_original_source
+      - name: Recompute native RW motor ACTUAL torque & physical wheel response from SHA-pinned source
+        shell: bash
+        run: |
+          python -m pip install -e ./source_product --no-deps
+          python -m phm_design.industrial.r83k_native_fsw_fault_physics_gate \
+            --source-file "$RUNNER_TEMP/r83k_original_original_source/actual_r83k_original_native_faulted_reference.json" \
+            --output "$RUNNER_TEMP/r83k_genuine_original_native_physics_only.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=json.loads((Path(os.environ["RUNNER_TEMP"])/"r83k_genuine_original_native_physics_only.json").read_text())
+          assert r["physically_executed_native_cases"]==4
+          assert r["true_rw_max_torque_physical_state_verified"]
+          assert r["physics_excitation_dependent_fault_observability_demonstrated"]
+          assert r["paired_no_command_fault_speed_effect_rad_s"]==0.
+          assert r["paired_with_scheduled_reference_fault_speed_effect_rad_s"]>1e-8
+          assert r["paired_with_reference_native_actual_applied_torque_effect_nm"]>1e-8
+          assert not r["trained_fault_classifier_eligible"]
+          assert not r["independent_hardware_safety_certified"]
+          assert not r["automatic_stable_promotion_allowed"]
+          print("R83K_REAL_NATIVE_PHYSICS_PROVEN_NOT_MODEL_QUALIFICATION",
+                r["paired_with_scheduled_reference_fault_speed_effect_rad_s"])
+          PY
+      - name: Archive original source proof, NEVER a diagnostic performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83k-autogen-original-native-4arm-RW-fault-physics-proof
+          retention-days: 21
+          if-no-files-found: warn
+          path: ${{ runner.temp }}/r83k_genuine_original_native_physics_only.json
