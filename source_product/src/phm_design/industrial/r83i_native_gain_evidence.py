@@ -35,7 +35,14 @@ def _measure(case_root, wheel, onset):
     applied=f"adcs.control.applied_torque_nm_{wheel}"
     with source.open("r",encoding="utf-8",newline="") as f:
         reader=csv.DictReader(f)
-        required={"time_s",c,s,rating,applied}
+        fullwheel_columns = {
+        key for i in range(3) for key in (
+            f"adcs.rw.command_torque_nm_{i}",
+            f"adcs.rw.speed_rad_s_{i}",
+            f"adcs.rw.effective_max_torque_nm_{i}",
+            f"adcs.control.applied_torque_nm_{i}")
+    }
+    required={"time_s", *fullwheel_columns}
         if not required.issubset(reader.fieldnames or []) or \
                 len(reader.fieldnames or [])!=len(set(reader.fieldnames or [])):
             _reject("R83I_NATIVE_SOURCE_TELEMETRY_INCOMPLETE")
@@ -47,7 +54,8 @@ def _measure(case_root, wheel, onset):
             rows.append(vals)
     if len(rows)!=61 or any(abs(row["time_s"]-i)>1e-8 for i,row in enumerate(rows)):
         _reject("R83I_NATIVE_TRACE_SAMPLE_CONTRACT_CHANGED")
-    if any(row[rating]<=0 for row in rows):
+    if any(row[f"adcs.rw.effective_max_torque_nm_{i}"]<=0
+           for row in rows for i in range(3)):
         _reject("R83I_NONPOSITIVE_ACTUATOR_RATING")
     post=[row for row in rows if row["time_s"]>=onset]
     if len(post)<2 or len(post)>58:
@@ -58,9 +66,20 @@ def _measure(case_root, wheel, onset):
         "post_mean_abs_command_nm":statistics.fmean(abs(row[c]) for row in post),
         "post_mean_abs_command_applied_gap_nm":statistics.fmean(
             abs(row[c]-row[applied]) for row in post),
-        "max_full_case_abs_speed_rad_s":max(abs(row[s]) for row in rows),
-        "max_full_case_abs_command_to_rated":max(abs(row[c])/row[rating] for row in rows),
-        "max_full_case_abs_applied_to_rated":max(abs(row[applied])/row[rating] for row in rows),
+        # Safety check must cover ALL THREE wheels regardless of which
+        # wheel is physically injected for observability analysis.
+        "max_full_case_abs_speed_rad_s":max(
+            abs(row[f"adcs.rw.speed_rad_s_{i}"])
+            for row in rows for i in range(3)),
+        "max_full_case_abs_command_to_rated":max(
+            abs(row[f"adcs.rw.command_torque_nm_{i}"]) /
+            row[f"adcs.rw.effective_max_torque_nm_{i}"]
+            for row in rows for i in range(3)),
+        "max_full_case_abs_applied_to_rated":max(
+            abs(row[f"adcs.control.applied_torque_nm_{i}"]) /
+            row[f"adcs.rw.effective_max_torque_nm_{i}"]
+            for row in rows for i in range(3)),
+        "safety_checked_all_three_native_reaction_wheels":True,
         "full_case_source_rows":len(rows),
         "declared_command_and_speed_limits_not_independently_calibrated":True,
     }
