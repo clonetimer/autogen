@@ -20,12 +20,13 @@ from .resource_guard import GuardedDesignTimeout, _invoke_worker
 
 
 def _self_organizing_worker(conn, raw, records, policy, acceptance,
-                            seed_schedule="legacy"):
+                            seed_schedule="legacy", proposal_mode="feedback"):
     """Spawn-safe top-level training worker, no persistent background process."""
     try:
         result = run_self_organizing_design(
             raw, records, policy=policy, acceptance=acceptance,
             _guarded_execution=True, seed_schedule=seed_schedule,
+            proposal_mode=proposal_mode,
         )
         # Do not Pipe.send() live Torch tensors: PyTorch shares their storage
         # through child-owned file descriptors that can disappear at worker exit.
@@ -53,6 +54,7 @@ def run_self_organizing_design_guarded(
     policy: EvolutionPolicy = EvolutionPolicy(),
     acceptance: DesignAcceptance = DesignAcceptance(),
     seed_schedule: str = "legacy",
+    proposal_mode: str = "feedback",
 ) -> SelfOrganizingArtifact:
     """Only documented hard-wall execution entry for R83 self-organization.
 
@@ -65,6 +67,8 @@ def run_self_organizing_design_guarded(
         raise ValueError("INVALID_EVOLUTION_POLICY_TYPE")
     if seed_schedule not in ("legacy", "r83_matched_train"):
         raise ValueError("UNREGISTERED_SELF_ORGANIZING_SEED_SCHEDULE")
+    if proposal_mode not in ("feedback", "predeclared_static"):
+        raise ValueError("UNREGISTERED_SELF_ORGANIZING_PROPOSAL_MODE")
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_DESIGN_ACCEPTANCE_TYPE")
     raw = (task_spec.to_dict() if isinstance(task_spec, TaskSpec)
@@ -78,7 +82,7 @@ def run_self_organizing_design_guarded(
 
     status, result = _invoke_worker(
         _self_organizing_worker, (raw, records, policy, acceptance,
-                                  seed_schedule), limit
+                                  seed_schedule, proposal_mode), limit
     )
     if status == "refused":
         raise IndustrialDesignRejected(result)
