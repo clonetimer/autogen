@@ -13,10 +13,10 @@
 - Moves the experimental temporal PyTorch model into a module-level class
   so its live trained state can be transferred out of a spawned worker and
   exported/replayed. The previous nested PyTorch class could not be pickled.
-- r83_matched_budget.run_matched_source_train_study: bounded two-arm
+- r83_matched_budget.run_matched_source_train_study: bounded three-arm
   comparison on a single source TRAIN set. Fixed registered candidate
-  portfolio (tcn, gru, tree) versus three sequential self-organized
-  temporal candidates. Identical source physical-group/environment OOF splits,
+  portfolio (tcn, gru, tree), three preregistered **static**
+  temporal topologies, and three adaptive temporal candidates. Identical source physical-group/environment OOF splits,
   exactly 3 candidate slots, at most 3 * environment_count + 1 estimator
   fits per arm, identical predeclared design acceptance and wall guard.
   PyTorch candidate epochs are 8 in both arms (ExtraTrees has no epochs).
@@ -66,6 +66,30 @@ an *optimization-feedback comparison*, not unbiased OOD/generalization
 evidence. Training both arms under equal fit caps is a baseline software
 control, not an equal-GPU-hours, wall-time or FLOPs study.
 
+## Same-family isolation: static versus self-organizing
+
+The three-arm protocol is necessary to distinguish architecture adaptation
+from changing the model family:
+
+1. Fixed broad-family portfolio: 1 TCN + 1 GRU + 1 ExtraTrees.
+2. **Static neural ablation:** 3 fixed, preregistered temporal genomes.
+3. **Feedback neural search:** exactly the same first 2 genomes as the
+   static arm; third is chosen *only* from earlier TRAIN OOF feedback.
+
+Both neural arms have the same fold partitions, original source measurements,
+8 training epochs per candidate, candidate seed schedule, three proposals
+and estimator-fit cap. The predeclared static genome IDs never depend on
+labels, accuracy or held-out environment scores. The only intentional
+search-control difference is whether previous TRAIN OOF scores guide the
+third proposal; the resulting third architectures may still have different
+parameter counts and compute cost.
+
+Crucially, this ablation is still **development design-feedback evidence**:
+the search reuses the source heldout folds. A separate, sealed evaluation
+on entirely unseen physical groups is required for claims that adaptation
+actually improves generalization. The broad-family portfolio is a systems
+baseline, not a controlled proof of the adaptivity effect.
+
 ## Why this is not a claim of equivalent compute
 
 Estimator-fit limits and candidate slots are equal, but FLOPs, parameter
@@ -74,10 +98,9 @@ equal. The report explicitly marks those limitations and measures per-arm
 host wall time. R83b is a fit-budget matched design-system comparison, not
 a precise compute-normalized NAS benchmark.
 
-The R81 fixed portfolio has a legacy score-ranking policy; R83 evolving
-uses a preregistered weighted TRAIN-only loss. Their completed attempts
-are also summarized using the SAME preregistered loss to make development
-feedback visually comparable. No selection or ranking score from these
+The R83 research comparison **opts into the same source TRAIN-only
+weighted loss for candidate ranking and final refit in every arm**. The
+legacy R81 selection policy is unchanged for all other callers. No selection or ranking score from these
 folds is an independent generalization estimate. The native RW data source
 only tests one simulated apparatus under three predeclared inclination bins;
 it is not cross-equipment OOD evidence.
