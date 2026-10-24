@@ -15,12 +15,18 @@ permissions:
   contents: read
 jobs:
   research-contract:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.11', '3.12']
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
     defaults:
       run:
         working-directory: source_product
