@@ -111,3 +111,56 @@ def test_native_validation_report_written_once_with_frozen_steward(monkeypatch, 
             trusted_fixed_pickle=True,
         )
     assert len(calls) == 1
+
+
+def test_trusted_val_staging_never_reads_train_telemetry(tmp_path):
+    from phm_design.industrial.r83_frozen_validation import (
+        stage_reviewer_validation_only_view)
+    from phm_design.io import sha_file
+    from shutil import copyfile
+
+    setup = rw_fixture(tmp_path)
+    manifest = setup["development_manifest"]
+    dataset = read_json(manifest)
+    original = dataset["samples"][0]
+    original_path = manifest.parent / original["path"]
+    heldout_path = manifest.parent / "observations/staged_validation_case.csv"
+    copyfile(original_path, heldout_path)
+    lines = heldout_path.read_text(encoding="utf-8").splitlines()
+    values = lines[1].split(",")
+    values[1] = str(float(values[1]) + 0.129)
+    lines[1] = ",".join(values)
+    heldout_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    added = dict(original)
+    added.update(
+        id="validation_reviewer_case",
+        group_id="separate_reviewed_physical_case",
+        lineage_id="separate_reviewed_lineage",
+        split="validation",
+        path="observations/staged_validation_case.csv",
+        sha256=sha_file(heldout_path),
+    )
+    dataset["samples"].append(added)
+    write_json(manifest, dataset)
+    # Modify TRAIN-only data deliberately. A trusted VAL staging process
+    # must neither hash nor open these bytes.
+    with original_path.open("a", encoding="utf-8") as stream:
+        stream.write("train_tampered_only\n")
+    output = tmp_path / "isolated_val"
+    receipt = stage_reviewer_validation_only_view(manifest, output)
+    assert receipt["validation_cases"] == 1
+    assert receipt["train_telemetry_accessed"] is False
+    assert receipt["hidden_test_or_final_accessed"] is False
+    exported = read_json(output / "dataset.json")
+    assert len(exported["samples"]) == 1
+    assert exported["samples"][0]["split"] == "validation"
+    assert exported["provenance"]["train_telemetry_accessed"] is False
+    assert (output / added["path"]).is_file()
+    assert not (output / original["path"]).is_file()
+
+    dataset["samples"][0]["split"] = "test"
+    write_json(manifest, dataset)
+    with pytest.raises(ValueError, match="DATA_ROLE_VIOLATION"):
+        stage_reviewer_validation_only_view(
+            manifest, tmp_path / "must_not_exist")
+    assert not (tmp_path / "must_not_exist").exists()
