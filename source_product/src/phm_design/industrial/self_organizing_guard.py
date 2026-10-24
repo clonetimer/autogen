@@ -8,6 +8,8 @@ CPU/GPU quota, filesystem isolation, or independent qualification.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
+import tempfile
 
 from .taskspec import TaskSpec, TaskSpecRejected, compile_task_spec
 from .design_engine import DesignAcceptance, IndustrialDesignRejected
@@ -24,7 +26,17 @@ def _self_organizing_worker(conn, raw, records, policy, acceptance):
             raw, records, policy=policy, acceptance=acceptance,
             _guarded_execution=True,
         )
-        conn.send(("delivered", result))
+        # Do not Pipe.send() live Torch tensors: PyTorch shares their storage
+        # through child-owned file descriptors that can disappear at worker exit.
+        # Transfer only bounded, checksum-verified numeric NPZ and JSON bytes.
+        with tempfile.TemporaryDirectory(prefix="r83b-worker-") as temp:
+            folder = Path(temp) / "model"
+            result.export(folder)
+            manifest = (folder / "manifest.json").read_bytes()
+            weights = (folder / "weights.npz").read_bytes()
+            if len(manifest) > 1_000_000 or len(weights) > 12_000_000:
+                raise ValueError("SELF_ORGANIZING_WORKER_EXPORT_TOO_LARGE")
+            conn.send(("delivered", (manifest, weights)))
     except IndustrialDesignRejected as exc:
         conn.send(("refused", exc.audit))
     except BaseException as exc:
@@ -69,12 +81,22 @@ def run_self_organizing_design_guarded(
         raise RuntimeError("GUARDED_SELF_ORGANIZING_WORKER_FAILED:" + str(result))
     if status != "delivered":
         raise RuntimeError("UNKNOWN_SELF_ORGANIZING_WORKER_RESULT")
-    if not isinstance(result, SelfOrganizingArtifact):
+    if (not isinstance(result, tuple) or len(result) != 2 or
+            not all(isinstance(blob, bytes) for blob in result)):
         raise RuntimeError("INVALID_SELF_ORGANIZING_WORKER_ARTIFACT")
-    if (result.audit.get("independent_qualification") is not False or
-            result.audit.get("wall_guard") != "PARENT_SPAWN_TERMINATION"):
+    manifest, weights = result
+    if len(manifest) > 1_000_000 or len(weights) > 12_000_000:
+        raise RuntimeError("OVERSIZED_SELF_ORGANIZING_WORKER_ARTIFACT")
+    with tempfile.TemporaryDirectory(prefix="r83b-parent-") as temp:
+        folder = Path(temp) / "model"
+        folder.mkdir()
+        (folder / "manifest.json").write_bytes(manifest)
+        (folder / "weights.npz").write_bytes(weights)
+        artifact = SelfOrganizingArtifact.load(folder)
+    if (artifact.audit.get("independent_qualification") is not False or
+            artifact.audit.get("wall_guard") != "PARENT_SPAWN_TERMINATION"):
         raise RuntimeError("INVALID_SELF_ORGANIZING_WORKER_AUDIT")
-    return result
+    return artifact
 
 
 __all__ = [
