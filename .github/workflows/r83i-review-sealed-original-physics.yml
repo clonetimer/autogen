@@ -1,0 +1,100 @@
+name: R83i Review Sealed REAL Basilisk 36-case Source
+
+# Analyze exactly the ALREADY EXECUTED genuine source from run #40108812287.
+# This workflow NEVER reruns physics or tunes gain/thresholds.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/r83i-review-sealed-original-physics.yml'
+      - 'source_product/src/phm_design/industrial/r83i_native_gain_evidence.py'
+      - 'source_product/tests/phm_design/test_r83i_native_gain_evidence.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sealed-physics-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Strict physical-source reviewer unit tests
+        run: |
+          python -m pip install 'pytest>=8,<10'
+          python -m pip install -e ./source_product --no-deps
+          python -m pytest -q \
+            source_product/tests/phm_design/test_r83i_native_gain_evidence.py \
+            source_product/tests/phm_design/test_r83i_native_gain_pilot.py
+      - name: Fetch ORIGINAL completed real 36-case source (not proxy/simulator replay)
+        uses: actions/download-artifact@v4
+        with:
+          name: r83i-real-basilisk-36-static-gain-physics-excitation
+          run-id: 40108812287
+          repository: clonetimer/autogen
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/immutable_r83i_real36
+      - name: Bind all original source header receipts by SHA-256
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib,os,json
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"immutable_r83i_real36"
+          identity={
+           "r83i_evidence/native_static_gain_36_taskplan.json":
+             "f26eda0c47fb3008d391b5a5bfd97cc740348c16bd7c093c4de3ee821820bb15",
+           "r83i_evidence/native_static_gain_36_taskplan.audit.json":
+             "95472e2e1fe7efaccabb0565fbd0e84b075e705be550372f95dfc4da090ce702",
+           "r83i_actual_native_36/astrograph_dataset_index.json":
+             "573fae1512f6277e0ffb94c5108faf8aedf6c88c8b5c2600374e17bcf239c405",
+          }
+          for key,expected in identity.items():
+              file=root/key
+              if len(expected)!=64 or not file.exists() or hashlib.sha256(file.read_bytes()).hexdigest()!=expected:
+                  raise RuntimeError("R83I_ORIGINAL_COMPLETED_NATIVE_CASES_CHANGED:"+key)
+          receipt=json.loads((root/"r83i_evidence/native_static_gain_36_taskplan.audit.json").read_text())
+          assert receipt["frozen_plan_canonical_sha256"]=="95a189b46db6d73b954b9c15fcb72246a47bcb1b9d9692fe6dc8ea80fac379b2"
+          assert receipt["source_cases"]==36
+          print("R83I_REAL_NATIVE_SOURCE_SHA256_REVIEW",len(identity))
+          PY
+      - name: Recalculate 36 actual native cases without dividing by fault-zero capability
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83i_native_gain_evidence \
+            --campaign "$RUNNER_TEMP/immutable_r83i_real36/r83i_actual_native_36" \
+            --planned-spec "$RUNNER_TEMP/immutable_r83i_real36/r83i_evidence/native_static_gain_36_taskplan.json" \
+            --output "$RUNNER_TEMP/r83i_sealed_actual_gain_evidence.json"
+      - name: Preserve NEGATIVE provisional command envelope finding; no certification
+        shell: python
+        run: |
+          import json,os
+          from pathlib import Path
+          path=Path(os.environ["RUNNER_TEMP"])/"r83i_sealed_actual_gain_evidence.json"
+          data=json.loads(path.read_text())
+          assert data["real_native_cases_verified"]==36
+          assert data["independent_physical_parent_pairs"]==9
+          assert data["model_trained_or_selected"] is False
+          assert data["validation_test_final_files_read"] is False
+          assert data["time_varying_wheel_command_demonstrated"] is False
+          assert data["observed_max_command_to_rated_ratio"]>1.0
+          assert data["safety_provisional_900_rad_s_and_command_rating_below_1"] is False
+          assert data["applied_motor_torque_within_original_hw_rating_observed"] is True
+          assert data["zero_effective_capacity_samples_due_to_physical_fault"]>0
+          print("R83I_GENUINE_NATIVE_PHYSICS_SOURCE_COMPLETE",data["real_native_cases_verified"])
+          print("R83I_PROVISIONAL_COMMAND_LIMIT_FAILED_AND_RETAINED",data["observed_max_command_to_rated_ratio"])
+          print("R83I_ACTUAL_APPLIED_WITHIN_ORIGINAL_HARDWARE_LIMIT",data["observed_max_applied_to_original_hardware_rated_ratio"])
+          print("R83I_FAULT_EFFECTIVE_CAPACITY_ZERO_SAMPLES",data["zero_effective_capacity_samples_due_to_physical_fault"])
+          print("R83I_PHYSICS_QA_NOT_MODEL_OR_SAFETY_CERTIFICATION",data["physical_excitation_by_mechanism"])
+      - name: Archive corrected source physics analysis (immutable real source)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83i-reanalysis-immutable-36-native-case-command-saturation
+          if-no-files-found: warn
+          retention-days: 21
+          path: ${{ runner.temp }}/r83i_sealed_actual_gain_evidence.json

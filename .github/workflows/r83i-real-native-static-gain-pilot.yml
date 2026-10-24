@@ -1,0 +1,180 @@
+name: R83i Genuine Basilisk Static Gain Excitation Pilot
+
+# Genuine 36-case research already executed in GitHub run #40108812287.
+# The engineering source cases succeeded, but provisional command/rated limit
+# FAILED and evidence analysis found zero fault-effective motor capacity.
+# Do not silently rerun/tune this costly experiment through PR edits.
+# Manual re-execution is explicitly research-governed, not an auto-acceptance.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preregistration-contract:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install 'pytest>=8,<10'
+      - run: python -m pip install -e ./source_product --no-deps
+      - name: Reject invented time-varying interface, source drift and unsafe claims
+        run: >-
+          python -m pytest -q
+          source_product/tests/phm_design/test_r83i_native_gain_pilot.py
+          source_product/tests/phm_design/test_r83i_native_gain_evidence.py
+          source_product/tests/phm_design/test_r83h_physics_excitation_audit.py
+
+  pinned-36-case-basilisk-native:
+    needs: preregistration-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use immutable native source factory, not a Python dynamics proxy
+        uses: actions/checkout@v4
+        with:
+          repository: clonetimer/SatAgentSimulation
+          ref: 1f709beeae97baec65db9ca13ae373d88728f87d
+          path: satagent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Check official Basilisk original wheel SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/official" "$RUNNER_TEMP/compat" "$RUNNER_TEMP/r83i_evidence"
+          python -m pip download --only-binary=:all: --no-deps \
+            --dest "$RUNNER_TEMP/official" "bsk==2.11.0"
+          python - <<'PY'
+          import hashlib,os
+          from pathlib import Path
+          files=list((Path(os.environ["RUNNER_TEMP"])/"official").glob("bsk-2.11.0-*.whl"))
+          if len(files)!=1 or hashlib.sha256(files[0].read_bytes()).hexdigest()!="d51fe1ffa1b0b03dc415034b210497b28a2504428d4d8e71b481542a08c08a0a":
+              raise RuntimeError("R83I_PINNED_OFFICIAL_WHEEL_REQUIRED")
+          PY
+          python satagent/scripts/build_bsk_compat_wheels.py \
+            "$RUNNER_TEMP"/official/bsk-2.11.0-*.whl \
+            --output-dir "$RUNNER_TEMP/compat" \
+            --report "$RUNNER_TEMP/r83i_evidence/native_payload_report.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          data=json.loads((Path(os.environ["RUNNER_TEMP"])/"r83i_evidence/native_payload_report.json").read_text())["results"][0]
+          if not data["payload_bytes_unchanged"] or data["payload_file_count"]<800:
+              raise RuntimeError("R83I_NATIVE_BINARY_PAYLOAD_CHANGED")
+          PY
+      - name: Install actual Basilisk and pinned controller source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install "$RUNNER_TEMP"/compat/bsk-2.11.0+satfix1-*.whl
+          python -m pip install -e ./satagent
+          python -m pip install -e ./source_product --no-deps
+          python - <<'PY'
+          from importlib.metadata import version
+          from Basilisk.simulation import spacecraft, reactionWheelStateEffector
+          from Basilisk.utilities import simIncludeRW
+          from sat_sim.experiments.native_controller_registry import native_controller_contract
+          assert version("bsk")=="2.11.0+satfix1"
+          contract=native_controller_contract("subsystem.adcs_unified_native.v1")
+          assert all("parameters.values."+k in contract.path_map
+                     for k in ("controller_k","controller_p","rw_max_torque_nm"))
+          print("R83I_VERIFIED_REAL_NATIVE_FSW_STATIC_GAIN_CONTROL")
+          PY
+      - name: Regenerate and pin the ORIGINAL 126-case factory PLAN ONLY
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83d_native_protocol \
+            --mode plan \
+            --factory-config satagent/configs/integration/rw_dataset_factory.json \
+            --output "$RUNNER_TEMP/r83i_evidence/original_r83f_126_taskplan.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=json.loads((Path(os.environ["RUNNER_TEMP"])/"r83i_evidence/original_r83f_126_taskplan.audit.json").read_text())
+          if r["frozen_plan_canonical_sha256"]!="c54bfcd154322a620c7d8058ce8a40db6e155602593c5ff5da8bdba43ef3b714":
+              raise RuntimeError("R83I_ORIGINAL_R83F_SOURCE_PLAN_CHANGED")
+          PY
+      - name: Freeze prospective matched 36-case static-controller source protocol
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83i_native_gain_pilot \
+            --r83f-frozen-plan "$RUNNER_TEMP/r83i_evidence/original_r83f_126_taskplan.json" \
+            --output "$RUNNER_TEMP/r83i_evidence/native_static_gain_36_taskplan.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"r83i_evidence"
+          a=json.loads((root/"native_static_gain_36_taskplan.audit.json").read_text())
+          assert a["source_cases"]==36 and a["source_base_pairs"]==9
+          print("R83I_PREREGISTERED_PROSPECTIVE_PLAN_SHA256",a["frozen_plan_canonical_sha256"])
+          PY
+      - name: Execute EXACTLY 36 genuine pinned native physics cases
+        shell: bash
+        run: |
+          set -o pipefail
+          python - <<'PY' 2>&1 | tee "$RUNNER_TEMP/r83i_evidence/native_simulation.log"
+          import json,os
+          from pathlib import Path
+          from sat_sim.fault_dataset_factory import run_fault_dataset_campaign
+          root=Path(os.environ["RUNNER_TEMP"])
+          plan=json.loads((root/"r83i_evidence/native_static_gain_36_taskplan.json").read_text())
+          result=run_fault_dataset_campaign(
+              plan,output_root=root/"r83i_actual_native_36",
+              dry_run=False,continue_on_error=False)
+          if result.dataset_index.get("dry_run") is not False or result.dataset_index.get("case_count")!=36 or result.campaign.summary.get("failure_count",0):
+              raise RuntimeError("R83I_ACTUAL_BASILISK_36_CASE_PHYSICS_FAILED")
+          print("R83I_REAL_BASILISK_36_COMPLETE",result.campaign.summary)
+          PY
+      - name: Inspect actual original 36 native traces and 9 cross-arm physical parents
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83i_native_gain_evidence \
+            --campaign "$RUNNER_TEMP/r83i_actual_native_36" \
+            --planned-spec "$RUNNER_TEMP/r83i_evidence/native_static_gain_36_taskplan.json" \
+            --output "$RUNNER_TEMP/r83i_evidence/prospective_gain_physics_evidence.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          report=json.loads((Path(os.environ["RUNNER_TEMP"])/"r83i_evidence/prospective_gain_physics_evidence.json").read_text())
+          assert report["real_native_cases_verified"]==36
+          assert report["independent_physical_parent_pairs"]==9
+          assert report["model_trained_or_selected"] is False
+          assert report["validation_test_final_files_read"] is False
+          if not report["safety_provisional_900_rad_s_and_command_rating_below_1"]:
+              raise RuntimeError("R83I_PROVISIONAL_ACTUATOR_LIMIT_BREACHED")
+          print("R83I_REAL_NATIVE_GAIN_SOURCE_QA",report["physical_excitation_by_mechanism"])
+          PY
+      - name: Retain full raw physical cases and failure evidence, not model scores
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83i-real-basilisk-36-static-gain-physics-excitation
+          retention-days: 21
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/r83i_evidence/
+            ${{ runner.temp }}/r83i_actual_native_36/astrograph_dataset_index.json
+            ${{ runner.temp }}/r83i_actual_native_36/cases/*/trace.csv
+            ${{ runner.temp }}/r83i_actual_native_36/cases/*/task_spec.json
+            ${{ runner.temp }}/r83i_actual_native_36/cases/*/astrograph/dataset_contract.json
+            ${{ runner.temp }}/r83i_actual_native_36/cases/*/astrograph/simulation_report.json
