@@ -15,7 +15,31 @@ permissions:
   contents: read
 
 jobs:
+  software-test-free-adapter:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e './source_product[dev]'
+      - run: >-
+          python -m pytest -q
+          source_product/tests/phm_design/test_r83e_native_integration.py
+          source_product/tests/phm_design/test_r82_native_campaign_gate.py
   real-native-six-case-pilot:
+    needs: software-test-free-adapter
     runs-on: ubuntu-24.04
     timeout-minutes: 42
     steps:
