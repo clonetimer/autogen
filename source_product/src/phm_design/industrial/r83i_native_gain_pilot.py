@@ -15,8 +15,16 @@ import argparse
 import math
 
 from ..io import digest, read_json, write_json
-from .r83d_native_protocol import FAULTS
 from .taskspec import TaskSpecRejected
+
+# Exact mechanism set pinned by the immutable R83f source-plan SHA.
+# Avoid pulling the heavy R83d data/NumPy stack into a metadata-only
+# native-controller preregistration tool.
+FAULTS = (
+    "ADCS_RW_FRICTION_INCREASE",
+    "ADCS_RW_JAM",
+    "ADCS_RW_TORQUE_AUTHORITY_LOSS",
+)
 
 SCHEMA = "phm.r83i.predeclared-native-static-gain-pilot.v1"
 SOURCE_PLAN = "c54bfcd154322a620c7d8058ce8a40db6e155602593c5ff5da8bdba43ef3b714"
