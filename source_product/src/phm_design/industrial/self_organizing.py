@@ -18,6 +18,7 @@ from sklearn.model_selection import LeaveOneGroupOut
 
 from .design_engine import (
     DesignAcceptance, IndustrialDesignRejected, _observations_digest, _sha,
+    _matched_train_loss,
 )
 from .taskspec import TaskSpec, TaskSpecRejected, compile_task_spec, validate_observations
 from ..task_candidate_registry import TorchTaskEstimator, deployment_sequence
@@ -157,10 +158,8 @@ def _metrics(actual: np.ndarray, predicted: np.ndarray, env: np.ndarray,
 
 
 def _risk(metrics: Mapping) -> float:
-    """Fixed a priori search objective, not a post-hoc acceptance rewrite."""
-    return (0.45 * (1 - metrics["accuracy"]) +
-            0.40 * (1 - metrics["worst_environment_class_recall"]) +
-            0.15 * metrics["healthy_false_alarm"])
+    """Single shared R83 TRAIN-selection loss for both comparison arms."""
+    return _matched_train_loss(metrics)
 
 
 @dataclass
