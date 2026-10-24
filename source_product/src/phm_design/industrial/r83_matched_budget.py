@@ -272,6 +272,12 @@ def run_native_rw_matched_study(
     raw = read_json(task_spec)
     if raw["equipment"]["adapter"] != "sat_rw.fixed_index.v1":
         raise ValueError("R83_RW_ADAPTER_MISMATCH")
+    # Validate and freeze the three-slot study contract even in validate-only
+    # mode; never silently grow an R82 two-candidate TaskSpec after intake.
+    preliminary = compile_task_spec(raw)
+    if (raw["design"]["candidate_max"] < ARM_COUNT or
+            preliminary["budget"]["max_fits"] < ARM_COUNT * 3 + 1):
+        raise TaskSpecRejected("MATCHED_STUDY_SOURCE_TRIAL_SLOTS_BELOW_THREE")
     destination.mkdir(parents=True)
     report = {
         "schema": SCHEMA,
