@@ -123,6 +123,13 @@ class EvolvingTemporalEstimator(TorchTaskEstimator):
         return _TemporalTopology(channels, classes, self.genome)
 
 
+STATIC_R83_GENOMES = (
+    NetworkGenome(),
+    NetworkGenome(16, 2, 3, "mean_max", True),
+    NetworkGenome(8, 2, 3, "mean", False),
+)
+
+
 def propose_genome(history: Sequence[Mapping], visited: set[str]) -> tuple[NetworkGenome, str | None]:
     """After two prespecified seeds, choose an untried child of best TRAIN OOF parent."""
     seeds = (NetworkGenome(), NetworkGenome(16, 2, 3, "mean_max", True))
@@ -259,12 +266,17 @@ def run_self_organizing_design(
     acceptance: DesignAcceptance = DesignAcceptance(),
     _guarded_execution: bool = False,
     seed_schedule: str = "legacy",
+    proposal_mode: str = "feedback",
 ) -> SelfOrganizingArtifact:
     """Bounded, opt-in experiment. Not an alternate Stable/qualified entrypoint."""
     if not isinstance(policy, EvolutionPolicy) or not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_SELF_ORGANIZING_ARGUMENTS")
     if seed_schedule not in ("legacy", "r83_matched_train"):
         raise ValueError("UNREGISTERED_SELF_ORGANIZING_SEED_SCHEDULE")
+    if proposal_mode not in ("feedback", "predeclared_static"):
+        raise ValueError("UNREGISTERED_SELF_ORGANIZING_PROPOSAL_MODE")
+    if proposal_mode == "predeclared_static" and policy.max_candidates != 3:
+        raise ValueError("STATIC_TOPOLOGY_REQUIRES_EXACTLY_THREE_CANDIDATES")
     if not isinstance(records, (list, tuple)) or not records:
         raise TaskSpecRejected("EMPTY_DESIGN_RECORDS")
     raw = task_spec.to_dict() if isinstance(task_spec, TaskSpec) else TaskSpec.from_dict(task_spec).to_dict()
@@ -328,6 +340,7 @@ def run_self_organizing_design(
         "policy": asdict(policy),
         "seed": budget["seed"],
         "seed_schedule": seed_schedule,
+        "proposal_mode": proposal_mode,
         "budget": budget,
         "attempts": [],
         "target_feedback_used": False,
@@ -349,7 +362,10 @@ def run_self_organizing_design(
             refuse("SEARCH_FIT_BUDGET_EXHAUSTED")
         if time.process_time() - begun > budget["max_cpu_seconds"]:
             refuse("SEARCH_CPU_BUDGET_EXHAUSTED")
-        genome, parent = propose_genome(receipt["attempts"], visited)
+        if proposal_mode == "predeclared_static":
+            genome, parent = STATIC_R83_GENOMES[trial], None
+        else:
+            genome, parent = propose_genome(receipt["attempts"], visited)
         visited.add(genome.digest)
         prediction = np.full(len(y), -1, dtype=int)
         parameter_count = None
@@ -381,7 +397,9 @@ def run_self_organizing_design(
             "genome": asdict(genome),
             "genome_sha256": genome.digest,
             "parent_genome_sha256": parent,
-            "proposal": "PREDECLARED_SEED" if parent is None else "TRAIN_OOF_FEEDBACK_MUTATION",
+            "proposal": ("PREDECLARED_STATIC" if proposal_mode == "predeclared_static"
+                         else "PREDECLARED_SEED" if parent is None
+                         else "TRAIN_OOF_FEEDBACK_MUTATION"),
             "metrics": metrics,
             "selection_loss": _risk(metrics),
             "parameter_count": parameter_count,
