@@ -98,8 +98,10 @@ def test_both_arms_equal_fit_cap_and_identical_train_records(monkeypatch):
         "base_seed_plus_candidate_index")
     assert out["fairness"]["shared_predeclared_candidate_selection_rule"] == (
         "r83_matched_train_loss")
-    assert out["independent_physical_class_group_support"]["regime_0"] == {
-        key: 2 for key in spec["task"]["labels"]}
+    supports = out["independent_physical_class_group_support"]
+    assert len(supports) == 3
+    assert all(counts == {label: 2 for label in spec["task"]["labels"]}
+               for counts in supports.values())
     assert received == [("fixed", records), ("evolved", records), ("evolved", records)]
     assert out["ablation"]["same_neural_family"] is True
     assert out["ablation"]["same_two_initial_genomes"] is True
