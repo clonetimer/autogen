@@ -106,3 +106,22 @@ def test_dangerous_command_kept_visible_as_failure_not_false_certification(monke
         campaign=campaign,planned_spec=plan,output=tmp_path/"unsafe_report.json")
     assert report["safety_provisional_900_rad_s_and_command_rating_below_1"] is False
     assert report["observed_max_command_to_rated_ratio"]>1.
+
+
+
+def test_zero_effective_fault_capacity_is_physical_not_denominator(monkeypatch,tmp_path):
+    campaign,plan=_demo(tmp_path,monkeypatch)
+    first=next(p for p in (campaign/"cases").iterdir() if p.name.endswith("-fault"))
+    trace=first/"trace.csv"
+    lines=trace.read_text(encoding="utf8").splitlines()
+    columns=lines[0].split(",")
+    j=columns.index("adcs.rw.effective_max_torque_nm_0")
+    entry=lines[33].split(",")
+    entry[j]="0.0"  # fault jam can truly drop effective capacity to zero
+    lines[33]=",".join(entry)
+    trace.write_text("\n".join(lines)+"\n",encoding="utf8")
+    report=review_real_native_gain_pilot(
+        campaign=campaign,planned_spec=plan,output=tmp_path/"zero_capacity_report.json")
+    assert report["zero_effective_capacity_samples_due_to_physical_fault"]==1
+    assert report["applied_motor_torque_within_original_hw_rating_observed"]
+    assert report["observed_max_command_to_rated_ratio"]<1.
