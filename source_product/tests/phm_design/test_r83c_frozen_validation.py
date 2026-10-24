@@ -59,6 +59,8 @@ def _source_receipt(spec, train):
         "schema": "phm.r83.matched-source-train-study.v1",
         "source_task_spec_sha256": TaskSpec.from_dict(spec).sha256,
         "source_data_role": "TRAIN_ONLY",
+        "source_train_manifest_sha256": "1"*64,
+        "source_train_observations_sha256": "2"*64,
         "independent_qualification": False,
         "source_train_test_or_final_accessed": False,
         "complete_three_arm_comparison": True,
