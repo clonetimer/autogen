@@ -1,11 +1,11 @@
 name: R83i Genuine Basilisk Static Gain Excitation Pilot
 
-# This is a prospective engineering pilot, NOT a time-varying command profile
-# or a diagnostic algorithm benchmark. Research-only stacked PR.
+# Genuine 36-case research already executed in GitHub run #40108812287.
+# The engineering source cases succeeded, but provisional command/rated limit
+# FAILED and evidence analysis found zero fault-effective motor capacity.
+# Do not silently rerun/tune this costly experiment through PR edits.
+# Manual re-execution is explicitly research-governed, not an auto-acceptance.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/r83i-real-native-static-gain-pilot.yml'
   workflow_dispatch:
 
 permissions:
