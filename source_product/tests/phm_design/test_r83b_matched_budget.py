@@ -103,6 +103,10 @@ def test_both_arms_equal_fit_cap_and_identical_train_records(monkeypatch):
     assert received == [("fixed", records), ("evolved", records)]
     assert out["arms"]["fixed_portfolio"]["charged_fits"] == 10
     assert out["arms"]["self_organizing"]["charged_fits"] == 10
+    assert out["fairness_gate"]["source_train_comparison_allowed"] is True
+    assert out["fairness_gate"]["independent_generalization_claim_allowed"] is False
+    assert out["fairness_gate"]["minimum_observed_physical_groups_per_regime_class"] == 2
+    assert out["fairness_gate"]["confirmatory_sample_support_met"] is False
     assert out["arms"]["self_organizing"]["best_eligible_source_train_candidate"]
     assert out["arms"]["fixed_portfolio"]["best_eligible_source_train_candidate"]
     assert spec["design"]["compare"] == ["tcn"]  # original immutable to search
@@ -126,6 +130,7 @@ def test_refusal_of_one_arm_does_not_magically_qualify_other(monkeypatch):
     assert fixed["decision"] == "NO_ELIGIBLE_DESIGN"
     assert fixed["model_delivered"] is False
     assert fixed["best_eligible_source_train_candidate"] is None
+    assert out["fairness_gate"]["source_train_comparison_allowed"] is False
     assert out["arms"]["self_organizing"]["model_delivered"] is True
     assert out["independent_qualification"] is False
 
@@ -214,6 +219,7 @@ def test_real_torch_and_extra_trees_run_both_arms_under_same_train_protocol():
             worst_environment_class_recall_min=0.0,
             healthy_false_alarm_max=1.0))
     assert study["complete_two_arm_comparison"] is True
+    assert study["fairness_gate"]["source_train_comparison_allowed"] is True
     assert study["source_train_test_or_final_accessed"] is False
     assert study["independent_qualification"] is False
     assert study["arms"]["fixed_portfolio"]["charged_fits"] == 10
