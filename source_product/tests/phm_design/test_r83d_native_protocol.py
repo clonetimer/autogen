@@ -169,6 +169,27 @@ def test_select_balanced_cohort_without_model_outcome_or_fault_twins_loss(tmp_pa
     assert all(len(groups[(split, regime, label)]) == desired for
                split, desired in (("train", 5), ("validation", 2))
                for regime in REGIMES for label in CLASSES)
+    # Healthy example subsampling must ALSO be balanced across the 3 native
+    # fault-template sources, not just against the fault class counts.
+    origin = {row["id"]: row["source_case"]
+              for row in read_json(preparation)["source_records"]}
+    mechanism_counts = Counter()
+    for sample in subset["samples"]:
+        if sample["label"] != "NOMINAL":
+            continue
+        source_case = origin[sample["id"]]
+        regime = read_json(dest / "review" / (
+            sample["split"] + "_physical_map.json"))["records"][
+                sample["id"]]["operating_regime"]
+        mechanism = next(f for f in FAULTS if source_case.startswith(
+            sample["split"] + "-" + f.lower() + "-"))
+        mechanism_counts[(sample["split"], regime, mechanism)] += 1
+    for split, expected in (("train", 5), ("validation", 2)):
+        for phase, regime in enumerate(REGIMES):
+            base, remainder = divmod(expected, len(FAULTS))
+            for index, fault in enumerate(FAULTS):
+                quota = base + (1 if (index - phase) % len(FAULTS) < remainder else 0)
+                assert mechanism_counts[(split, regime, fault)] == quota
     with pytest.raises(FileExistsError):
         materialize_balanced_development(
             frozen_plan=plan, prepared_manifest=dataset,
