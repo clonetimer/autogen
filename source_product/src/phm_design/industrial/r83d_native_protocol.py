@@ -119,13 +119,31 @@ def freeze_balanced_campaign(config, *, campaign_builder):
 
 
 def _healthy_subset(pairs, *, split, regime, wanted):
-    """Nominal selection based on pair IDs only, NEVER telemetry/results."""
-    order = sorted(pairs, key=lambda pair: hashlib.sha256(
-        ("R83D_HEALTHY_V1|" + split + "|" + regime + "|" + pair)
-        .encode("utf-8")).hexdigest())
-    if len(order) < wanted:
-        _reject("R83D_INSUFFICIENT_PAIRED_HEALTHY")
-    return set(order[:wanted])
+    """Stratify nominal twins by ORIGINAL fault mechanism, never telemetry.
+
+    Five TRAIN nominal groups rotate 2/2/1 quota among three source fault
+    templates across regimes. Two VAL nominal groups rotate 1/1/0. This
+    prevents seed-dependent overrepresentation of one template's normal
+    source regime and preserves the original source's physical pairing.
+    """
+    if regime not in REGIMES:
+        _reject("R83D_UNKNOWN_PREREGISTERED_REGIME")
+    phase = REGIMES.index(regime)
+    base, remainder = divmod(wanted, len(FAULTS))
+    output = set()
+    for index, fault in enumerate(FAULTS):
+        eligible = [p for p in pairs if p.startswith(
+            split + "-" + fault.lower() + "-")]
+        if len(eligible) != wanted:
+            _reject("R83D_NOMINAL_SOURCE_FAULT_TEMPLATE_IMBALANCED")
+        quota = base + (1 if (index - phase) % len(FAULTS) < remainder else 0)
+        order = sorted(eligible, key=lambda pair: hashlib.sha256(
+            ("R83D_HEALTHY_V2|" + split + "|" + regime + "|" + pair)
+            .encode("utf-8")).hexdigest())
+        output.update(order[:quota])
+    if len(output) != wanted:
+        _reject("R83D_HEALTHY_STRATIFIED_QUOTA_MISMATCH")
+    return output
 
 
 def materialize_balanced_development(
