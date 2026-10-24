@@ -8,7 +8,9 @@ R83f returned **NO_ELIGIBLE_DESIGN** across all three fair model-search arms und
 
 Do first-order, physically interpretable command/response features offer better **SOURCE TRAIN group-OOF development scores**, particularly for low-observability torque-authority-loss faults, than an exactly dimension-matched control?
 
-Two representations receive the *same exact* 60 original TRAIN Basilisk records and physical groups:
+Two representations receive the *same exact* 60 original TRAIN Basilisk records
+from 45 independently keyed physical groups (including 15 original
+normal/fault paired twins sharing lineage):
 - **zero_padded_raw**: identical original six channels, with 12 additional identically zero channels.
 - **causal_command_response**: identical original six channels, with 12 **past/current only** derived channels (for all three wheels equally).
 
