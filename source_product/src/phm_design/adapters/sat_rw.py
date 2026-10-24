@@ -12,7 +12,10 @@ CHANNELS = ([{"name": f"adcs.rw.speed_rad_s_{i}", "unit": "rad/s", "role": "depl
               "provenance": "Basilisk controller motor-command recorder; NOT actual applied torque"} for i in range(3)])
 
 
-def prepare(campaign: str | Path, output: str | Path) -> dict:
+def prepare(campaign: str | Path, output: str | Path, *,
+            allow_empty_holdout: bool = False) -> dict:
+    if type(allow_empty_holdout) is not bool:
+        raise ValueError("ALLOW_EMPTY_HOLDOUT_MUST_BE_BOOLEAN")
     campaign, output = Path(campaign), Path(output)
     if output.exists():
         raise FileExistsError("OUTPUT_EXISTS")
@@ -80,11 +83,21 @@ def prepare(campaign: str | Path, output: str | Path) -> dict:
                                   "source_kind": "native_basilisk", "source_campaign_hash": digest(source_records),
                                   "real_device_evidence": False}})
     dev = Dataset(output / "development/dataset.json", allowed_splits={"train", "validation"})
-    test = Dataset(output / "holdout/dataset.json", allowed_splits={"test"})
+    # Default behavior remains strict. R83d is a preregistered research
+    # cohort with TEST=0: never fabricate held-out cases to appease a Dataset
+    # loader that correctly rejects an empty split by default.
+    test_samples = [item for item in records if item["split"] == "test"]
+    if not test_samples and not allow_empty_holdout:
+        raise ValueError("EMPTY_DATASET")
+    test = (Dataset(output / "holdout/dataset.json", allowed_splits={"test"})
+            if test_samples else None)
     from ..data import reject_overlap
-    reject_overlap(dev.samples, test.samples)
-    dev.verify_files(); test.verify_files()
-    summary = {"status": "PREPARED", "counts": {**dev.counts(), **test.counts()},
+    reject_overlap(dev.samples, test.samples if test else [])
+    dev.verify_files()
+    if test is not None:
+        test.verify_files()
+    summary = {"status": "PREPARED", "counts": {
+        **dev.counts(), **(test.counts() if test else {})},
                "channel_count": len(CHANNELS), "oracle_wheel_remapping": False,
                "actual_torque_input": False, "source_records": source_records,
                "fit_receives_holdout": False, "scope": contract["scope"],

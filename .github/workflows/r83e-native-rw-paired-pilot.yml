@@ -1,0 +1,241 @@
+name: R83e REAL Basilisk native RW paired-pilot
+
+# A small actual-physics integration run, not a performance benchmark.
+# Executes 6 genuinely native cases and proves the R83d TEST-free adapter path.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/r83e-native-rw-paired-pilot.yml"
+      - "source_product/src/phm_design/adapters/sat_rw.py"
+      - "source_product/tests/phm_design/test_r83e_native_integration.py"
+      - "source_product/src/phm_design/industrial/r83e_native_paired_observability.py"
+      - "source_product/tests/phm_design/test_r83e_native_paired_observability.py"
+      - ".github/workflows/r83d-real-native-balanced-campaign.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  software-test-free-adapter:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e './source_product[dev]'
+      - run: >-
+          python -m pytest -q
+          source_product/tests/phm_design/test_r83e_native_integration.py
+          source_product/tests/phm_design/test_r83e_native_paired_observability.py
+          source_product/tests/phm_design/test_r82_native_campaign_gate.py
+  real-native-six-case-pilot:
+    needs: software-test-free-adapter
+    runs-on: ubuntu-24.04
+    timeout-minutes: 42
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: clonetimer/SatAgentSimulation
+          ref: 1f709beeae97baec65db9ca13ae373d88728f87d
+          path: satagent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Verify exact ORIGINAL official Basilisk wheel SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/official" "$RUNNER_TEMP/compat" "$RUNNER_TEMP/r83e_evidence"
+          python -m pip download --only-binary=:all: --no-deps \
+            --dest "$RUNNER_TEMP/official" "bsk==2.11.0"
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          files = list((Path(os.environ["RUNNER_TEMP"]) / "official").glob("bsk-2.11.0-*.whl"))
+          if len(files) != 1:
+              raise RuntimeError("R83E_OFFICIAL_BASILISK_WHEEL_UNAVAILABLE_OR_DUPLICATE")
+          actual = hashlib.sha256(files[0].read_bytes()).hexdigest()
+          expected = "d51fe1ffa1b0b03dc415034b210497b28a2504428d4d8e71b481542a08c08a0a"
+          if actual != expected:
+              raise RuntimeError("R83E_OFFICIAL_BASILISK_WHEEL_HASH_CHANGED:" + actual)
+          print("R83E_OFFICIAL_BASILISK_WHEEL_SHA256", actual)
+          PY
+      - name: Repackage ABI metadata ONLY, verify complete native payload unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          python satagent/scripts/build_bsk_compat_wheels.py \
+            "$RUNNER_TEMP"/official/bsk-2.11.0-*.whl \
+            --output-dir "$RUNNER_TEMP/compat" \
+            --report "$RUNNER_TEMP/r83e_evidence/bsk_payload_report.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          data = json.loads((Path(os.environ["RUNNER_TEMP"]) /
+              "r83e_evidence/bsk_payload_report.json").read_text())["results"][0]
+          if not data["payload_bytes_unchanged"] or data["payload_file_count"] < 800:
+              raise RuntimeError("R83E_NATIVE_BASILISK_PAYLOAD_CHANGED")
+          print("R83E_ORIGINAL_NATIVE_PAYLOAD_FILES", data["payload_file_count"])
+          PY
+      - name: Install EXACT native physics and pinned SatAgent runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install "$RUNNER_TEMP"/compat/bsk-2.11.0+satfix1-*.whl
+          python -m pip install -e ./satagent
+          python -m pip install -e ./source_product --no-deps
+          python - <<'PY'
+          from importlib.metadata import version
+          from Basilisk.simulation import spacecraft, reactionWheelStateEffector
+          from Basilisk.utilities import simIncludeRW
+          assert version("bsk") == "2.11.0+satfix1"
+          print("R83E_REAL_INSTALLED_BASILISK", version("bsk"), simIncludeRW.__file__)
+          PY
+      - name: Freeze original full R83d 126-case source PLAN, no telemetry inspected
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m phm_design.industrial.r83d_native_protocol \
+            --mode plan \
+            --factory-config satagent/configs/integration/rw_dataset_factory.json \
+            --output "$RUNNER_TEMP/r83e_evidence/native_full_preregistered_plan.json"
+      - name: Preselect exactly one TRAIN pair per mechanism for engineering smoke
+        shell: bash
+        run: |
+          python - <<'PY'
+          import copy,json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])
+          source=json.loads((root/"r83e_evidence/native_full_preregistered_plan.json").read_text())
+          fault_ids=("ADCS_RW_FRICTION_INCREASE","ADCS_RW_JAM",
+                     "ADCS_RW_TORQUE_AUTHORITY_LOSS")
+          selected=[]
+          for fault in fault_ids:
+              pair=f"train-{fault.lower()}-000"
+              twin=[case for case in source["campaign"]["cases"]
+                    if case["overrides"]["metadata"]["astrograph_pair_id"] == pair]
+              if (len(twin)!=2 or
+                      {v["overrides"]["metadata"]["astrograph_case_role"]
+                       for v in twin}!={"fault","nominal"}):
+                  raise RuntimeError("R83E_NATIVE_SOURCE_TWIN_MISSING:"+pair)
+              selected.extend(twin)
+          pilot=copy.deepcopy(source)
+          pilot["task_id"]="r83e_real_native_integration_pilot"
+          pilot["campaign"]["cases"]=selected
+          pilot["campaign"]["count"]=6
+          pilot["campaign"]["max_cases"]=6
+          pilot["metadata"]["r83e_pilot"]= {
+              "source_full_protocol":"phm.r83d.native-balanced-protocol.v1",
+              "engineering_only":True, "selected_by_train_pair_id_before_model_metrics":True,
+              "full_campaign_completed":False,
+              "validation_or_final_evaluated":False,
+          }
+          destination=root/"r83e_evidence/native_six_case_pilot_plan.json"
+          destination.write_text(json.dumps(pilot,indent=2)+"\n")
+          print("R83E_FROZEN_NATIVE_PILOT_REAL_CASES",len(selected))
+          PY
+      - name: Execute SIX actual Basilisk native dynamics/FSW/RW cases
+        shell: bash
+        run: |
+          set -o pipefail
+          python - <<'PY' 2>&1 | tee "$RUNNER_TEMP/r83e_evidence/real_native_execution.log"
+          import json,os
+          from pathlib import Path
+          from sat_sim.fault_dataset_factory import run_fault_dataset_campaign
+          root=Path(os.environ["RUNNER_TEMP"])
+          plan=json.loads((root/"r83e_evidence/native_six_case_pilot_plan.json").read_text())
+          result=run_fault_dataset_campaign(
+              plan, output_root=root/"r83e_real_native_campaign",
+              continue_on_error=False, dry_run=False)
+          if result.campaign.summary.get("failure_count",0):
+              raise RuntimeError("R83E_BASILISK_NATIVE_PILOT_FAILED")
+          if result.dataset_index.get("dry_run") is not False:
+              raise RuntimeError("R83E_SIMULATION_NOT_ACTUALLY_EXECUTED")
+          print("R83E_ACTUAL_BASILISK_CASES_EXECUTED",result.campaign.summary)
+          PY
+      - name: Verify native runtime manifests and authentic 3 TRAIN fault pairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m phm_design.industrial.native_campaign_gate \
+            --campaign "$RUNNER_TEMP/r83e_real_native_campaign" \
+            --report "$RUNNER_TEMP/r83e_evidence/native_source_review.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])
+          audit=json.loads((root/"r83e_evidence/native_source_review.json").read_text())
+          if (audit["train_pairs"]!=3 or audit["train_cases"]!=6 or
+                  audit["source_bsk_version_claimed"]!="2.11.0+satfix1"):
+              raise RuntimeError("R83E_NATIVE_RUNTIME_OR_PAIR_EVIDENCE_INCOMPLETE")
+          if audit["physical_execution_independently_attested"]:
+              raise RuntimeError("R83E_UNSUPPORTED_INDEPENDENT_PHYSICS_ATTESTATION")
+          print("R83E_SIX_ACTUAL_BASILISK_TRAIN_SOURCE_CASES_VERIFIED")
+          PY
+      - name: Quantify original TRAIN pair observability (physics QA, not model input)
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83e_native_paired_observability             --campaign "$RUNNER_TEMP/r83e_real_native_campaign"             --output "$RUNNER_TEMP/r83e_evidence/paired_observability.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          report=json.loads((Path(os.environ["RUNNER_TEMP"]) /
+              "r83e_evidence/paired_observability.json").read_text())
+          if (report["paired_cases"]!=3 or
+                  report["model_trained_or_selected"] or
+                  not report["truth_onset_and_wheel_used_for_physics_audit_only"] or
+                  report["test_final_or_validation_traces_accessed"]):
+              raise RuntimeError("R83E_INVALID_PAIRED_PHYSICS_OBSERVABILITY_AUDIT")
+          print("R83E_THREE_ACTUAL_NATIVE_PAIRS_DESCRIPTIVE_QA",len(report["per_pair"]))
+          PY
+      - name: Prepare SIX sensor-only native records without manufacturing TEST
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from phm_design.adapters.sat_rw import prepare
+          root=Path(os.environ["RUNNER_TEMP"])
+          result=prepare(root/"r83e_real_native_campaign",
+                         root/"r83e_pilot_prepared",allow_empty_holdout=True)
+          if (result["counts"].get("train",{}).get("cases")!=6 or
+                  "test" in result["counts"] or "validation" in result["counts"] or
+                  result["channel_count"]!=6 or result["fit_receives_holdout"]):
+              raise RuntimeError("R83E_SIX_CHANNEL_RESEARCH_NO_TEST_CONTRACT_FAILED")
+          print("R83E_REAL_BASILISK_SENSOR_ONLY_PREPARED",result["counts"])
+          PY
+      - name: Archive native trace and implementation receipts, even on refusal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83e-real-basilisk-six-cases-physics-not-model-validation
+          retention-days: 21
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/r83e_evidence/
+            ${{ runner.temp }}/r83e_real_native_campaign/astrograph_dataset_index.json
+            ${{ runner.temp }}/r83e_real_native_campaign/cases/*/trace.csv
+            ${{ runner.temp }}/r83e_real_native_campaign/cases/*/task_spec.json
+            ${{ runner.temp }}/r83e_real_native_campaign/cases/*/astrograph/dataset_contract.json
+            ${{ runner.temp }}/r83e_real_native_campaign/cases/*/astrograph/simulation_report.json
+            ${{ runner.temp }}/r83e_pilot_prepared/development/dataset.json
+            ${{ runner.temp }}/r83e_pilot_prepared/holdout/dataset.json
+            ${{ runner.temp }}/r83e_pilot_prepared/preparation_report.json
+            ${{ runner.temp }}/r83e_pilot_prepared/development/observations/
