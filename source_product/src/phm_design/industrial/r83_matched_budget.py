@@ -1,7 +1,9 @@
 """R83b matched-fit SOURCE TRAIN research comparison (not an OOD/FINAL test).
 
 Fixed portfolio: TCN, GRU and ExtraTrees, one registered candidate each.
-Evolving portfolio: three proposed TCN topologies. Both use exactly three
+Static neural ablation: three predeclared TCN topologies.
+Evolving portfolio: two shared seeds plus a feedback-proposed third topology.
+All portfolios use exactly three
 source environment OOF folds per candidate plus (only if eligible) one
 TRAIN refit, with the SAME fit cap and acceptance policy. Parameter counts,
 epochs/gradient steps for trees, CPU cost, and FLOPs are NOT equivalent.
@@ -230,14 +232,27 @@ def run_matched_source_train_study(
         "independent_qualification": False,
         "model_delivered_to_deployment": False,
         "arms": {},
+        "ablation": {
+            "comparison": "STATIC_TOPOLOGY_VS_FEEDBACK_TOPOLOGY",
+            "same_neural_family": True,
+            "same_two_initial_genomes": True,
+            "same_neural_training_epochs": True,
+            "equal_flops_or_parameter_count": False,
+            "only_adaptive_arm_uses_source_oof_to_propose_third_genome": True,
+        },
     }
     for name, spec, executor in (
         ("fixed_portfolio", fixed, lambda: run_design_guarded(
             fixed, records, acceptance=acceptance,
             selection_rule="r83_matched_train_loss")),
+        ("static_topology", evolved, lambda: run_self_organizing_design_guarded(
+            evolved, records, policy=policy, acceptance=acceptance,
+            seed_schedule="r83_matched_train",
+            proposal_mode="predeclared_static")),
         ("self_organizing", evolved, lambda: run_self_organizing_design_guarded(
             evolved, records, policy=policy, acceptance=acceptance,
-            seed_schedule="r83_matched_train")),
+            seed_schedule="r83_matched_train",
+            proposal_mode="feedback")),
     ):
         started = time.monotonic()
         try:
@@ -247,11 +262,11 @@ def run_matched_source_train_study(
             audit = exc.audit
         except GuardedDesignTimeout as exc:
             audit = exc.audit
-        arm_result = _result(audit, evolved=name == "self_organizing")
+        arm_result = _result(audit, evolved=name != "fixed_portfolio")
         arm_result["research_wall_seconds"] = round(time.monotonic() - started, 4)
         output["arms"][name] = arm_result
     output["complete_two_arm_comparison"] = set(output["arms"]) == {
-        "fixed_portfolio", "self_organizing"}
+        "fixed_portfolio", "static_topology", "self_organizing"}
     # A finished pair of processes is not automatically a fair comparison:
     # one arm might time out before its predeclared candidate slate completes.
     source_complete = all(
@@ -263,6 +278,7 @@ def run_matched_source_train_study(
              "SEARCH_CPU_BUDGET_EXHAUSTED", "BUDGET_EXHAUSTED_BEFORE_SELECTION"))
         for arm in output["arms"].values())
     output["fairness_gate"] = {
+        "static_neural_ablation_present": "static_topology" in output["arms"],
         "all_declared_candidates_evaluated": bool(source_complete),
         "same_predeclared_selection_loss": True,
         "same_candidate_seed_schedule": True,
