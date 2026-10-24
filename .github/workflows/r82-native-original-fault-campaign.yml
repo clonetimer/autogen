@@ -1,6 +1,10 @@
 name: R82 original Basilisk RW fault campaign
 
-# Deliberately manual: real physics studies are costly and an eligible-model\n# refusal is valid scientific evidence, not a CI software regression.\non:\n  workflow_dispatch:\n
+# Deliberately manual: real physics studies are costly and an eligible-model
+# refusal is valid scientific evidence, not a CI software regression.
+on:
+  workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -80,7 +84,8 @@ jobs:
           data["simulation_backend"] = "basilisk"
           data["duration_s"] = 60.0
           path = root / "r82_native_train_pilot.json"
-          path.write_text(json.dumps(data, indent=2) + "\n")
+          path.write_text(json.dumps(data, indent=2) + "
+")
           print("NATIVE_FACTORY_PILOT", data["counts"], data["fault_ids"])
           PY
       - name: Actually run original SatAgentSimulation native fault factory
