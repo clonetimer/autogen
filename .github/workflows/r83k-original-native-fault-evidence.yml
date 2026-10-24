@@ -1,9 +1,9 @@
 name: R83k Read-Only Genuine Basilisk RW Fault Physical Proof
 
+# Original source frozen in SatAgentSimulation run #40114200932.
+# Original downstream SHA-based physical attestation run #40114750594 succeeded.
+# Re-run explicitly via workflow_dispatch, never on report-only PR updates.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/r83k-original-native-fault-evidence.yml'
   workflow_dispatch:
 
 permissions:
