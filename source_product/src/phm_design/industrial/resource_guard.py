@@ -8,6 +8,8 @@ No qualified industrial deployment is implied.
 from __future__ import annotations
 
 import multiprocessing as mp
+from pathlib import Path
+import tempfile
 import time
 
 from .taskspec import TaskSpec, TaskSpecRejected, compile_task_spec
@@ -34,7 +36,19 @@ def _worker(conn, raw, records, acceptance, selection_rule="legacy"):
     try:
         model = run_design(raw, records, acceptance=acceptance,
                            _guarded_execution=True, selection_rule=selection_rule)
-        conn.send(("delivered", model))
+        if selection_rule == "r83_matched_train_loss":
+            # Do not transfer live Torch storage descriptors across process exit.
+            # Exchange bounded, self-checking local research artifact bytes.
+            with tempfile.TemporaryDirectory(prefix="r83-fixed-worker-") as temp:
+                folder = Path(temp) / "fitted"
+                model.export(folder)
+                manifest = (folder / "audit.json").read_bytes()
+                weights = (folder / "model.joblib").read_bytes()
+                if len(manifest) > 2_000_000 or len(weights) > 25_000_000:
+                    raise ValueError("R83_FIXED_WORKER_RESULT_TOO_LARGE")
+                conn.send(("delivered_checked_bytes", (manifest, weights)))
+        else:
+            conn.send(("delivered", model))
     except IndustrialDesignRejected as exc:
         conn.send(("refused", exc.audit))
     except BaseException as exc:
@@ -112,6 +126,22 @@ def run_design_guarded(task_spec, records, *, acceptance=None,
         _worker, (raw, records, acceptance, selection_rule), limit)
     if status == "refused":
         raise IndustrialDesignRejected(result)
+    if status == "delivered_checked_bytes":
+        if (not isinstance(result, tuple) or len(result) != 2 or
+                not all(isinstance(blob, bytes) for blob in result) or
+                len(result[0]) > 2_000_000 or len(result[1]) > 25_000_000):
+            raise RuntimeError("R83_INVALID_FIXED_WORKER_BYTES")
+        from .artifact_io import load_trusted_artifact
+        with tempfile.TemporaryDirectory(prefix="r83-fixed-parent-") as temp:
+            folder = Path(temp) / "model"
+            folder.mkdir()
+            (folder / "audit.json").write_bytes(result[0])
+            (folder / "model.joblib").write_bytes(result[1])
+            rebuilt = load_trusted_artifact(folder, trust_pickle=True)
+        if (rebuilt.audit.get("selection_rule") != "r83_matched_train_loss"
+                or rebuilt.audit.get("independent_qualification") is not False):
+            raise RuntimeError("R83_FIXED_WORKER_SELECTION_MISMATCH")
+        return rebuilt
     if status == "failed":
         raise RuntimeError("GUARDED_WORKER_FAILED:" + str(result))
     if status != "delivered":
