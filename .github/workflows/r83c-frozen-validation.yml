@@ -1,0 +1,41 @@
+name: R83c Frozen Validation Steward
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r83_frozen_validation.py'
+      - 'source_product/src/phm_design/industrial/r83_matched_budget.py'
+      - 'source_product/tests/phm_design/test_r83c_frozen_validation.py'
+      - 'source_product/README_R83C.md'
+      - '.github/workflows/r83c-frozen-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validation-contract:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e '.[dev]'
+      - name: Validate sealed physical groups and frozen three-arm playback
+        run: >-
+          python -m pytest -q
+          tests/phm_design/test_r83c_frozen_validation.py
+          tests/phm_design/test_r83b_matched_budget.py
+          tests/phm_design/test_r83b_guard.py
