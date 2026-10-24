@@ -193,3 +193,38 @@ def test_protected_role_or_corrupted_selected_sample_refused(tmp_path):
             frozen_plan=plan, prepared_manifest=dataset,
             preparation_report=preparation, destination=tmp_path / "no_tamper")
     assert not (tmp_path / "no_tamper").exists()
+
+
+
+def test_two_nominal_fault_pairs_cannot_forge_one_physical_group(tmp_path):
+    plan, manifest, prep = _data(tmp_path)
+    raw = read_json(manifest)
+    sample_a = raw["samples"][0]
+    sample_b = next(x for x in raw["samples"]
+                    if x["group_id"] != sample_a["group_id"]
+                    and x["split"] == sample_a["split"])
+    # Same physical lineage renamed onto a different pair must never raise
+    # independent per-class support; rejection happens before reading traces.
+    sample_b["group_id"] = sample_a["group_id"]
+    write_json(manifest, raw)
+    with pytest.raises(TaskSpecRejected, match="DISTINCT_PAIRS_REUSE_PHYSICAL_GROUP"):
+        materialize_balanced_development(
+            frozen_plan=plan, prepared_manifest=manifest,
+            preparation_report=prep, destination=tmp_path / "no_forged_groups")
+    assert not (tmp_path / "no_forged_groups").exists()
+
+
+def test_nominal_fault_twins_must_both_exist_in_source_before_subsampling(tmp_path):
+    plan, manifest, prep = _data(tmp_path)
+    raw = read_json(manifest)
+    normal = next(x for x in raw["samples"] if x["label"] == "NOMINAL")
+    raw["samples"].remove(normal)
+    source = read_json(prep)
+    source["source_records"] = [x for x in source["source_records"]
+                                if x["id"] != normal["id"]]
+    write_json(prep, source)
+    write_json(manifest, raw)
+    with pytest.raises(TaskSpecRejected, match="NOMINAL_FAULT_PAIR_INCOMPLETE"):
+        materialize_balanced_development(
+            frozen_plan=plan, prepared_manifest=manifest,
+            preparation_report=prep, destination=tmp_path / "no_incomplete")
