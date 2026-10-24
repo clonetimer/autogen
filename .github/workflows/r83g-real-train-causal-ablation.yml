@@ -53,8 +53,12 @@ jobs:
           }
           for relative,expected in ids.items():
               f=root/relative
-              if not f.is_file() or hashlib.sha256(f.read_bytes()).hexdigest()!=expected:
-                  raise RuntimeError("R83G_REAL_R83F_IMMUTABLE_ARTIFACT_MISMATCH:"+relative)
+              exists=f.is_file()
+              found=hashlib.sha256(f.read_bytes()).hexdigest() if exists else "MISSING"
+              if not exists or found!=expected:
+                  raise RuntimeError("R83G_REAL_R83F_IMMUTABLE_ARTIFACT_MISMATCH:"
+                      +relative+":exists="+str(exists)+":actual="+found
+                      +":expected="+expected)
           plan=json.loads((root/"r83d_frozen_native_plan.audit.json").read_text())
           assert plan["frozen_plan_canonical_sha256"]=="c54bfcd154322a620c7d8058ce8a40db6e155602593c5ff5da8bdba43ef3b714"
           original=json.loads((root/"r83d_three_arm_train/research_report.json").read_text())
