@@ -264,6 +264,13 @@ def _predict_indices(model, features, expected_classes: int) -> np.ndarray:
     return np.argmax(_probabilities(model, features, expected_classes), axis=1)
 
 
+def _matched_train_loss(metrics: Mapping) -> float:
+    """Predeclared R83 TRAIN-only candidate-selection loss, never FINAL feedback."""
+    return (0.45 * (1.0 - metrics["accuracy"])
+            + 0.40 * (1.0 - metrics["worst_environment_class_recall"])
+            + 0.15 * metrics["healthy_false_alarm"])
+
+
 def _score(truth, predicted, environments, groups, labels, healthy_idx) -> dict:
     y, p, env, group = (
         np.asarray(truth), np.asarray(predicted),
@@ -425,7 +432,8 @@ class IndustrialDesignArtifact:
 def run_design(task_spec: Mapping | TaskSpec,
                records: Sequence[Mapping], *,
                acceptance: DesignAcceptance = DesignAcceptance(),
-               _guarded_execution: bool = False) -> IndustrialDesignArtifact:
+               _guarded_execution: bool = False,
+               selection_rule: str = "legacy") -> IndustrialDesignArtifact:
     """Run a bounded, source-only cross-environment selection and TRAIN refit.
 
     records: [{measurements: [{time_field: float, channel: float, ...},...],
@@ -435,6 +443,8 @@ def run_design(task_spec: Mapping | TaskSpec,
     """
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_DESIGN_ACCEPTANCE_TYPE")
+    if selection_rule not in ("legacy", "r83_matched_train_loss"):
+        raise ValueError("UNREGISTERED_DESIGN_SELECTION_RULE")
     if not isinstance(records, (tuple, list)) or not records:
         raise TaskSpecRejected("EMPTY_DESIGN_RECORDS")
     raw = task_spec.to_dict() if isinstance(task_spec, TaskSpec) else TaskSpec.from_dict(task_spec).to_dict()
@@ -548,6 +558,7 @@ def run_design(task_spec: Mapping | TaskSpec,
         "target_feedback_used": False,
         "final_evaluation_performed": False,
         "independent_qualification": False,
+        "selection_rule": selection_rule,
     }
     if time.process_time() - begun > budget["max_cpu_seconds"]:
         receipt["decision"] = "BUDGET_EXHAUSTED_IN_PREPROCESSING"
@@ -697,10 +708,14 @@ def run_design(task_spec: Mapping | TaskSpec,
                 }
             entry["status"] = "ELIGIBLE" if decision["eligible"] else "REJECTED_BY_POLICY"
             if decision["eligible"]:
-                rank = (-(metrics["worst_environment_class_recall"]),
-                        -(metrics["worst_environment_accuracy"]),
-                        metrics["healthy_false_alarm"], -metrics["macro_f1"],
-                        -metrics["coverage"], i)
+                if selection_rule == "r83_matched_train_loss":
+                    rank = (_matched_train_loss(metrics), _sha(asdict(trial)))
+                else:
+                    rank = (-(metrics["worst_environment_class_recall"]),
+                            -(metrics["worst_environment_accuracy"]),
+                            metrics["healthy_false_alarm"], -metrics["macro_f1"],
+                            -metrics["coverage"], i)
+                entry["selection_rank"] = list(rank)
                 if selected is None or rank < selected[0]:
                     selected = (rank, trial)
         except Exception as exc:

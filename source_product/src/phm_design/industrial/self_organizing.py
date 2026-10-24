@@ -18,6 +18,7 @@ from sklearn.model_selection import LeaveOneGroupOut
 
 from .design_engine import (
     DesignAcceptance, IndustrialDesignRejected, _observations_digest, _sha,
+    _matched_train_loss,
 )
 from .taskspec import TaskSpec, TaskSpecRejected, compile_task_spec, validate_observations
 from ..task_candidate_registry import TorchTaskEstimator, deployment_sequence
@@ -80,6 +81,37 @@ class EvolutionPolicy:
             raise ValueError("INVALID_EVOLUTION_POLICY")
 
 
+import torch
+from torch import nn
+
+
+class _TemporalTopology(nn.Module):
+    """Module-scope Torch architecture to support Windows spawn serialization."""
+    def __init__(self, channels: int, classes: int, genome: NetworkGenome):
+        super().__init__()
+        self.genome = genome
+        self.stem = nn.Conv1d(channels, genome.width, 1)
+        self.blocks = nn.ModuleList()
+        for stage in range(genome.depth):
+            dilation = 2 ** stage
+            self.blocks.append(nn.Sequential(
+                nn.Conv1d(genome.width, genome.width, genome.kernel,
+                          dilation=dilation, padding=dilation * (genome.kernel // 2)),
+                nn.GroupNorm(1, genome.width), nn.GELU()))
+        features = genome.width * (2 if genome.pooling == "mean_max" else 1)
+        self.head = nn.Linear(features, classes)
+
+    def forward(self, observations):
+        hidden = self.stem(observations.transpose(1, 2))
+        for block in self.blocks:
+            changed = block(hidden)
+            hidden = hidden + changed if self.genome.residual else changed
+        pooled = hidden.mean(-1)
+        if self.genome.pooling == "mean_max":
+            pooled = torch.cat((pooled, hidden.amax(-1)), dim=1)
+        return self.head(pooled)
+
+
 class EvolvingTemporalEstimator(TorchTaskEstimator):
     """Reuse fold-local normalization, deterministic CPU training and inference."""
     def __init__(self, genome: NetworkGenome, seed: int, policy: EvolutionPolicy):
@@ -88,37 +120,14 @@ class EvolvingTemporalEstimator(TorchTaskEstimator):
                          max_parameters=policy.max_parameters)
 
     def _network(self, steps: int, channels: int, classes: int):
-        import torch
-        from torch import nn
+        return _TemporalTopology(channels, classes, self.genome)
 
-        genome = self.genome
 
-        class TemporalNetwork(nn.Module):
-            def __init__(self):
-                super().__init__()
-                self.stem = nn.Conv1d(channels, genome.width, 1)
-                self.blocks = nn.ModuleList()
-                for stage in range(genome.depth):
-                    dilation = 2 ** stage
-                    self.blocks.append(nn.Sequential(
-                        nn.Conv1d(genome.width, genome.width, genome.kernel,
-                                  dilation=dilation,
-                                  padding=dilation * (genome.kernel // 2)),
-                        nn.GroupNorm(1, genome.width), nn.GELU()))
-                features = genome.width * (2 if genome.pooling == "mean_max" else 1)
-                self.head = nn.Linear(features, classes)
-
-            def forward(self, observations):
-                hidden = self.stem(observations.transpose(1, 2))
-                for block in self.blocks:
-                    changed = block(hidden)
-                    hidden = hidden + changed if genome.residual else changed
-                pooled = hidden.mean(-1)
-                if genome.pooling == "mean_max":
-                    pooled = torch.cat((pooled, hidden.amax(-1)), dim=1)
-                return self.head(pooled)
-
-        return TemporalNetwork()
+STATIC_R83_GENOMES = (
+    NetworkGenome(),
+    NetworkGenome(16, 2, 3, "mean_max", True),
+    NetworkGenome(8, 2, 3, "mean", False),
+)
 
 
 def propose_genome(history: Sequence[Mapping], visited: set[str]) -> tuple[NetworkGenome, str | None]:
@@ -156,10 +165,8 @@ def _metrics(actual: np.ndarray, predicted: np.ndarray, env: np.ndarray,
 
 
 def _risk(metrics: Mapping) -> float:
-    """Fixed a priori search objective, not a post-hoc acceptance rewrite."""
-    return (0.45 * (1 - metrics["accuracy"]) +
-            0.40 * (1 - metrics["worst_environment_class_recall"]) +
-            0.15 * metrics["healthy_false_alarm"])
+    """Single shared R83 TRAIN-selection loss for both comparison arms."""
+    return _matched_train_loss(metrics)
 
 
 @dataclass
@@ -257,10 +264,19 @@ def run_self_organizing_design(
     task_spec: Mapping | TaskSpec, records: Sequence[Mapping], *,
     policy: EvolutionPolicy = EvolutionPolicy(),
     acceptance: DesignAcceptance = DesignAcceptance(),
+    _guarded_execution: bool = False,
+    seed_schedule: str = "legacy",
+    proposal_mode: str = "feedback",
 ) -> SelfOrganizingArtifact:
     """Bounded, opt-in experiment. Not an alternate Stable/qualified entrypoint."""
     if not isinstance(policy, EvolutionPolicy) or not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_SELF_ORGANIZING_ARGUMENTS")
+    if seed_schedule not in ("legacy", "r83_matched_train"):
+        raise ValueError("UNREGISTERED_SELF_ORGANIZING_SEED_SCHEDULE")
+    if proposal_mode not in ("feedback", "predeclared_static"):
+        raise ValueError("UNREGISTERED_SELF_ORGANIZING_PROPOSAL_MODE")
+    if proposal_mode == "predeclared_static" and policy.max_candidates != 3:
+        raise ValueError("STATIC_TOPOLOGY_REQUIRES_EXACTLY_THREE_CANDIDATES")
     if not isinstance(records, (list, tuple)) or not records:
         raise TaskSpecRejected("EMPTY_DESIGN_RECORDS")
     raw = task_spec.to_dict() if isinstance(task_spec, TaskSpec) else TaskSpec.from_dict(task_spec).to_dict()
@@ -286,8 +302,8 @@ def run_self_organizing_design(
     budget = plan["budget"]
     if policy.max_candidates > budget["max_trials"]:
         raise TaskSpecRejected("SELF_ORGANIZING_TRIAL_BUDGET_EXCEEDED")
-    if "max_wall_seconds" in budget:
-        raise TaskSpecRejected("SELF_ORGANIZING_WALL_GUARD_NOT_IMPLEMENTED")
+    if "max_wall_seconds" in budget and not _guarded_execution:
+        raise TaskSpecRejected("SELF_ORGANIZING_REQUIRES_GUARDED_WALL_RUNNER")
     labels = plan["ontology"]["labels"]
     label_idx = {label: i for i, label in enumerate(labels)}
     y = np.asarray([label_idx[m["label"]] for m in manifest])
@@ -323,6 +339,8 @@ def run_self_organizing_design(
         "source_physical_group_count": len(set(groups.tolist())),
         "policy": asdict(policy),
         "seed": budget["seed"],
+        "seed_schedule": seed_schedule,
+        "proposal_mode": proposal_mode,
         "budget": budget,
         "attempts": [],
         "target_feedback_used": False,
@@ -330,6 +348,8 @@ def run_self_organizing_design(
         "model_delivered": False,
         "feedback_is_independent_test": False,
         "preprocessing": "FOLD_TRAIN_ONLY",
+        "wall_guard": ("PARENT_SPAWN_TERMINATION" if _guarded_execution and
+                       "max_wall_seconds" in budget else "NOT_CONFIGURED"),
     }
     def refuse(reason):
         receipt["decision"] = reason
@@ -342,7 +362,10 @@ def run_self_organizing_design(
             refuse("SEARCH_FIT_BUDGET_EXHAUSTED")
         if time.process_time() - begun > budget["max_cpu_seconds"]:
             refuse("SEARCH_CPU_BUDGET_EXHAUSTED")
-        genome, parent = propose_genome(receipt["attempts"], visited)
+        if proposal_mode == "predeclared_static":
+            genome, parent = STATIC_R83_GENOMES[trial], None
+        else:
+            genome, parent = propose_genome(receipt["attempts"], visited)
         visited.add(genome.digest)
         prediction = np.full(len(y), -1, dtype=int)
         parameter_count = None
@@ -351,7 +374,10 @@ def run_self_organizing_design(
                 refuse("TRAIN_FOLD_CLASS_SUPPORT_MISSING")
             charged_fits += 1  # Reserve before invoking Torch fit.
             receipt["charged_fits"] = charged_fits
-            estimator = EvolvingTemporalEstimator(genome, budget["seed"] + trial * 100 + fold_idx, policy)
+            candidate_seed = (budget["seed"] + trial
+                              if seed_schedule == "r83_matched_train"
+                              else budget["seed"] + trial * 100 + fold_idx)
+            estimator = EvolvingTemporalEstimator(genome, candidate_seed, policy)
             try:
                 estimator.fit(sequences[train], y[train])
                 current_params = estimator.training_["parameter_count"]
@@ -371,7 +397,9 @@ def run_self_organizing_design(
             "genome": asdict(genome),
             "genome_sha256": genome.digest,
             "parent_genome_sha256": parent,
-            "proposal": "PREDECLARED_SEED" if parent is None else "TRAIN_OOF_FEEDBACK_MUTATION",
+            "proposal": ("PREDECLARED_STATIC" if proposal_mode == "predeclared_static"
+                         else "PREDECLARED_SEED" if parent is None
+                         else "TRAIN_OOF_FEEDBACK_MUTATION"),
             "metrics": metrics,
             "selection_loss": _risk(metrics),
             "parameter_count": parameter_count,
@@ -389,7 +417,13 @@ def run_self_organizing_design(
     charged_fits += 1
     receipt["charged_fits"] = charged_fits
     genome = NetworkGenome(**champion["genome"])
-    estimator = EvolvingTemporalEstimator(genome, budget["seed"] + 999, policy)
+    if seed_schedule == "r83_matched_train":
+        champion_index = next(i for i, entry in enumerate(receipt["attempts"])
+                              if entry["genome_sha256"] == genome.digest)
+        refit_seed = budget["seed"] + champion_index
+    else:
+        refit_seed = budget["seed"] + 999
+    estimator = EvolvingTemporalEstimator(genome, refit_seed, policy)
     try:
         estimator.fit(sequences, y)
     except (ValueError, RuntimeError, FloatingPointError) as exc:
