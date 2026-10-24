@@ -266,6 +266,12 @@ def run_self_organizing_design(
     raw = task_spec.to_dict() if isinstance(task_spec, TaskSpec) else TaskSpec.from_dict(task_spec).to_dict()
     if raw["task"]["decision_mode"] != "offline_trajectory":
         raise TaskSpecRejected("CAUSAL_SELF_ORGANIZING_NOT_IMPLEMENTED")
+    design = raw["design"]
+    if (design["compare"] != ["tcn"] or design["objectives"] != ["ERM"] or
+            design.get("topologies", ["direct"]) != ["direct"] or
+            any(key in design for key in (
+                "adaptive_feature_search", "feature_programs", "calibration"))):
+        raise TaskSpecRejected("SELF_ORGANIZING_REQUIRES_TCN_DIRECT_ERM_TEMPLATE")
     matrices, manifest = [], []
     fields = [raw["observations"]["time"]["field"]] + [
         channel["name"] for channel in raw["observations"]["channels"]]
@@ -278,6 +284,8 @@ def run_self_organizing_design(
                                     for sample in row["measurements"]], dtype=np.float64))
     plan = compile_task_spec(raw, train_manifest=manifest)
     budget = plan["budget"]
+    if policy.max_candidates > budget["max_trials"]:
+        raise TaskSpecRejected("SELF_ORGANIZING_TRIAL_BUDGET_EXCEEDED")
     if "max_wall_seconds" in budget:
         raise TaskSpecRejected("SELF_ORGANIZING_WALL_GUARD_NOT_IMPLEMENTED")
     labels = plan["ontology"]["labels"]
@@ -342,6 +350,7 @@ def run_self_organizing_design(
             if len(set(y[train])) != len(labels):
                 refuse("TRAIN_FOLD_CLASS_SUPPORT_MISSING")
             charged_fits += 1  # Reserve before invoking Torch fit.
+            receipt["charged_fits"] = charged_fits
             estimator = EvolvingTemporalEstimator(genome, budget["seed"] + trial * 100 + fold_idx, policy)
             try:
                 estimator.fit(sequences[train], y[train])
