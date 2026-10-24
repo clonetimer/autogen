@@ -11,7 +11,7 @@ from pathlib import Path
 from shutil import copyfile
 
 from ..data import Dataset
-from ..io import read_json, safe_child, sha_file, write_json
+from ..io import digest, read_json, safe_child, sha_file, write_json
 from .r82_native_regime_map import _regime
 from .taskspec import TaskSpecRejected
 
@@ -107,6 +107,8 @@ def freeze_balanced_campaign(config, *, campaign_builder):
     }
     return campaign, {
         "schema": SCHEMA,
+        "frozen_plan_canonical_sha256": digest(campaign),
+        "canonicalization": "JSON_SORTED_KEYS_UTF8_NO_NAN",
         "planned_cases": len(cases),
         "planned_pairs": len(pairs),
         "fault_pairs_by_split_regime": {
