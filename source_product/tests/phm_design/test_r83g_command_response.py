@@ -52,7 +52,7 @@ def _sixty():
                     measurements.append(row)
                 out.append({"metadata":{
                     "role":"TRAIN","label":cls,
-                    "rw_run_lineage_id":f"synthetic-{env}-{cls}-{index}",
+                    "rw_run_lineage_id":f"synthetic-{env}-{labels[1] if cls==labels[0] else cls}-{index}",
                     "operating_regime":f"regime_{env}"},
                     "measurements":measurements})
     return out
@@ -114,6 +114,7 @@ def test_fault_truth_and_protected_roles_cannot_enter_exploratory_model():
     rows=_sixty()
     _, output=g.make_matched_representation(spec,rows,"causal_command_response")
     assert len(output)==60
+    assert len({r["metadata"]["rw_run_lineage_id"] for r in output})==45
     assert all(len(rec["measurements"])==61 for rec in output)
     assert all(len(rec["measurements"][0]) == 19 for rec in output)
     assert all(set(rec["measurements"][0])=={"time_s",*g.SOURCE_ORDER,*g.DERIVED_NAMES}
@@ -150,6 +151,9 @@ def test_same_train_source_same_group_folds_and_equal_real_budget_contract(monke
     study=g.run_train_only_representations(spec,rows,frozen)
     assert len(submitted)==2
     assert study["fairness_gate"]["comparison_allowed_train_research_only"]
+    assert study["frozen_r83f_source"]["source_train_records"] == 60
+    assert study["frozen_r83f_source"]["source_train_physical_groups"] == 45
+    assert study["frozen_r83f_source"]["paired_nominal_fault_groups"] == 15
     assert not study["fairness_gate"]["performance_claim_allowed"]
     assert not study["validation_test_or_final_telemetry_read"]
     first,second=submitted
