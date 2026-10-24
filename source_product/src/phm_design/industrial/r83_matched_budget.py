@@ -181,6 +181,20 @@ def run_matched_source_train_study(
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_ACCEPTANCE_POLICY")
     raw, env_count, fits, class_support = _preflight(task_spec, records, policy)
+    sensor_fields = [raw["observations"]["time"]["field"]] + [
+        c["name"] for c in raw["observations"]["channels"]]
+    group_fields = raw["data"]["group_keys"]
+    # Persist only hashes, not identifiers, labels or TRAIN telemetry. These
+    # support a later steward's disjointness check on frozen validation.
+    physical_hashes = sorted({
+        hashlib.sha256("\x1f".join(row["metadata"][k] for k in group_fields)
+                       .encode("utf-8")).hexdigest() for row in records
+    })
+    trace_hashes = sorted({
+        hashlib.sha256(np.ascontiguousarray(
+            [[q[k] for k in sensor_fields] for q in row["measurements"]],
+            dtype="<f8").tobytes()).hexdigest() for row in records
+    })
     frozen_root = Path(artifacts_root) if artifacts_root is not None else None
     if frozen_root is not None and frozen_root.exists():
         raise FileExistsError("R83_FROZEN_ARTIFACT_ROOT_EXISTS")
@@ -205,6 +219,10 @@ def run_matched_source_train_study(
         "source_train_manifest_sha256": _sha(train_manifest),
         "source_data_role": "TRAIN_ONLY",
         "source_environment_count": env_count,
+        "source_train_physical_group_sha256": physical_hashes,
+        "source_train_trajectory_sha256": trace_hashes,
+        "source_trajectory_digest_contract": "RAW_FLOAT64_LE_NO_METADATA_V1",
+        "source_group_digest_contract": "UTF8_UNIT_SEPARATOR_V1",
         "independent_physical_class_group_support": class_support,
         "minimum_physical_group_per_environment_class": 2,
         "maximum_within_environment_class_support_ratio": 2.0,
@@ -281,9 +299,24 @@ def run_matched_source_train_study(
                 "qualified": False,
             }
         arm_result["research_wall_seconds"] = round(time.monotonic() - started, 4)
+        arm_result["compute_accounting"] = {
+            "observed_end_to_end_wall_seconds": arm_result["research_wall_seconds"],
+            "model_fits_charged": arm_result["charged_fits"],
+            "parameter_counts": [r["parameter_count"] for r in
+                                 arm_result["attempts"]],
+            "neural_training_epochs": (policy.epochs if name != "fixed_portfolio"
+                                       else None),
+            "measured_flops": None,
+            "measured_energy_joules": None,
+            "hardware_normalized": False,
+            "comparable_cpu_gpu_compute": False,
+        }
         output["arms"][name] = arm_result
-    output["complete_two_arm_comparison"] = set(output["arms"]) == {
+    output["complete_three_arm_comparison"] = set(output["arms"]) == {
         "fixed_portfolio", "static_topology", "self_organizing"}
+    # Historical field is kept only for compatibility with older regression
+    # consumers, not as a two-arm scientific interpretation.
+    output["complete_two_arm_comparison"] = output["complete_three_arm_comparison"]
     # A finished pair of processes is not automatically a fair comparison:
     # one arm might time out before its predeclared candidate slate completes.
     source_complete = all(
