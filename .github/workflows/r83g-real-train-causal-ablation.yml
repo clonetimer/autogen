@@ -9,6 +9,10 @@ on:
       - '.github/workflows/r83g-real-train-causal-ablation.yml'
   workflow_dispatch:
 
+concurrency:
+  group: r83g-real-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   actions: read
