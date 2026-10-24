@@ -100,7 +100,11 @@ def test_both_arms_equal_fit_cap_and_identical_train_records(monkeypatch):
         "r83_matched_train_loss")
     assert out["independent_physical_class_group_support"]["regime_0"] == {
         key: 2 for key in spec["task"]["labels"]}
-    assert received == [("fixed", records), ("evolved", records)]
+    assert received == [("fixed", records), ("evolved", records), ("evolved", records)]
+    assert out["ablation"]["same_neural_family"] is True
+    assert out["ablation"]["same_two_initial_genomes"] is True
+    assert out["fairness_gate"]["static_neural_ablation_present"] is True
+    assert out["arms"]["static_topology"]["charged_fits"] == 10
     assert out["arms"]["fixed_portfolio"]["charged_fits"] == 10
     assert out["arms"]["self_organizing"]["charged_fits"] == 10
     assert out["fairness_gate"]["source_train_comparison_allowed"] is True
@@ -132,6 +136,7 @@ def test_refusal_of_one_arm_does_not_magically_qualify_other(monkeypatch):
     assert fixed["best_eligible_source_train_candidate"] is None
     assert out["fairness_gate"]["source_train_comparison_allowed"] is False
     assert out["arms"]["self_organizing"]["model_delivered"] is True
+    assert out["arms"]["static_topology"]["model_delivered"] is True
     assert out["independent_qualification"] is False
 
 
@@ -223,8 +228,14 @@ def test_real_torch_and_extra_trees_run_both_arms_under_same_train_protocol():
     assert study["source_train_test_or_final_accessed"] is False
     assert study["independent_qualification"] is False
     assert study["arms"]["fixed_portfolio"]["charged_fits"] == 10
+    assert study["arms"]["static_topology"]["charged_fits"] == 10
     assert study["arms"]["self_organizing"]["charged_fits"] == 10
     assert len(study["arms"]["fixed_portfolio"]["attempts"]) == 3
+    static = study["arms"]["static_topology"]["attempts"]
+    adaptive = study["arms"]["self_organizing"]["attempts"]
+    assert len(static) == len(adaptive) == 3
+    assert all(x["candidate"]["genome_sha256"] == y["candidate"]["genome_sha256"]
+               for x, y in zip(static[:2], adaptive[:2]))
     assert len(study["arms"]["self_organizing"]["attempts"]) == 3
     assert study["arms"]["fixed_portfolio"]["best_eligible_source_train_candidate"]
     assert study["arms"]["self_organizing"]["best_eligible_source_train_candidate"]
