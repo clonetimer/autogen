@@ -215,13 +215,14 @@ def test_legacy_two_candidate_rw_taskspec_refused_even_for_validate_only(tmp_pat
     assert not (tmp_path / "incorrect_r82_contract").exists()
 
 
-def test_real_torch_and_extra_trees_run_both_arms_under_same_train_protocol():
+def test_real_torch_and_extra_trees_run_both_arms_under_same_train_protocol(tmp_path):
     """Actually fit both arms; not a Basilisk study or an independent score."""
     spec = _spec()
     rec = synthetic_records(spec, environment_count=3)
     from phm_design.industrial.design_engine import DesignAcceptance
     study = run_matched_source_train_study(
-        spec, rec, acceptance=DesignAcceptance(
+        spec, rec, artifacts_root=tmp_path / "research_models",
+        acceptance=DesignAcceptance(
             accuracy_min=0.0,
             worst_environment_class_recall_min=0.0,
             healthy_false_alarm_max=1.0))
@@ -241,3 +242,20 @@ def test_real_torch_and_extra_trees_run_both_arms_under_same_train_protocol():
     assert len(study["arms"]["self_organizing"]["attempts"]) == 3
     assert study["arms"]["fixed_portfolio"]["best_eligible_source_train_candidate"]
     assert study["arms"]["self_organizing"]["best_eligible_source_train_candidate"]
+
+    for arm in ("fixed_portfolio", "static_topology", "self_organizing"):
+        frozen = study["arms"][arm]["frozen_research_artifact"]
+        assert frozen["qualified"] is False
+        assert frozen["relative_directory"] == arm
+        folder = tmp_path / "research_models" / arm
+        assert folder.is_dir()
+        manifest_file = folder / ("audit.json" if arm == "fixed_portfolio"
+                                  else "manifest.json")
+        assert manifest_file.is_file()
+    from phm_design.industrial.self_organizing import SelfOrganizingArtifact
+    adaptive = SelfOrganizingArtifact.load(
+        tmp_path / "research_models" / "self_organizing")
+    static = SelfOrganizingArtifact.load(
+        tmp_path / "research_models" / "static_topology")
+    assert adaptive.predict(rec[0]["measurements"])["independent_qualification"] is False
+    assert static.predict(rec[0]["measurements"])["independent_qualification"] is False
