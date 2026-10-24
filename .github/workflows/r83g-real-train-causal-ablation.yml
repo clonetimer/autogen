@@ -1,12 +1,11 @@
 name: R83g REAL Basilisk TRAIN-only Causal Features Study
 
-# Runs the preregistered experimental contrast only when THIS workflow
-# changes in the stacked research PR. Does NOT regenerate physical cases.
-# Does NOT access any validation / TEST / FINAL telemetry in model workers.
+# One-time original REAL R83g TRAIn study already ran and is sealed in
+# GitHub Actions #40102279092. Future reruns are MANUAL ONLY.
+# PR path filters are based on the whole PR diff and can retrigger on doc
+# edits even when the workflow file was not modified; avoid that compute.
+# Does NOT regenerate physics or access VAL/TEST/FINAL model data.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/r83g-real-train-causal-ablation.yml'
   workflow_dispatch:
 
 concurrency:
