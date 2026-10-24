@@ -56,6 +56,7 @@ def _evolving_model(*args, **kwargs):
     assert spec["design"]["budget"]["max_fits"] == 10
     assert spec["design"]["budget"]["max_wall_seconds"] == 180
     policy = kwargs["policy"]
+    assert kwargs["seed_schedule"] == "r83_matched_train"
     assert (policy.max_candidates, policy.epochs) == (3, 8)
     return SimpleNamespace(audit={
         "decision": "RESEARCH_TRAIN_OOF_ELIGIBLE_NOT_QUALIFIED",
@@ -93,6 +94,8 @@ def test_both_arms_equal_fit_cap_and_identical_train_records(monkeypatch):
     assert out["model_delivered_to_deployment"] is False
     assert out["fairness"]["equal_flops"] is False
     assert out["fairness"]["equal_estimator_fit_cap"] is True
+    assert out["fairness"]["shared_candidate_seed_schedule"] == (
+        "base_seed_plus_candidate_index")
     assert out["fairness"]["shared_predeclared_candidate_selection_rule"] == (
         "r83_matched_train_loss")
     assert out["independent_physical_class_group_support"]["regime_0"] == {
@@ -198,3 +201,24 @@ def test_legacy_two_candidate_rw_taskspec_refused_even_for_validate_only(tmp_pat
             **args, output=tmp_path / "incorrect_r82_contract",
             validate_only=True)
     assert not (tmp_path / "incorrect_r82_contract").exists()
+
+
+def test_real_torch_and_extra_trees_run_both_arms_under_same_train_protocol():
+    """Actually fit both arms; not a Basilisk study or an independent score."""
+    spec = _spec()
+    rec = synthetic_records(spec, environment_count=3)
+    from phm_design.industrial.design_engine import DesignAcceptance
+    study = run_matched_source_train_study(
+        spec, rec, acceptance=DesignAcceptance(
+            accuracy_min=0.0,
+            worst_environment_class_recall_min=0.0,
+            healthy_false_alarm_max=1.0))
+    assert study["complete_two_arm_comparison"] is True
+    assert study["source_train_test_or_final_accessed"] is False
+    assert study["independent_qualification"] is False
+    assert study["arms"]["fixed_portfolio"]["charged_fits"] == 10
+    assert study["arms"]["self_organizing"]["charged_fits"] == 10
+    assert len(study["arms"]["fixed_portfolio"]["attempts"]) == 3
+    assert len(study["arms"]["self_organizing"]["attempts"]) == 3
+    assert study["arms"]["fixed_portfolio"]["best_eligible_source_train_candidate"]
+    assert study["arms"]["self_organizing"]["best_eligible_source_train_candidate"]
