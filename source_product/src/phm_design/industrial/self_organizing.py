@@ -257,6 +257,7 @@ def run_self_organizing_design(
     task_spec: Mapping | TaskSpec, records: Sequence[Mapping], *,
     policy: EvolutionPolicy = EvolutionPolicy(),
     acceptance: DesignAcceptance = DesignAcceptance(),
+    _guarded_execution: bool = False,
 ) -> SelfOrganizingArtifact:
     """Bounded, opt-in experiment. Not an alternate Stable/qualified entrypoint."""
     if not isinstance(policy, EvolutionPolicy) or not isinstance(acceptance, DesignAcceptance):
@@ -286,8 +287,8 @@ def run_self_organizing_design(
     budget = plan["budget"]
     if policy.max_candidates > budget["max_trials"]:
         raise TaskSpecRejected("SELF_ORGANIZING_TRIAL_BUDGET_EXCEEDED")
-    if "max_wall_seconds" in budget:
-        raise TaskSpecRejected("SELF_ORGANIZING_WALL_GUARD_NOT_IMPLEMENTED")
+    if "max_wall_seconds" in budget and not _guarded_execution:
+        raise TaskSpecRejected("SELF_ORGANIZING_REQUIRES_GUARDED_WALL_RUNNER")
     labels = plan["ontology"]["labels"]
     label_idx = {label: i for i, label in enumerate(labels)}
     y = np.asarray([label_idx[m["label"]] for m in manifest])
@@ -330,6 +331,8 @@ def run_self_organizing_design(
         "model_delivered": False,
         "feedback_is_independent_test": False,
         "preprocessing": "FOLD_TRAIN_ONLY",
+        "wall_guard": ("PARENT_SPAWN_TERMINATION" if _guarded_execution and
+                       "max_wall_seconds" in budget else "NOT_CONFIGURED"),
     }
     def refuse(reason):
         receipt["decision"] = reason
