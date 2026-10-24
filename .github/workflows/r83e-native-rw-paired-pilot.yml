@@ -8,6 +8,8 @@ on:
       - ".github/workflows/r83e-native-rw-paired-pilot.yml"
       - "source_product/src/phm_design/adapters/sat_rw.py"
       - "source_product/tests/phm_design/test_r83e_native_integration.py"
+      - "source_product/src/phm_design/industrial/r83e_native_paired_observability.py"
+      - "source_product/tests/phm_design/test_r83e_native_paired_observability.py"
       - ".github/workflows/r83d-real-native-balanced-campaign.yml"
   workflow_dispatch:
 
@@ -37,6 +39,7 @@ jobs:
       - run: >-
           python -m pytest -q
           source_product/tests/phm_design/test_r83e_native_integration.py
+          source_product/tests/phm_design/test_r83e_native_paired_observability.py
           source_product/tests/phm_design/test_r82_native_campaign_gate.py
   real-native-six-case-pilot:
     needs: software-test-free-adapter
@@ -185,6 +188,22 @@ jobs:
           if audit["physical_execution_independently_attested"]:
               raise RuntimeError("R83E_UNSUPPORTED_INDEPENDENT_PHYSICS_ATTESTATION")
           print("R83E_SIX_ACTUAL_BASILISK_TRAIN_SOURCE_CASES_VERIFIED")
+          PY
+      - name: Quantify original TRAIN pair observability (physics QA, not model input)
+        shell: bash
+        run: |
+          python -m phm_design.industrial.r83e_native_paired_observability             --campaign "$RUNNER_TEMP/r83e_real_native_campaign"             --output "$RUNNER_TEMP/r83e_evidence/paired_observability.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          report=json.loads((Path(os.environ["RUNNER_TEMP"]) /
+              "r83e_evidence/paired_observability.json").read_text())
+          if (report["paired_cases"]!=3 or
+                  report["model_trained_or_selected"] or
+                  not report["truth_onset_and_wheel_used_for_physics_audit_only"] or
+                  report["test_final_or_validation_traces_accessed"]):
+              raise RuntimeError("R83E_INVALID_PAIRED_PHYSICS_OBSERVABILITY_AUDIT")
+          print("R83E_THREE_ACTUAL_NATIVE_PAIRS_DESCRIPTIVE_QA",len(report["per_pair"]))
           PY
       - name: Prepare SIX sensor-only native records without manufacturing TEST
         shell: bash
