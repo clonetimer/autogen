@@ -27,13 +27,13 @@ class GuardedDesignTimeout(RuntimeError):
         super().__init__("HARD_WALL_TIMEOUT")
 
 
-def _worker(conn, raw, records, acceptance):
+def _worker(conn, raw, records, acceptance, selection_rule="legacy"):
     # This callable is top-level for Windows and always uses the spawn context.
     from .design_engine import IndustrialDesignRejected, run_design
 
     try:
         model = run_design(raw, records, acceptance=acceptance,
-                           _guarded_execution=True)
+                           _guarded_execution=True, selection_rule=selection_rule)
         conn.send(("delivered", model))
     except IndustrialDesignRejected as exc:
         conn.send(("refused", exc.audit))
@@ -85,7 +85,8 @@ def _invoke_worker(target, args, limit):
             child.join(timeout=1)
 
 
-def run_design_guarded(task_spec, records, *, acceptance=None):
+def run_design_guarded(task_spec, records, *, acceptance=None,
+                       selection_rule="legacy"):
     """Train in a separate process under an opt-in HARD wall time bound.
 
     The TaskSpec MUST declare design.budget.max_wall_seconds. This is a wall
@@ -105,8 +106,10 @@ def run_design_guarded(task_spec, records, *, acceptance=None):
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_DESIGN_ACCEPTANCE_TYPE")
 
+    if selection_rule not in ("legacy", "r83_matched_train_loss"):
+        raise ValueError("UNREGISTERED_DESIGN_SELECTION_RULE")
     status, result = _invoke_worker(
-        _worker, (raw, records, acceptance), limit)
+        _worker, (raw, records, acceptance, selection_rule), limit)
     if status == "refused":
         raise IndustrialDesignRejected(result)
     if status == "failed":
