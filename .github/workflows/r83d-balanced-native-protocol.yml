@@ -69,6 +69,16 @@ jobs:
           assert len(result.campaign.plan.cases) == 126
           assert result.dataset_index["dry_run"] is True
           print("R83D_ACTUAL_UPSTREAM_SCHEDULER_PLAN_ONLY", len(result.campaign.plan.cases))
+      - name: Archive exact pinned factory plan (NOT physical results)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83d-preregistered-plan-only-${{ matrix.os }}-py${{ matrix.python-version }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/r83d_native_task_plan.json
+            ${{ runner.temp }}/r83d_native_task_plan.audit.json
       - name: Review planned cases only; do NOT claim Basilisk was executed
         shell: python
         run: |
