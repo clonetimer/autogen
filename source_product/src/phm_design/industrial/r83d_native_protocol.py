@@ -145,6 +145,8 @@ def materialize_balanced_development(
         _reject("R83D_PREPARATION_LINEAGE_INCOMPLETE")
     cases = {case["case_id"]: case for case in plan["campaign"]["cases"]}
     rows, groups, nominal, fault_counts = [], {}, defaultdict(set), Counter()
+    lineage_to_pair = {}
+    pair_roles = defaultdict(set)
     for sample in source.samples:
         case = cases.get(from_id[sample["id"]])
         if case is None:
@@ -159,12 +161,21 @@ def materialize_balanced_development(
             _reject("R83D_PREPARED_ROLE_OR_LABEL_MISMATCH")
         if sample["group_id"] in groups and groups[sample["group_id"]] != (split, regime):
             _reject("R83D_GROUP_CROSSES_SOURCE_BOUNDARIES")
+        if (sample["group_id"] in lineage_to_pair and
+                lineage_to_pair[sample["group_id"]] != pair):
+            _reject("R83D_DISTINCT_PAIRS_REUSE_PHYSICAL_GROUP")
+        lineage_to_pair[sample["group_id"]] = pair
+        if role in pair_roles[(split, pair)]:
+            _reject("R83D_DUPLICATED_SOURCE_ROLE_IN_PAIR")
+        pair_roles[(split, pair)].add(role)
         groups[sample["group_id"]] = (split, regime)
         if role == "nominal":
             nominal[(split, regime)].add(pair)
         else:
             fault_counts[(split, regime, label)] += 1
         rows.append((sample, split, role, regime, pair))
+    if any(roles != {"fault", "nominal"} for roles in pair_roles.values()):
+        _reject("R83D_SOURCE_NOMINAL_FAULT_PAIR_INCOMPLETE")
     chosen_normal = {}
     for split, count in COUNTS.items():
         if count == 0:
