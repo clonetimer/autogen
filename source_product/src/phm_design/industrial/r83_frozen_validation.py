@@ -283,3 +283,182 @@ def evaluate_r83_frozen_validation(
         "independent_final_test_performed": False,
         "independent_qualification": False,
     }
+
+
+def load_reviewed_validation_manifest(
+    task_spec: Mapping | TaskSpec,
+    validation_manifest: str | Path,
+    physical_map: str | Path,
+    *,
+    runtime_binding: str | Path,
+    native_source_checkout: str | Path,
+    basilisk_wheel_factory: str | Path,
+) -> tuple[list[dict], dict]:
+    """Review only a VALIDATION-only R82-format manifest; never stage TRAIN.
+
+    File SHA, native source binding hash, reviewed group map, exact channel and
+    sampling contract must be checked before any metrics/model load. This
+    attests local file identity only, *not* executed physics or authorship.
+    """
+    import csv
+    import math
+    from ..data import Dataset
+    from ..io import safe_child
+    from .source_intake import verify_native_source_binding
+
+    raw = (task_spec.to_dict() if isinstance(task_spec, TaskSpec)
+           else TaskSpec.from_dict(task_spec).to_dict())
+    data = Dataset(validation_manifest, allowed_splits={"validation"})
+    data.verify_files()
+    contract = data.contract
+    if (data.raw["provenance"].get("source_kind") != "native_basilisk" or
+            contract["evidence_type"] != "simulation" or
+            contract["device_family"] !=
+            "satellite.adcs.reaction_wheel.fixed_three_wheels" or
+            raw["equipment"]["adapter"] != "sat_rw.fixed_index.v1"):
+        _fail("R83_VALIDATION_REVIEW_REQUIRES_NATIVE_RW_SOURCE")
+    channels = raw["observations"]["channels"]
+    if (contract["classes"] != raw["task"]["labels"] or
+            [c["name"] for c in contract["channels"]] !=
+            [c["name"] for c in channels] or
+            [c["unit"] for c in contract["channels"]] !=
+            [c["unit"] for c in channels] or
+            any(c["role"] != "deployment_input" for c in contract["channels"])):
+        _fail("R83_VALIDATION_REVIEW_CHANNEL_OR_LABEL_MISMATCH")
+    native = read_json(runtime_binding)
+    hashes = verify_native_source_binding(
+        native, native_source_checkout, basilisk_wheel_factory)
+    if len(hashes) != 3:
+        _fail("R83_VALIDATION_NATIVE_SOURCE_HASH_REVIEW_INCOMPLETE")
+    source_map = read_json(physical_map)
+    ids = {item["id"] for item in data.samples}
+    required = set(raw["data"]["group_keys"] + raw["data"]["environment_axes"])
+    if (source_map.get("schema") != "phm.industrial.source-physical-map.v1" or
+            not isinstance(source_map.get("records"), dict) or
+            set(source_map["records"]) != ids):
+        _fail("R83_VALIDATION_REVIEW_PHYSICAL_MAP_INVALID")
+    if len(raw["data"]["group_keys"]) != 1:
+        _fail("R83_VALIDATION_REVIEW_REQUIRES_SINGLE_GROUP_KEY")
+    group_key = raw["data"]["group_keys"][0]
+    columns = [c["name"] for c in channels]
+    source_field = "time_s"
+    target_field = raw["observations"]["time"]["field"]
+    records = []
+    for item in data.samples:
+        assigned = source_map["records"][item["id"]]
+        if (not isinstance(assigned, dict) or set(assigned) != required or
+                any(type(value) is not str or not value.strip() or
+                    value == "REVIEW_REQUIRED" for value in assigned.values()) or
+                assigned[group_key] != item["group_id"]):
+            _fail("R83_VALIDATION_REVIEW_PHYSICAL_GROUP_MISMATCH")
+        with safe_child(data.root, item["path"]).open(
+                encoding="utf-8", newline="") as stream:
+            reader = csv.DictReader(stream)
+            fields = reader.fieldnames
+            if (fields is None or len(fields) != len(set(fields)) or
+                    set(fields) != {source_field, *columns}):
+                _fail("R83_VALIDATION_REVIEW_TRUTH_OR_UNDECLARED_CSV")
+            points = []
+            for line in reader:
+                try:
+                    record = {key: float(line[key])
+                              for key in (source_field, *columns)}
+                except (KeyError, ValueError, TypeError) as exc:
+                    raise ValueError("R83_VALIDATION_NONNUMERIC_TRACE") from exc
+                if not all(math.isfinite(x) for x in record.values()):
+                    _fail("R83_VALIDATION_NONFINITE_TRACE")
+                points.append({
+                    target_field: record[source_field],
+                    **{name: record[name] for name in columns},
+                })
+        if len(points) < 16 or any(
+                not math.isclose(b[target_field] - a[target_field],
+                                 float(contract["sample_s"]),
+                                 rel_tol=1.e-6, abs_tol=1.e-7)
+                for a, b in zip(points, points[1:])):
+            _fail("R83_VALIDATION_INSUFFICIENT_OR_IRREGULAR_TRACE")
+        validate_observations(raw, points)
+        records.append({
+            "metadata": {"role": "VALIDATION", "label": item["label"],
+                         **assigned},
+            "measurements": points,
+        })
+    receipt = {
+        "schema": "phm.r83.validation-reviewed-source.v1",
+        "validation_manifest_sha256": sha_file(Path(validation_manifest)),
+        "reviewed_physical_map_sha256": sha_file(Path(physical_map)),
+        "native_binding_sha256": sha_file(Path(runtime_binding)),
+        "native_source_file_hashes_verified": hashes,
+        "validated_file_shas": True,
+        "source_role": "VALIDATION_ONLY",
+        "records": len(records),
+        "native_source_claimed": True,
+        "actual_basilisk_physics_executed_by_reviewer": False,
+        "independent_physical_source_attested": False,
+        "independent_qualification": False,
+    }
+    return records, receipt
+
+
+def run_native_r83_validation_once(
+    *, train_research_report: str | Path,
+    task_spec: str | Path, frozen_models: str | Path,
+    validation_manifest: str | Path, validation_physical_map: str | Path,
+    runtime_binding: str | Path, native_source_checkout: str | Path,
+    basilisk_wheel_factory: str | Path, output: str | Path,
+    trusted_fixed_pickle: bool = False,
+) -> dict:
+    """Explicit review entry: write a new report exactly once, never overwrite."""
+    dest = Path(output)
+    if dest.exists():
+        raise FileExistsError("R83_VALIDATION_REPORT_ALREADY_EXISTS")
+    parent = read_json(train_research_report)
+    report = parent.get("comparison") if isinstance(parent, dict) else None
+    if not isinstance(report, dict):
+        _fail("R83_VALIDATION_REQUIRES_TRAIN_RESEARCH_REPORT")
+    task = read_json(task_spec)
+    records, source_receipt = load_reviewed_validation_manifest(
+        task, validation_manifest, validation_physical_map,
+        runtime_binding=runtime_binding,
+        native_source_checkout=native_source_checkout,
+        basilisk_wheel_factory=basilisk_wheel_factory)
+    outcome = evaluate_r83_frozen_validation(
+        report, task, frozen_models, records,
+        trusted_fixed_pickle=trusted_fixed_pickle)
+    result = {"schema": "phm.r83.reviewed-validation-report.v1",
+              "reviewed_source": source_receipt,
+              "frozen_evaluation": outcome,
+              "final_test_performed": False,
+              "independent_qualification": False}
+    dest.mkdir(parents=True)
+    write_json(dest / "validation_report.json", result)
+    return result
+
+
+def main(argv=None):
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in (
+        "train-research-report", "task-spec", "frozen-models",
+        "validation-manifest", "validation-physical-map", "runtime-binding",
+        "native-source-checkout", "basilisk-wheel-factory", "output",
+    ):
+        parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--trust-fixed-pickle", action="store_true")
+    values = vars(parser.parse_args(argv))
+    trusted = values.pop("trust_fixed_pickle")
+    run_native_r83_validation_once(
+        train_research_report=values["train_research_report"],
+        task_spec=values["task_spec"], frozen_models=values["frozen_models"],
+        validation_manifest=values["validation_manifest"],
+        validation_physical_map=values["validation_physical_map"],
+        runtime_binding=values["runtime_binding"],
+        native_source_checkout=values["native_source_checkout"],
+        basilisk_wheel_factory=values["basilisk_wheel_factory"],
+        output=values["output"], trusted_fixed_pickle=trusted,
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
