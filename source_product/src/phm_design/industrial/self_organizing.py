@@ -80,6 +80,37 @@ class EvolutionPolicy:
             raise ValueError("INVALID_EVOLUTION_POLICY")
 
 
+import torch
+from torch import nn
+
+
+class _TemporalTopology(nn.Module):
+    """Module-scope Torch architecture to support Windows spawn serialization."""
+    def __init__(self, channels: int, classes: int, genome: NetworkGenome):
+        super().__init__()
+        self.genome = genome
+        self.stem = nn.Conv1d(channels, genome.width, 1)
+        self.blocks = nn.ModuleList()
+        for stage in range(genome.depth):
+            dilation = 2 ** stage
+            self.blocks.append(nn.Sequential(
+                nn.Conv1d(genome.width, genome.width, genome.kernel,
+                          dilation=dilation, padding=dilation * (genome.kernel // 2)),
+                nn.GroupNorm(1, genome.width), nn.GELU()))
+        features = genome.width * (2 if genome.pooling == "mean_max" else 1)
+        self.head = nn.Linear(features, classes)
+
+    def forward(self, observations):
+        hidden = self.stem(observations.transpose(1, 2))
+        for block in self.blocks:
+            changed = block(hidden)
+            hidden = hidden + changed if self.genome.residual else changed
+        pooled = hidden.mean(-1)
+        if self.genome.pooling == "mean_max":
+            pooled = torch.cat((pooled, hidden.amax(-1)), dim=1)
+        return self.head(pooled)
+
+
 class EvolvingTemporalEstimator(TorchTaskEstimator):
     """Reuse fold-local normalization, deterministic CPU training and inference."""
     def __init__(self, genome: NetworkGenome, seed: int, policy: EvolutionPolicy):
@@ -88,37 +119,7 @@ class EvolvingTemporalEstimator(TorchTaskEstimator):
                          max_parameters=policy.max_parameters)
 
     def _network(self, steps: int, channels: int, classes: int):
-        import torch
-        from torch import nn
-
-        genome = self.genome
-
-        class TemporalNetwork(nn.Module):
-            def __init__(self):
-                super().__init__()
-                self.stem = nn.Conv1d(channels, genome.width, 1)
-                self.blocks = nn.ModuleList()
-                for stage in range(genome.depth):
-                    dilation = 2 ** stage
-                    self.blocks.append(nn.Sequential(
-                        nn.Conv1d(genome.width, genome.width, genome.kernel,
-                                  dilation=dilation,
-                                  padding=dilation * (genome.kernel // 2)),
-                        nn.GroupNorm(1, genome.width), nn.GELU()))
-                features = genome.width * (2 if genome.pooling == "mean_max" else 1)
-                self.head = nn.Linear(features, classes)
-
-            def forward(self, observations):
-                hidden = self.stem(observations.transpose(1, 2))
-                for block in self.blocks:
-                    changed = block(hidden)
-                    hidden = hidden + changed if genome.residual else changed
-                pooled = hidden.mean(-1)
-                if genome.pooling == "mean_max":
-                    pooled = torch.cat((pooled, hidden.amax(-1)), dim=1)
-                return self.head(pooled)
-
-        return TemporalNetwork()
+        return _TemporalTopology(channels, classes, self.genome)
 
 
 def propose_genome(history: Sequence[Mapping], visited: set[str]) -> tuple[NetworkGenome, str | None]:
