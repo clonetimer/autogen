@@ -1,0 +1,40 @@
+name: R83g Causal Command Response Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r83g_command_response.py'
+      - 'source_product/tests/phm_design/test_r83g_command_response.py'
+      - 'source_product/README_R83G.md'
+      - '.github/workflows/r83g-causal-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  strict-feature-and-equal-input:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e './source_product[dev]'
+      - name: Anti-oracle, anti-lookahead, immutable TRAIN and matched 18ch input
+        run: >-
+          python -m pytest -q
+          source_product/tests/phm_design/test_r83g_command_response.py
+          source_product/tests/phm_design/test_r83b_matched_budget.py
+          source_product/tests/phm_design/test_r83c_frozen_validation.py

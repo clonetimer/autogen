@@ -1,0 +1,178 @@
+name: R83g REAL Basilisk TRAIN-only Causal Features Study
+
+# One-time original REAL R83g TRAIn study already ran and is sealed in
+# GitHub Actions #40102279092. Future reruns are MANUAL ONLY.
+# PR path filters are based on the whole PR diff and can retrigger on doc
+# edits even when the workflow file was not modified; avoid that compute.
+# Does NOT regenerate physics or access VAL/TEST/FINAL model data.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: r83g-real-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  checked-r83f-real-train:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 48
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: clonetimer/SatAgentSimulation
+          ref: 1f709beeae97baec65db9ca13ae373d88728f87d
+          path: satagent
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download ORIGINAL completed R83f real physics evidence (no new simulator)
+        uses: actions/download-artifact@v4
+        with:
+          name: r83f-126-real-basilisk-native-balanced-research
+          run-id: 40099391872
+          repository: clonetimer/autogen
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/r83f_immutable
+      - name: Verify original immutable real-Basilisk source and analysis receipt
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"r83f_immutable"
+          ids={
+            "r83d_balanced_dev/dataset.json":"a2eb934fa4c76dfc2a92200cd6b455bb5ca7706559d19f2a2d645e3c105d39df",
+            "r83d_balanced_dev/review/train_physical_map.json":"5b732383ca58ca2201a7ac4bc638ac29fa78de74e22307252668f6f456a68b30",
+            "r83d_three_arm_train/research_report.json":"b9951695f528b8d22f7192d520316067197fe20194e5aaf258534ddc0a0dd128",
+            "r83d_evidence/runtime_binding.json":"8e7c62bd0641c7b79c3a5fe54aaf5ae6579bc34c55e640beceb771637727241d",
+          }
+          for relative,expected in ids.items():
+              f=root/relative
+              if len(expected)!=64:
+                  raise RuntimeError("R83G_INVALID_EXPECTED_SHA256_LENGTH:"+relative)
+              exists=f.is_file()
+              found=hashlib.sha256(f.read_bytes()).hexdigest() if exists else "MISSING"
+              if not exists or found!=expected:
+                  raise RuntimeError("R83G_REAL_R83F_IMMUTABLE_ARTIFACT_MISMATCH:"
+                      +relative+":exists="+str(exists)+":actual="+found
+                      +":expected="+expected)
+          plan=json.loads((root/"r83d_frozen_native_plan.audit.json").read_text())
+          assert plan["frozen_plan_canonical_sha256"]=="c54bfcd154322a620c7d8058ce8a40db6e155602593c5ff5da8bdba43ef3b714"
+          original=json.loads((root/"r83d_three_arm_train/research_report.json").read_text())
+          assert original["status"]=="TRAIN_SOURCE_SEARCH_RESEARCH_ONLY"
+          assert all(not arm["model_delivered"]
+                     for arm in original["comparison"]["arms"].values())
+          dataset=json.loads((root/"r83d_balanced_dev/dataset.json").read_text())
+          assert sum(x["split"]=="train" for x in dataset["samples"])==60
+          assert sum(x["split"]=="validation" for x in dataset["samples"])==24
+          print("R83G_REAL_BASILISK_TRAIN_RECEIPT_IMMUTABLE", len(dataset["samples"]))
+          print("R83G_NO_VALIDATION_TELEMETRY_READ")
+          PY
+      - name: Verify original Basilisk wheel and unmodified native source payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/official" "$RUNNER_TEMP/compat" "$RUNNER_TEMP/r83g_evidence"
+          python -m pip download --only-binary=:all: --no-deps \
+            --dest "$RUNNER_TEMP/official" "bsk==2.11.0"
+          python - <<'PY'
+          import os,hashlib
+          from pathlib import Path
+          wheels=list((Path(os.environ["RUNNER_TEMP"])/"official").glob("bsk-2.11.0-*.whl"))
+          if len(wheels)!=1:
+              raise RuntimeError("R83G_ORIGINAL_OFFICIAL_WHEEL_MISSING_OR_AMBIGUOUS")
+          sha=hashlib.sha256(wheels[0].read_bytes()).hexdigest()
+          if sha!="d51fe1ffa1b0b03dc415034b210497b28a2504428d4d8e71b481542a08c08a0a":
+              raise RuntimeError("R83G_WRONG_ORIGINAL_BASILISK_BINARY:"+sha)
+          PY
+          python satagent/scripts/build_bsk_compat_wheels.py \
+            "$RUNNER_TEMP"/official/bsk-2.11.0-*.whl \
+            --output-dir "$RUNNER_TEMP/compat" \
+            --report "$RUNNER_TEMP/r83g_evidence/compat_report.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          data=json.loads((Path(os.environ["RUNNER_TEMP"])/"r83g_evidence/compat_report.json").read_text())["results"][0]
+          if not data["payload_bytes_unchanged"] or data["payload_file_count"]<800:
+              raise RuntimeError("R83G_BINARY_PAYLOAD_NOT_IDENTICAL")
+          PY
+      - name: Install pinned native physics bindings and independent research dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install "$RUNNER_TEMP"/compat/bsk-2.11.0+satfix1-*.whl
+          python -m pip install -e ./satagent
+          python -m pip install -e ./source_product
+          python -m pip install 'pytest>=8,<10'
+          python - <<'PY'
+          from importlib.metadata import version
+          from Basilisk.utilities import simIncludeRW
+          assert version("bsk")=="2.11.0+satfix1"
+          print("R83G_PINNED_INSTALLED_NATIVE_FACTORY",simIncludeRW.__file__)
+          PY
+      - name: Validate source feature contract and protected-role regressions
+        shell: bash
+        run: >-
+          python -m pytest -q
+          source_product/tests/phm_design/test_r83g_command_response.py
+          source_product/tests/phm_design/test_r83b_matched_budget.py
+      - name: Fit actual TRAIN-only source on matched padded/response representations
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m phm_design.industrial.r83g_command_response \
+            --task-spec source_product/examples/industrial/satellite_rw_native_r83_matched_train.json \
+            --development-manifest "$RUNNER_TEMP/r83f_immutable/r83d_balanced_dev/dataset.json" \
+            --train-physical-map "$RUNNER_TEMP/r83f_immutable/r83d_balanced_dev/review/train_physical_map.json" \
+            --original-r83f-research-report "$RUNNER_TEMP/r83f_immutable/r83d_three_arm_train/research_report.json" \
+            --runtime-binding "$RUNNER_TEMP/r83f_immutable/r83d_evidence/runtime_binding.json" \
+            --native-source-checkout satagent \
+            --basilisk-wheel-factory "$(python -c 'from Basilisk.utilities import simIncludeRW; print(simIncludeRW.__file__)')" \
+            --output "$RUNNER_TEMP/r83g_exploratory_train" \
+            2>&1 | tee "$RUNNER_TEMP/r83g_evidence/train_stdout.log"
+      - name: Summarize PREDECLARED TRAIN-only fairness without upgrading any model
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])
+          doc=json.loads((root/"r83g_exploratory_train/research_report.json").read_text())
+          result=doc["comparison"]
+          assert doc["status"]=="TRAIN_EXPLORATION_COMPLETE_NO_VALIDATION"
+          assert not result["validation_test_or_final_telemetry_read"]
+          assert not result["fairness_gate"]["performance_claim_allowed"]
+          assert result["frozen_r83f_source"]["source_train_records"]==60
+          assert result["frozen_r83f_source"]["source_train_physical_groups"]==45
+          assert result["frozen_r83f_source"]["paired_nominal_fault_groups"]==15
+          assert result["fairness_gate"]["comparison_allowed_train_research_only"]
+          for kind in ("zero_padded_raw","causal_command_response"):
+              arm=result["arms"][kind]
+              print("R83G_REPRESENTATION",kind,"fairness",arm["fairness_gate"])
+              for name,metrics in arm["arms"].items():
+                  entries=metrics["attempts"]
+                  print("R83G_REAL_TRAIN_OOF",kind,name,metrics["decision"],
+                        "fits",metrics["charged_fits"],
+                        "candidates",len(entries),
+                        "selected_if_any",metrics["best_eligible_source_train_candidate"])
+          print("R83G_NATIVE_TRAIN_REPRESENTATION_STUDY_FINISHED_NO_VAL_OR_FINAL")
+          PY
+      - name: Archive original source hashes, TRAIN-only exploratory receipts and any refusal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83g-real-basilisk-train-only-command-response-comparison
+          if-no-files-found: warn
+          retention-days: 21
+          path: |
+            ${{ runner.temp }}/r83g_evidence/
+            ${{ runner.temp }}/r83g_exploratory_train/research_report.json
+            ${{ runner.temp }}/r83g_exploratory_train/isolated_r83f_train/dataset.json
