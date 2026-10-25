@@ -145,6 +145,8 @@ def audit_external_bearing_cohort(rows: Sequence[Mapping], *,
         for role in ROLES
     }
     reasons = []
+    if root is None:
+        reasons.append("R89_RAW_FILES_NOT_VERIFIED")
     # Train requires three environments, each class represented in all three.
     if len(train) < 3:
         reasons.append("R89_TRAIN_NEEDS_AT_LEAST_THREE_ENVIRONMENTS")
