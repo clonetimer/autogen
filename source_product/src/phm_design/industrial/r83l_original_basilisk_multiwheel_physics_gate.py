@@ -105,19 +105,46 @@ def review_original_real_native_rw_source(path: str | Path) -> dict:
     if not isinstance(source_cases,dict) or set(source_cases)!=expected:
         _fail("ORIGINAL_54_NATIVE_SOURCE_ARM_COVERAGE_CHANGED")
     fields=_needed_columns()
+    shadowed_case_count=0
     for wheel in WHEELS:
         for initial in range(3):
             for ref in REFERENCES:
                 for mode,cap in CAPS.items():
                     key=f"rw{wheel}_initial{initial}_{ref}_{mode}"
                     case=source_cases[key]
+                    # Original 54 native physical simulations are legitimate,
+                    # but their ORIGINAL exporter reused local variable
+                    # 'wheel' for the final allocator command VECTOR while
+                    # building metadata. Explicitly detect and DISCLOSE
+                    # this bug; do not rewrite, re-simulate or trust the
+                    # incorrect source target ID. The source case KEY and
+                    # verified C-backed actuator event are authoritative.
+                    metadata_target=case.get("source_fault_target_index_QA_ONLY")
+                    correct_metadata=(
+                        metadata_target==wheel and
+                        case.get("native_independent_condition_id")==f"rw{wheel}_initial{initial}" and
+                        case.get("native_reference_context_id")==f"rw{wheel}_initial{initial}_{ref}")
+                    original_rows=case.get("rows")
+                    final_command=(
+                        [original_rows[-1][f"rw.native_allocator_request_nm_{j}"] for j in WHEELS]
+                        if isinstance(original_rows,list) and len(original_rows)==31 and
+                        isinstance(original_rows[-1],dict) and
+                        all(f"rw.native_allocator_request_nm_{j}" in original_rows[-1] for j in WHEELS)
+                        else None)
+                    disclosed_legacy_shadow=(
+                        isinstance(metadata_target,list) and len(metadata_target)==3 and
+                        final_command is not None and
+                        metadata_target==final_command and
+                        case.get("native_independent_condition_id")==f"rw{metadata_target}_initial{initial}" and
+                        case.get("native_reference_context_id")==f"rw{metadata_target}_initial{initial}_{ref}")
+                    if not (correct_metadata or disclosed_legacy_shadow):
+                        _fail("UNVERIFIED_ACTUATOR_ID_OR_UNDISCLOSED_METADATA_SHADOW")
+                    if disclosed_legacy_shadow:
+                        shadowed_case_count+=1
                     if (case.get("schema")!=SOURCE_SCHEMA or
                             case.get("arm")!=key or
                             case.get("execution_engine")!="BASILISK_NATIVE_SC_RW_FSW_NO_PROXY" or
                             case.get("native_scheduler_was_advanced") is not True or
-                            case.get("native_independent_condition_id")!=f"rw{wheel}_initial{initial}" or
-                            case.get("native_reference_context_id")!=f"rw{wheel}_initial{initial}_{ref}" or
-                            case.get("source_fault_target_index_QA_ONLY")!=wheel or
                             case.get("source_initial_state_index")!=initial or
                             case.get("source_initial_attitude_mrp")!=list(INITIALS[initial]) or
                             case.get("native_reference_mode")!=ref or
@@ -237,6 +264,10 @@ def review_original_real_native_rw_source(path: str | Path) -> dict:
         "physical_wheel_initial_condition_groups":9,
         "shared_healthy_sources":18,
         "matched_physics_comparisons":36,
+        "original_case_exporter_metadata_shadowed_count":shadowed_case_count,
+        "original_source_metadata_wheel_target_trusted":shadowed_case_count==0,
+        "verified_wheel_identity_from_case_id_and_native_cpp_event":True,
+        "original_raw_source_never_rewritten":True,
         "physical_observability_matrix":groups,
         "original_native_wheel_allocator_request_max_nm":peak_req,
         "original_native_wheel_speed_max_rad_s":peak_speed,
