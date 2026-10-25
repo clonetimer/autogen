@@ -1,14 +1,25 @@
 """R83n tests use SYNTHETIC contracts, never count as native experiments."""
 from __future__ import annotations
 
+import hashlib
 import pytest
 from phm_design.industrial import r83n_original_native_speed_error_envelope as env
 from test_r83m_original_native_guidance_threshold_gate import fixture_source
 
 
+def synthetic_contract_only(tmp_path, monkeypatch):
+    source,_=fixture_source(tmp_path,monkeypatch)
+    # This modifies the test process's constant only. Production releases
+    # still require the immutably SHA-bound ORIGINAL Basilisk source twice.
+    monkeypatch.setattr(
+        env,"ORIGINAL_R83M_SHA256",
+        hashlib.sha256(source.read_bytes()).hexdigest())
+    return source
+
+
 def test_bounded_error_oracle_is_not_deployable_detection(tmp_path,monkeypatch):
     # This is a hand-written 54-case PHYSICS CONTRACT fixture only.
-    path,_=fixture_source(tmp_path,monkeypatch)
+    path=synthetic_contract_only(tmp_path,monkeypatch)
     report=env.evaluate_original_native_encoder_error_envelope(path)
     assert report["real_native_original_runs"]==54
     assert report["physical_wheel_initial_groups"]==9
@@ -30,7 +41,7 @@ def test_bounded_error_oracle_is_not_deployable_detection(tmp_path,monkeypatch):
 
 
 def test_robust_oracle_counts_never_increase_with_more_uncertainty(tmp_path,monkeypatch):
-    path,_=fixture_source(tmp_path,monkeypatch)
+    path=synthetic_contract_only(tmp_path,monkeypatch)
     m=env.evaluate_original_native_encoder_error_envelope(path)[
         "error_envelope_physics_oracle_matrix"]
     for ref in env.REFERENCES:
@@ -42,14 +53,14 @@ def test_robust_oracle_counts_never_increase_with_more_uncertainty(tmp_path,monk
 
 
 def test_never_export_oracle_counterfactual_rows_as_deployable_sensor_samples(tmp_path,monkeypatch):
-    path,_=fixture_source(tmp_path,monkeypatch)
+    path=synthetic_contract_only(tmp_path,monkeypatch)
     with pytest.raises(ValueError,match="PROHIBITED_EXPORT"):
         env.evaluate_original_native_encoder_error_envelope(
             path,write_source_samples=True)
 
 
 def test_refuse_tampered_original_r83m_source_bytes(tmp_path,monkeypatch):
-    path,_=fixture_source(tmp_path,monkeypatch)
+    path=synthetic_contract_only(tmp_path,monkeypatch)
     path.write_bytes(path.read_bytes()+b" MALFORMED_ORIGINAL")
     with pytest.raises(ValueError,match="SHA256_MISMATCH"):
         env.evaluate_original_native_encoder_error_envelope(path)
