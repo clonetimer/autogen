@@ -146,7 +146,8 @@ class AASDetectorBridge:
 
     def __init__(self, detector, *, descriptor):
         if not isinstance(descriptor, Mapping) or set(descriptor) != {
-                "name", "class_path", "decision_mode", "config"}:
+                "name", "class_path", "decision_mode", "config",
+                "candidate_family"}:
             _reject("R94_INVALID_AAS_DESCRIPTOR")
         name, mode, config = (descriptor[k] for k in (
             "name", "decision_mode", "config"))
@@ -156,6 +157,8 @@ class AASDetectorBridge:
             _reject("R94_AAS_CLASS_PATH_REQUIRED")
         if mode not in DECISION_MODES:
             _reject("R94_AAS_DECISION_MODE_REQUIRED")
+        if type(descriptor["candidate_family"]) is not str or not descriptor["candidate_family"]:
+            _reject("R94_AAS_CANDIDATE_FAMILY_REQUIRED")
         if not isinstance(config, Mapping) or any(
                 type(k) is not str for k in config):
             _reject("R94_INVALID_AAS_CONFIG")
@@ -187,19 +190,24 @@ class AASDetectorBridge:
             _reject("R94_SUPERVISED_CLASSIFICATION_REQUIRES_LABEL_MODE")
         if trial["task_type"] == "anomaly_detection" and self.descriptor["decision_mode"] == "label":
             _reject("R94_UNSUPERVISED_ANOMALY_DISALLOWS_LABEL_MODE")
-        if self.descriptor["name"] not in trial.get("candidate_families", []):
-            # R93 declares abstract families; binding to concrete AAS
-            # descriptor names must be explicit, not inferred from filenames.
-            allowed_family = self.descriptor["config"].get("_autogen_family")
-            if allowed_family not in trial["candidate_families"]:
-                _reject("R94_AAS_ALGORITHM_NOT_AUTHORIZED_BY_TRIAL")
+        # AAS descriptor name != Autogen abstract family; bind explicitly.
+        if self.descriptor["candidate_family"] not in trial["candidate_families"]:
+            _reject("R94_AAS_ALGORITHM_NOT_AUTHORIZED_BY_TRIAL")
         indexed = {r["record_id"]: r for r in train_manifest["records"]}
         if any(r["role"] != "TRAIN" for r in indexed.values()):
             _reject("R94_PROTECTED_SPLIT_IN_TRAIN_DATA")
         # Exact manifest order, regardless of caller row ordering.
-        table = {item["record_id"]: item for item in train_features
-                 if isinstance(item, Mapping) and "record_id" in item}
-        batch = _table([table.get(rid) for rid in indexed],
+        if not isinstance(train_features, (list, tuple)) or not all(
+                isinstance(item, Mapping) and "record_id" in item
+                for item in train_features):
+            _reject("R94_MALFORMED_TRAIN_FEATURE_BATCH")
+        source_ids = [item["record_id"] for item in train_features]
+        if len(source_ids) != len(set(source_ids)):
+            _reject("R94_DUPLICATE_SOURCE_FEATURE_RECORD")
+        if set(source_ids) != set(indexed):
+            _reject("R94_TRAIN_RECORDS_DO_NOT_MATCH_SOURCE_MANIFEST")
+        table = {item["record_id"]: item for item in train_features}
+        batch = _table([table[rid] for rid in indexed],
                        trial["input_channels"], train_ids=set(indexed))
         train_y = ([labels.index(indexed[rid]["label"]) for rid in indexed]
                    if trial["task_type"] == "classification" else None)
@@ -209,7 +217,6 @@ class AASDetectorBridge:
         import numpy as np
         matrix = np.asarray(batch, dtype=np.float64)
         start = perf_counter()
-        self.detector.fit(matrix, train_y=train_y) if False else None
         # Real AAS BaseDetector accepts positional train_y, not 'y='.
         self.detector.fit(matrix, train_y)
         if (self.descriptor["decision_mode"] == "score_threshold" and
