@@ -88,3 +88,25 @@ assignments and resource accounting; a sealed unbiased FINAL test.
 
 Do **not** promote the original R83f/R83g negative cases. R85 stays Draft
 and does not change the 0.7.0 limited Stable release.
+
+## Guarded same-source comparison
+
+R85 also exposes a two-arm **actual training** study:
+
+```python
+from phm_design.industrial.r85_source_ablation import run_r85_source_ablation
+
+# `task_spec` must declare design.budget.max_wall_seconds, e.g. 180,
+# and `train_records` must be exclusively independent-group TRAIN records.
+receipt = run_r85_source_ablation(task_spec, train_records, family_proposals=3)
+```
+
+It runs fixed family order and TRAIN-feedback family order through the same
+predeclared TaskSpec, same records and separate hard wall deadlines, and
+reports source-OOF fit counts, actual wall times, selected source scores, refusal
+and integrity metadata. Only when all candidates, exact hashes and fit counts
+agree does it permit **descriptive SOURCE TRAIN** comparisons. It never opens
+VAL/TEST/FINAL or asserts independent generalization, equal FLOPs or automatic
+Stable promotion. Full fit parity does not guarantee equal compute. CI tests
+include simulated refusal, protected-role rejection before worker spawning,
+and the guarded process argument handoff.
