@@ -140,6 +140,7 @@ def test_compressor_no_rewinding_to_train_after_validation():
     row = copy.deepcopy(data["records"][-1])
     row["record_id"] = "later_train"
     row["role"] = "TRAIN"
+    row["label"] = "NORMAL"  # Avoid fault-label refusal before role-order guard.
     row["start_utc"] = "2026-01-04T05:00:00Z"
     row["end_utc"] = "2026-01-04T07:00:00Z"
     row["source_sha256"] = "4"*64
