@@ -1,0 +1,28 @@
+{
+  "schema": "phm.autogen.trial.v1",
+  "trial_id": "bearing_group_exclusive",
+  "equipment_id": "bearing_fixture",
+  "task_type": "classification",
+  "input_channels": [
+    "vibration",
+    "motor_current"
+  ],
+  "labels": [
+    "HEALTHY",
+    "FAULT"
+  ],
+  "healthy_label": "HEALTHY",
+  "candidate_families": [
+    "constant",
+    "statistical",
+    "linear",
+    "tree"
+  ],
+  "validation_target": "unseen_physical_device",
+  "budget": {
+    "max_trials": 8,
+    "max_fit_seconds": 1200,
+    "max_memory_mb": 1024,
+    "seed": 8001
+  }
+}
