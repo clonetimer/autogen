@@ -50,7 +50,7 @@ jobs:
           from pathlib import Path
           import tomllib
           p = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-          assert p["project"]["version"] == "0.7.0"
+          assert p["project"]["version"] == "0.8.0rc1"
           assert p["project"]["dependencies"] == [
               "torch==2.10.0", "numpy==2.3.5", "scikit-learn==1.8.0"
           ]
