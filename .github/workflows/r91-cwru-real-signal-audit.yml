@@ -1,0 +1,71 @@
+name: R91 CWRU Official Measured Waveform Reality Check
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r91_cwru_reality_check.py'
+      - 'source_product/tests/phm_design/test_r91_cwru_reality_check.py'
+      - 'source_product/README_R91.md'
+      - '.github/workflows/r91-cwru-real-signal-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scientific-interface-guard:
+    name: No-pseudoreplication MAT smoke / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install numpy scipy pytest
+      - name: MAT parser, original variable guard and non-independent windows
+        run: python -m pytest -q tests/phm_design/test_r91_cwru_reality_check.py
+        env:
+          PYTHONPATH: src
+
+  official-measured-source-probe:
+    name: Official CWRU 97 and 109 raw MAT acquisition (no ML inference)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy scipy
+      - name: Download TWO real original official CWRU MAT files; print receipt only
+        run: >-
+          python -m phm_design.industrial.r91_cwru_reality_check
+          --raw-dir "${{ runner.temp }}/r91-cwru-raw"
+          --download-official
+          --receipt "${{ runner.temp }}/r91-cwru-original-audit.json"
+        env:
+          PYTHONPATH: src
+      - name: Upload SHA-256 and descriptive signal quality ONLY (no raw waveforms)
+        uses: actions/upload-artifact@v4
+        with:
+          name: r91-official-cwru-original-receipt
+          path: ${{ runner.temp }}/r91-cwru-original-audit.json
+          if-no-files-found: error
+          retention-days: 30
