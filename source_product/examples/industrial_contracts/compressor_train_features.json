@@ -1,0 +1,18 @@
+[
+  {
+    "record_id": "c001",
+    "observations": {
+      "pressure": 8,
+      "oil_temperature": 50,
+      "motor_current": 12
+    }
+  },
+  {
+    "record_id": "c002",
+    "observations": {
+      "pressure": 8.2,
+      "oil_temperature": 50.3,
+      "motor_current": 12.2
+    }
+  }
+]

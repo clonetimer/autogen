@@ -1,0 +1,78 @@
+name: R97 Physical Signal-Aware Algorithm Design
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial_contracts/signal_feature_design.py'
+      - 'source_product/src/phm_design/industrial_contracts/r97_cwru_signal_probe.py'
+      - 'source_product/tests/phm_design/test_r97_*.py'
+      - 'source_product/docs/R97_PHYSICAL_SIGNAL_FEATURE_DESIGN.md'
+      - '.github/workflows/r97-physical-feature-design.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-platform-diagnostic-feature-design:
+    name: Source-only physical-frequency features + true sklearn OOF / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test-only scientific numerical dependencies
+        run: python -m pip install numpy scipy scikit-learn pytest
+      - name: R93–R97 legal-source/data-contract regression and actual sklearn diagnosis designs
+        run: >-
+          python -m pytest -q
+          tests/phm_design/test_r93_industrial_contracts.py
+          tests/phm_design/test_r94_torch_like_bridge.py
+          tests/phm_design/test_r94_aas_bridge.py
+          tests/phm_design/test_r95_diagnostic_design_engine.py
+          tests/phm_design/test_r96_diagnostic_pipeline_design.py
+          tests/phm_design/test_r97_signal_feature_design.py
+          tests/phm_design/test_r97_cwru_signal_probe.py
+        env:
+          PYTHONPATH: src
+
+  original-official-cwru-feature-sanity:
+    name: Pinned original CWRU waveforms / engineering.case.edu / NO MODEL TRAINING
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy scipy
+      - name: Original CWRU 97/109 SHA-locked physical FFT feature smoke; no accuracy claimed
+        run: >-
+          python -m phm_design.industrial_contracts.r97_cwru_signal_probe
+          --receipt "${{ runner.temp }}/r97-pinned-original-cwru-features.json"
+        env:
+          PYTHONPATH: src
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r97-pinned-original-cwru-feature-receipt
+          path: ${{ runner.temp }}/r97-pinned-original-cwru-features.json
+          if-no-files-found: error
+          retention-days: 30

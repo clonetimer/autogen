@@ -1,0 +1,26 @@
+{
+  "schema": "phm.autogen.trial.v1",
+  "trial_id": "compressor_forward_anomaly",
+  "equipment_id": "compressor_fixture",
+  "task_type": "anomaly_detection",
+  "input_channels": [
+    "pressure",
+    "oil_temperature",
+    "motor_current"
+  ],
+  "labels": [
+    "NORMAL",
+    "ANOMALY"
+  ],
+  "healthy_label": "NORMAL",
+  "candidate_families": [
+    "isolation_forest"
+  ],
+  "validation_target": "future_same_device",
+  "budget": {
+    "max_trials": 4,
+    "max_fit_seconds": 1200,
+    "max_memory_mb": 1024,
+    "seed": 8002
+  }
+}

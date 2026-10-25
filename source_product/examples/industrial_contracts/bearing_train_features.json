@@ -1,0 +1,30 @@
+[
+  {
+    "record_id": "r001",
+    "observations": {
+      "vibration": 0.12,
+      "motor_current": 0.9
+    }
+  },
+  {
+    "record_id": "r002",
+    "observations": {
+      "vibration": 2.7,
+      "motor_current": 4.1
+    }
+  },
+  {
+    "record_id": "r003",
+    "observations": {
+      "vibration": 0.2,
+      "motor_current": 1.1
+    }
+  },
+  {
+    "record_id": "r004",
+    "observations": {
+      "vibration": 3.2,
+      "motor_current": 4.5
+    }
+  }
+]

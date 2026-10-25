@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import hashlib
 from pathlib import Path
 import numpy as np
 from phm_design.design_readiness import sha_file
@@ -17,11 +18,32 @@ ROOT = Path('/mnt/data/PHM_AUTODESIGN_THERMAL_R16_20261008/new_training')
 SENSORS=('equipment_temperature_k','radiator_temperature_k')
 
 
+def _trace_matches_frozen_original(trace, expected_sha):
+    """Verify original R16 CSV evidence despite Git LF checkout conversion.
+
+    R16 generated CSV originals used CRLF; their immutable audit SHA is
+    over THOSE bytes. Git normalized text fixtures to LF on checkout.
+    First accept an exact raw hash; otherwise only accept byte-for-byte
+    CRLF restoration when the restored digest equals the frozen audit.
+    NEVER rewrite the audit SHA, silently ignore a mismatch, normalize
+    CSV numbers, or change the original model/qualification data.
+    """
+    raw = trace.read_bytes()
+    digest = lambda data: hashlib.sha256(data).hexdigest()
+    if digest(raw) == expected_sha:
+        return True
+    if b'\r\n' in raw or b'\n' not in raw:
+        return False
+    original_crlf = raw.replace(b'\n', b'\r\n')
+    return digest(original_crlf) == expected_sha
+
+
 def load_case(case_id, path_root=ROOT):
     trace=path_root/'traces'/f'{case_id}.csv'
     audit_path=path_root/'audit'/f'{case_id}.json'
     audit=json.loads(audit_path.read_text(encoding='utf-8'))
-    if audit['case_id']!=case_id or sha_file(trace)!=audit['trace_sha256']:
+    if audit['case_id']!=case_id or not _trace_matches_frozen_original(
+            trace, audit['trace_sha256']):
         raise ValueError('R17_TRACE_AUDIT_BINDING_FAILED')
     if audit['plan_sha256']!=sha_file(path_root/'FROZEN_PLAN.json'):
         raise ValueError('R17_PLAN_AUDIT_BINDING_FAILED')

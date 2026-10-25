@@ -1,0 +1,29 @@
+{
+  "schema": "phm.autogen.equipment.v1",
+  "equipment_id": "compressor_fixture",
+  "family": "process_equipment",
+  "time_field": "event_time_utc",
+  "channels": [
+    {
+      "name": "pressure",
+      "modality": "pressure",
+      "unit": "bar",
+      "sampling_hz": null,
+      "available_at_decision": true
+    },
+    {
+      "name": "oil_temperature",
+      "modality": "temperature",
+      "unit": "degC",
+      "sampling_hz": null,
+      "available_at_decision": true
+    },
+    {
+      "name": "motor_current",
+      "modality": "current",
+      "unit": "A",
+      "sampling_hz": null,
+      "available_at_decision": true
+    }
+  ]
+}
