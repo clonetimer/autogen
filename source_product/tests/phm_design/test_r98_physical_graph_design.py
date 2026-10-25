@@ -19,6 +19,7 @@ from phm_design.industrial_contracts.physical_graph_design import (
     generate_graph_source_features, evaluate_physical_graph_study,
 )
 from phm_design.industrial_contracts.design_engine import DesignRejected
+from phm_design.industrial_contracts.contracts import ContractRejected
 from test_r94_torch_like_bridge import SpyTorchLike
 from test_r95_diagnostic_design_engine import RealSklearnProviderContract
 
@@ -172,7 +173,7 @@ def test_real_sklearn_training_after_envelope_and_order_feature_construction():
     ("missing_rpm", "R98_INVALID_OR_MISSING_PER_WINDOW_RPM"),
     ("wrong_rpm_count", "R98_INVALID_OR_MISSING_PER_WINDOW_RPM"),
     ("ramp_rpm", "R98_VARIABLE_SPEED_REQUIRES_ORDER_TRACKING_NOT_IMPLEMENTED"),
-    ("bad_rpm_unit", "R98_FROZEN_DIAGNOSTIC_GRAPH_CHANGED"),
+    ("bad_rpm_unit", "R98_REGISTERED_TACHOMETER_UNIT_MUST_BE_RPM"),
     ("fake_rpm_source", "R98_TACHOMETER_PROVENANCE_REQUIRED"),
     ("inconsistent_clock", "R97_RAW_SAMPLING_RATE_MISMATCH"),
     ("nan_signal", "R97_NONFINITE_OR_INVALID_RAW_SIGNAL"),
