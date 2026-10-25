@@ -99,6 +99,15 @@ def test_real_2x2_rule_organization_by_premise_learning_on_synthetic_source_data
         if "learned_premise" in name:
             assert arm["consequent_ridge_refits"] >= 9
             assert all(item["premise_tuned"] for item in arm["fold_rule_trace"])
+    effects = receipt["source_train_descriptive_mechanism_effects"]
+    assert effects["role"] == "SOURCE_TRAIN_ENVIRONMENT_OOF_ONLY"
+    assert effects["causal_or_generalization_inference_allowed"] is False
+    assert effects["not_independent_and_not_compute_matched"] is True
+    for key in ("accuracy", "worst_environment_class_recall",
+                "healthy_false_alarm"):
+        assert effects["premise_rule_interaction"][key] == pytest.approx(
+            round(effects["rule_growth_effect_with_learned_premise"][key] -
+                  effects["rule_growth_effect_with_frozen_premise"][key], 12))
     assert receipt["fuzzy_mechanism_generalization_benefit_proven"] is False
     assert receipt["blind_test_performed"] is False
     assert receipt["eligible_for_stable"] is False
