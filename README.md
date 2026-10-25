@@ -53,6 +53,14 @@ README_RELEASE_R60.md   Install / recovery / scope guide for the 0.7.0 Stable re
 
 `qualification/` (≈141 MB / 9700+ generated qualification-world artifacts), `__pycache__/`, `failed_attempts/`, and `*.log` build/run logs are excluded via `.gitignore`. The full 900-world qualification evidence package can be regenerated from the release/qualification scripts or obtained as a separate archive; daily install and inference do not require re-running the qualification worlds.
 
+## Cross-equipment research contracts (P1 / Draft)
+
+The generic industrial `EquipmentCard`, `DatasetCard`, and `TrialSpec`
+research contracts, with strictly TRAIN-only design plans, are documented in
+[source_product/docs/R93_EQUIPMENT_DATA_TRIAL_CONTRACTS.md](source_product/docs/R93_EQUIPMENT_DATA_TRIAL_CONTRACTS.md).
+These are **metadata validators**, not trained cross-industry diagnosis
+models, authenticated physical machine inputs, or new 0.7.0 Stable scope.
+
 ## License
 
 No license file is included in this delivery. All rights reserved unless otherwise stated.
