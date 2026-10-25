@@ -101,13 +101,16 @@ def _features_for_recipe(vibration, recipe):
 
 def _derived_cards(equipment, trial, vibration, recipe, companions,
                    count):
-    names = _features_for_recipe(vibration, recipe)
+    generated = _features_for_recipe(vibration, recipe)
+    names = list(generated)
     fused = recipe == RECIPES[3]
     if fused:
+        # Existing registered sensor columns are valid fusion inputs, not
+        # newly allocated names. Only generated columns can collide.
         names += [s["name"] for s in companions]
     equipment_out = deepcopy(equipment)
     existing = {s["name"] for s in equipment_out["channels"]}
-    if existing & set(names):
+    if existing & set(generated):
         _reject("R98_DERIVED_FEATURE_COLLIDES_WITH_REGISTERED_CHANNEL")
     # Speed is only conditioning data, not an unexamined ML feature.
     equipment_out["channels"] = [
