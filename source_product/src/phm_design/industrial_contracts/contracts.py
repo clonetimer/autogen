@@ -171,6 +171,8 @@ def validate_trial(trial, equipment):
             len(labels) != 2):
         _reject("R93_ANOMALY_LABELS_REQUIRE_BINARY_ONTOLOGY")
     candidates = _list(trial["candidate_families"], "families")
+    if any(type(c) is not str for c in candidates):
+        _reject("R93_INVALID_CANDIDATE_FAMILY")
     _unique(candidates, "candidate_families")
     if not set(candidates) <= CANDIDATES:
         _reject("R93_UNREGISTERED_MODEL_FAMILY")
@@ -224,6 +226,8 @@ def validate_dataset(dataset, equipment, trial, *, train_only=False):
     ids = []
     rows = _list(dataset["records"], "records")
     seen_hashes = {}
+    hash_roles = {}
+    session_roles = {}
     entities = defaultdict(list)
     roles = Counter()
     groups = defaultdict(set)
@@ -237,7 +241,7 @@ def validate_dataset(dataset, equipment, trial, *, train_only=False):
         _id(row["session_id"], "session_id")
         _id(row["environment_id"], "environment_id")
         role = row["role"]
-        if role not in SUPPORTED_ROLES:
+        if type(role) is not str or role not in SUPPORTED_ROLES:
             _reject("R93_UNKNOWN_DATA_ROLE")
         if train_only and role != "TRAIN":
             _reject("R93_PROTECTED_ROLE_IN_DESIGN_WORKER")
@@ -245,6 +249,13 @@ def validate_dataset(dataset, equipment, trial, *, train_only=False):
         first_owner = seen_hashes.setdefault(sha, phys)
         if first_owner != phys:
             _reject("R93_SAME_SIGNAL_BYTES_ASSIGNED_TO_DIFFERENT_DEVICES")
+        if sha in hash_roles and hash_roles[sha] != role:
+            _reject("R93_SAME_RAW_SIGNAL_CROSSES_DATA_ROLES")
+        hash_roles[sha] = role
+        key = (phys, row["session_id"])
+        if key in session_roles and session_roles[key] != role:
+            _reject("R93_ACQUISITION_SESSION_CROSSES_DATA_ROLES")
+        session_roles[key] = role
         start = _utc(row["start_utc"], "start")
         end = _utc(row["end_utc"], "end")
         if end <= start:
