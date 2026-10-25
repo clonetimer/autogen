@@ -29,13 +29,16 @@ class GuardedDesignTimeout(RuntimeError):
         super().__init__("HARD_WALL_TIMEOUT")
 
 
-def _worker(conn, raw, records, acceptance, selection_rule="legacy"):
+def _worker(conn, raw, records, acceptance, selection_rule="legacy",
+            family_search_mode=None, family_proposals=3):
     # This callable is top-level for Windows and always uses the spawn context.
     from .design_engine import IndustrialDesignRejected, run_design
 
     try:
         model = run_design(raw, records, acceptance=acceptance,
-                           _guarded_execution=True, selection_rule=selection_rule)
+                           _guarded_execution=True, selection_rule=selection_rule,
+                           family_search_mode=family_search_mode,
+                           family_proposals=family_proposals)
         if selection_rule == "r83_matched_train_loss":
             # Do not transfer live Torch storage descriptors across process exit.
             # Exchange bounded, self-checking local research artifact bytes.
@@ -100,7 +103,8 @@ def _invoke_worker(target, args, limit):
 
 
 def run_design_guarded(task_spec, records, *, acceptance=None,
-                       selection_rule="legacy"):
+                       selection_rule="legacy", family_search_mode=None,
+                       family_proposals=3):
     """Train in a separate process under an opt-in HARD wall time bound.
 
     The TaskSpec MUST declare design.budget.max_wall_seconds. This is a wall
@@ -123,7 +127,8 @@ def run_design_guarded(task_spec, records, *, acceptance=None,
     if selection_rule not in ("legacy", "r83_matched_train_loss"):
         raise ValueError("UNREGISTERED_DESIGN_SELECTION_RULE")
     status, result = _invoke_worker(
-        _worker, (raw, records, acceptance, selection_rule), limit)
+        _worker, (raw, records, acceptance, selection_rule,
+                  family_search_mode, family_proposals), limit)
     if status == "refused":
         raise IndustrialDesignRejected(result)
     if status == "delivered_checked_bytes":
