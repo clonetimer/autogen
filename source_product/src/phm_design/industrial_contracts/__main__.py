@@ -7,8 +7,25 @@ from pathlib import Path
 from .contracts import validate_dataset, compile_source_plan, ContractRejected
 
 
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ContractRejected("R93_DUPLICATE_JSON_PROPERTY:" + key)
+        result[key] = value
+    return result
+
+
 def _read(path):
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    data = Path(path).read_bytes()
+    if len(data) > 16 * 1024 * 1024:
+        raise ContractRejected("R93_OVERSIZED_MANIFEST")
+    try:
+        return json.loads(data.decode("utf-8"), object_pairs_hook=_unique_object,
+                          parse_constant=lambda x: (_ for _ in ()).throw(
+                              ContractRejected("R93_NONFINITE_JSON_NUMBER")))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ContractRejected("R93_INVALID_JSON_DOCUMENT") from exc
 
 
 def main(argv=None):
@@ -23,9 +40,9 @@ def main(argv=None):
     destination = Path(a.output)
     if destination.exists():
         p.error("R93_REFUSE_TO_OVERWRITE_EXISTING_AUDIT")
-    equipment, dataset, trial = (_read(a.equipment),
-                                 _read(a.dataset), _read(a.trial))
     try:
+        equipment, dataset, trial = (_read(a.equipment),
+                                     _read(a.dataset), _read(a.trial))
         if a.command == "audit":
             result = validate_dataset(dataset, equipment, trial)
         else:
