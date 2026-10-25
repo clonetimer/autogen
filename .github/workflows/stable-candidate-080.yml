@@ -74,12 +74,22 @@ jobs:
             python-version: '3.12'
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout pinned publicly readable REAL torch_like provider
+      - name: Require read-only access to PRIVATE torch_like repository
+        shell: bash
+        env:
+          TORCH_LIKE_READ_TOKEN: ${{ secrets.TORCH_LIKE_READ_TOKEN }}
+        run: |
+          if [ -z "$TORCH_LIKE_READ_TOKEN" ]; then
+            echo "::error::RC BLOCKED: clonetimer/torch_like is PRIVATE. Configure autogen Actions secret TORCH_LIKE_READ_TOKEN as a fine-grained read-only contents token with access to torch_like. Never supply it in chat, logs or source."
+            exit 1
+          fi
+      - name: Checkout PINNED PRIVATE REAL torch_like provider
         uses: actions/checkout@v4
         with:
           repository: clonetimer/torch_like
           ref: 580133dddf61cce7c354c648d4885e6caec99418
           path: external/torch_like
+          token: ${{ secrets.TORCH_LIKE_READ_TOKEN }}
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
@@ -126,9 +136,10 @@ jobs:
       - name: Install pinned full CPU regression toolchain
         run: python -m pip install numpy==2.3.5 scikit-learn==1.8.0 optuna==4.8.0 scipy pytest==9.0.2
       - name: Full previously qualified and newly added Python test suite
-        run: python -m pytest -q source_product/tests/phm_design
+        working-directory: source_product
+        run: python -m pytest -q tests/phm_design
         env:
-          PYTHONPATH: source_product/src
+          PYTHONPATH: src
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
           OMP_NUM_THREADS: '2'
           MKL_NUM_THREADS: '2'
