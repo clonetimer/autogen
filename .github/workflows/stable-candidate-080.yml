@@ -1,0 +1,134 @@
+name: Stable Candidate 0.8.0rc1 - Distribution and Integration Gate
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'source_product/README.md'
+      - 'source_product/pyproject.toml'
+      - 'source_product/src/**'
+      - 'source_product/scripts/stable_candidate_smoke.py'
+      - 'source_product/tests/**'
+      - 'source_product/docs/RC_080_RELEASE_SCOPE.md'
+      - '.github/workflows/stable-candidate-080.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-dist:
+    name: Build and inspect candidate wheel/sdist
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install isolated build tools
+        run: python -m pip install build twine
+      - name: Build immutable source distribution and wheel (RC, not public release)
+        run: python -m build --sdist --wheel source_product --outdir dist
+      - name: Check archive metadata and declared version
+        run: |
+          python -m twine check dist/*
+          python - <<'PY'
+          import pathlib, tarfile, zipfile
+          wheels=list(pathlib.Path("dist").glob("phm_design-0.8.0rc1-*.whl"))
+          sources=list(pathlib.Path("dist").glob("phm_design-0.8.0rc1.tar.gz"))
+          assert len(wheels)==1 and len(sources)==1, (wheels,sources)
+          with zipfile.ZipFile(wheels[0]) as z:
+              names=z.namelist()
+              assert "phm_design/industrial_contracts/design_engine.py" in names
+              assert "phm_design/industrial_contracts/physical_graph_design.py" in names
+              assert "phm_design/industrial_contracts/design_review.py" in names
+              assert "phm_design/industrial_contracts/independent_review.py" in names
+          with tarfile.open(sources[0], "r:gz") as z:
+              names=z.getnames()
+              assert any(n.endswith("/src/phm_design/industrial_contracts/design_cli.py") for n in names)
+          PY
+      - name: Record candidate archive bytes SHA256
+        run: sha256sum dist/* | tee dist/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: autogen-phm-design-0.8.0rc1-unpublished-candidate
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  clean-wheel-genuine-provider:
+    name: Clean wheel + REAL torch_like / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    needs: build-dist
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: windows-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout pinned publicly readable REAL torch_like provider
+        uses: actions/checkout@v4
+        with:
+          repository: clonetimer/torch_like
+          ref: 580133dddf61cce7c354c648d4885e6caec99418
+          path: external/torch_like
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: autogen-phm-design-0.8.0rc1-unpublished-candidate
+          path: dist
+      - name: Install exact pinned CPU PyTorch
+        run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install remaining pinned package dependencies and real provider prerequisites
+        run: python -m pip install numpy==2.3.5 scikit-learn==1.8.0 scipy pandas PyYAML joblib pytest==9.0.2
+      - name: Install real reviewed torch_like source pinned by exact commit
+        run: python -m pip install --no-deps ./external/torch_like
+      - name: Install candidate ONLY from built wheel, never editable source
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess, sys
+          wheels = list(Path("dist").glob("phm_design-0.8.0rc1-*.whl"))
+          assert len(wheels) == 1, wheels
+          subprocess.check_call([sys.executable, "-m", "pip",
+                                 "install", "--no-deps", "--force-reinstall", str(wheels[0])])
+      - name: Check installed dependency compatibility
+        run: python -m pip check
+      - name: Run installed-wheel CLI and actual torch_like source-train design loop
+        run: python source_product/scripts/stable_candidate_smoke.py
+      - name: Run four ACTUAL torch_like native estimators, artifact saved and reloaded
+        run: python -m pytest -q source_product/tests/phm_design/test_r94_torch_like_bridge.py -k real_torch_like
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+
+  previous-stable-regression:
+    name: Full previous Stable and new tests / Linux CPU
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install exact pinned CPU PyTorch
+        run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install pinned full CPU regression toolchain
+        run: python -m pip install numpy==2.3.5 scikit-learn==1.8.0 optuna==4.8.0 scipy pytest==9.0.2
+      - name: Full previously qualified and newly added Python test suite
+        run: python -m pytest -q source_product/tests/phm_design
+        env:
+          PYTHONPATH: source_product/src
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+          OMP_NUM_THREADS: '2'
+          MKL_NUM_THREADS: '2'
