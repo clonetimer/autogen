@@ -1,0 +1,48 @@
+name: R87 Learnable Fuzzy Premises and Rule Organization Ablation
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r87_premise_learning.py'
+      - 'source_product/src/phm_design/industrial/r86_neuro_fuzzy.py'
+      - 'source_product/src/phm_design/industrial/r86_fuzzy_source_study.py'
+      - 'source_product/tests/phm_design/test_r87_fuzzy_premise_ablation.py'
+      - 'source_product/tests/phm_design/test_r86_neuro_fuzzy.py'
+      - 'source_product/README_R87.md'
+      - '.github/workflows/r87-fuzzy-premise-ablation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  four-cell-ablation:
+    name: Four-cell Gaussian TSK ablation ${{ matrix.os }} Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install numpy scikit-learn pytest
+      - name: Actual TRAIN-only fuzzy premise fits, numerical gradients, and legacy guard
+        run: >-
+          python -m pytest -q
+          tests/phm_design/test_r86_neuro_fuzzy.py
+          tests/phm_design/test_r87_fuzzy_premise_ablation.py
+        env:
+          PYTHONPATH: src
