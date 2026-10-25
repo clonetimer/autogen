@@ -33,7 +33,7 @@ jobs:
         run: python -m build --sdist --wheel source_product --outdir dist
       - name: Check archive metadata and declared version
         run: |
-          python -m twine check dist/*
+          python -m twine check --strict dist/*
           python - <<'PY'
           import pathlib, tarfile, zipfile
           wheels=list(pathlib.Path("dist").glob("phm_design-0.8.0rc1-*.whl"))
