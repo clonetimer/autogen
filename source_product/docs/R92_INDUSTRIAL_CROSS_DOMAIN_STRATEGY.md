@@ -69,14 +69,15 @@
 ### 3.3 标准对齐（不是合规认证）
 
 - `ISO 13379-1:2025` 指导机器状态监测与诊断技术选型：重点是正确选择任务与诊断技术，而非固定“最先进”算法。
-- `ISO 17359:2025` 的通用监测流程强调故障模式、监测症状、报警、诊断、预测和诊断可信度，应指导 TaskSpec 和证据报告的章节结构。
+- `ISO 17359:2018` 是截至 2026-10 已确认仍为现行版的通用状态监测指南，强调监测计划与诊断流程；`ISO 13381-1:2025` 单独面向预测/剩余寿命过程与要求。应将分类诊断与预测建模拆成不同合同。
 - OPC UA 为未来工业接入和语义互操作提供可行方向；**当前暂不接入生产写控制接口**，以后采用单独现场安全评审、优先只读采集与离线缓存。
 - NIST 对制造业诊断的数据基础设施可信性、复杂设备-系统层级关系以及实际停机/品质代价均有强调，因此不能只优化离线准确率。
 
 参考原始来源：
 
 - [ISO 13379-1:2025](https://www.iso.org/cms/live/live/en/sites/isoorg/contents/data/standard/08/80/88027.html)
-- [ISO 17359:2025](https://www.iso.org/standard/iso-17359.html)
+- [ISO 17359:2018](https://www.iso.org/standard/71194.html)
+- [ISO 13381-1:2025（预测与 RUL）](https://www.iso.org/standard/88029.html)
 - [NIST Monitoring, Diagnostics and Prognostics](https://www.nist.gov/programs-projects/monitoring-diagnostics-and-prognostics-manufacturing-operations)
 - [OPC UA Core / Information Model](https://reference.opcfoundation.org/specs/OPC-10000-1/full)
 - [Paderborn University Bearing DataCenter](https://mb.uni-paderborn.de/en/kat/research/bearing-datacenter/data-sets-and-download)
@@ -124,7 +125,7 @@
 | **P0 / R92** | **立即** | 整理 main/Draft 能力盘点、证据层级、禁用夸大声明的检查器、路线与接口职责 | R92 独立基于 `main`，不能捆绑其他科研 PR；三平台 CI；限定 R60 Stable 不变 |
 | **P1 / R93** | **最高** | 统一 EquipmentCard + DatasetCard + TrialSpec，并将 R80/R81 有价值接口拆解为可小步合并的模块 | 两种完全不同设备样例、物理分组/单位/角色的 fail-closed 合同测试；旧模型回归通过 |
 | **P2 / R94** | **最高** | 真实设备**诊断**和真实设备**异常**各一套数据适配：Paderborn/CWRU 与 MetroPT-3；不下载原始数据入 Git | 官方真实字节可复现、事件/设备身份复核、无同设备窗口泄漏；身份不足必须拒绝独立结论 |
-| **P3 / R95** | **最高** | 有限但公平的算法候选器：统计、线性、树、浅层 NN + 可选模糊机制，统一训练/选择/冻结 | 동일 TaskSpec 和观察通道、相同预声明 group-fold、严格预算账本、重复种子、独立验证；比较允许负结果 |
+| **P3 / R95** | **最高** | 有限但公平的算法候选器：统计、线性、树、浅层 NN + 可选模糊机制，统一训练/选择/冻结 | 同一 TaskSpec 和观察通道、相同预声明 group-fold、严格预算账本、重复种子、独立验证；比较允许负结果 |
 | **P4 / R96** | 中高 | 算法包导出、版本/依赖/资源指标、AAS/torch_like 可选适配 | 至少 Windows/Linux 两端进程复现；输入输出契约、禁用真值列、缺传感器时拒答、可追溯报告 |
 | **P5 / 后续** | 中 | 非程序员任务向导/报告审阅/审批流程；先只读工业系统对接 | 用户无需修改代码能从配置→训练→评估→导出；权限隔离、资源安全、错误可解释。在线工业资格需**另行现场验收** |
 
