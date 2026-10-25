@@ -1,0 +1,22 @@
+{
+  "schema": "phm.autogen.equipment.v1",
+  "equipment_id": "bearing_fixture",
+  "family": "rotating_machinery",
+  "time_field": "sample_time_s",
+  "channels": [
+    {
+      "name": "vibration",
+      "modality": "vibration",
+      "unit": "UNVERIFIED",
+      "sampling_hz": 48000,
+      "available_at_decision": true
+    },
+    {
+      "name": "motor_current",
+      "modality": "current",
+      "unit": "A",
+      "sampling_hz": 12000,
+      "available_at_decision": true
+    }
+  ]
+}
