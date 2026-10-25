@@ -1,10 +1,9 @@
 name: R83l Sealed Original Basilisk 54-case RW Source Evidence Audit
 
-# First research proof run only, then seal and require manual repeat.
+# ORIGINAL SHA-backed real-source audit #40157485052 has passed.
+# Subsequent doc/PR changes must not retrigger reanalysis and cannot mutate
+# the original metadata-shadow finding. Explicit workflow_dispatch only.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/r83l-sealed-real-basilisk-54-source.yml'
   workflow_dispatch:
 
 permissions:
