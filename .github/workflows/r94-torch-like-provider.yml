@@ -43,6 +43,9 @@ jobs:
           PYTHONPATH: src
 
   pinned-real-provider-integration:
+    # Private cross-repository checkout requires explicit user-provisioned
+    # readonly TORCH_LIKE_READ_TOKEN. Never pretend spy tests are real-provider tests.
+    if: github.event_name == 'workflow_dispatch'
     name: Real torch_like factory, runtime, native sklearn, trusted persistence
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -57,6 +60,7 @@ jobs:
           repository: clonetimer/torch_like
           ref: 1e603915896e33fd9f326073c42a477718166b68
           path: source_product/_r94_provider/torch_like
+          token: ${{ secrets.TORCH_LIKE_READ_TOKEN }}
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
