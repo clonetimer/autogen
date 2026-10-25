@@ -265,3 +265,46 @@ def test_actual_sklearn_algorithms_execute_grouped_train_only_design():
     assert all(x["source_oof_record_accuracy"] in (0, .25, .5, .75, 1)
                for x in result["evaluated_candidates"])
     assert result["selected_design_not_independently_validated"] is True
+
+
+
+def test_operator_proposes_and_locks_study_as_new_file_without_any_fit(tmp_path):
+    from phm_design.industrial_contracts.design_cli import main
+    out = tmp_path / "frozen-r95-study.json"
+    common = ["--equipment", str(EX/"bearing_equipment.json"),
+              "--train-manifest", str(EX/"bearing_train_only.json"),
+              "--trial", str(EX/"bearing_trial.json")]
+    assert main(["propose", *common, "--output", str(out)]) == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["training_already_run"] is False
+    assert payload["independent_validation_or_final_accessed"] is False
+    assert len(payload["study_sha256"]) == 64
+    with pytest.raises(SystemExit):
+        main(["propose", *common, "--output", str(out)])
+    reject = tmp_path / "refused.json"
+    with pytest.raises(SystemExit):
+        main(["propose",
+              "--equipment", str(EX/"bearing_equipment.json"),
+              "--train-manifest", str(EX/"bearing_trusted_audit.json"),
+              "--trial", str(EX/"bearing_trial.json"),
+              "--output", str(reject)])
+    assert not reject.exists()
+
+
+def test_operator_refuses_unarchived_study_sha_before_loading_provider(
+        tmp_path):
+    from phm_design.industrial_contracts.design_cli import main
+    eq, train, trial, features = data("bearing")
+    frozen = propose_diagnostic_study(eq, train, trial)
+    study_path = tmp_path/"study.json"
+    study_path.write_text(json.dumps(frozen))
+    with pytest.raises(SystemExit):
+        main(["source-study",
+              "--equipment", str(EX/"bearing_equipment.json"),
+              "--train-manifest", str(EX/"bearing_train_only.json"),
+              "--trial", str(EX/"bearing_trial.json"),
+              "--source-features", str(EX/"bearing_train_features.json"),
+              "--frozen-study", str(study_path),
+              "--expected-study-sha256", "0"*64,
+              "--output", str(tmp_path/"no-result.json")])
+    assert not (tmp_path/"no-result.json").exists()
