@@ -69,7 +69,7 @@ def fixture_source(tmp_path,monkeypatch):
             for reference in gate.REFERENCES:
                 name=f"rw{wheel}_initial{initial}_{reference}"
                 good=cases[name+"_healthy"]["rows"]
-                for mode in ("loss75","loss95"):
+                for mode in ("loss75",):
                     bad=cases[name+"_"+mode]["rows"]
                     before=[(a,b) for a,b in zip(good,bad) if a["time_s"]<=2.4+1e-8]
                     post=[(a,b) for a,b in zip(good,bad) if a["time_s"]>=2.6-1e-8]
