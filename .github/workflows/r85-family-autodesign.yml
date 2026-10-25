@@ -1,0 +1,57 @@
+name: R85 Industrial Multi-family AutoDesign
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r85_family_policy.py'
+      - 'source_product/src/phm_design/industrial/design_engine.py'
+      - 'source_product/src/phm_design/industrial/resource_guard.py'
+      - 'source_product/tests/phm_design/test_r85_family_policy.py'
+      - 'source_product/tests/phm_design/test_r85_family_integration.py'
+      - '.github/workflows/r85-family-autodesign.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-contract:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install 'pytest>=8,<10'
+      - name: Adversarial family-feedback policy (synthetic-only)
+        run: python -m pytest -q source_product/tests/phm_design/test_r85_family_policy.py
+        env:
+          PYTHONPATH: source_product/src
+
+  real-training-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e '.[dev]'
+        working-directory: source_product
+      - name: Actual CPU sklearn/Torch training and legacy R81 regression
+        run: >-
+          python -m pytest -q
+          tests/phm_design/test_r85_family_integration.py
+          tests/phm_design/test_r81a_unified_design_engine.py
+        working-directory: source_product
