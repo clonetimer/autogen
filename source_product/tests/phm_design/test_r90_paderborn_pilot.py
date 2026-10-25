@@ -160,3 +160,40 @@ def test_premise_data_cannot_be_null_nan_or_outside_single_condition(
         short = tmp_path / "invalid-raw.mat"
         savemat(short, {"Name": "vibration_1", "Data": np.ones(100)})
         read_vibration_mat(short)
+
+
+def test_operator_cli_freeze_then_separate_review_with_archived_sha(
+        paderborn_fixture, tmp_path):
+    from phm_design.industrial.r90_cli import main
+    root, _, _, _ = paderborn_fixture
+    new_frozen = tmp_path / "independent_cli_frozen"
+    train_receipt = tmp_path / "train_audit.json"
+    task_spec = EXAMPLES / "paderborn_r90_binary_pilot.json"
+    assert main(["freeze", "--raw-root", str(root),
+                 "--frozen-dir", str(new_frozen),
+                 "--task-spec", str(task_spec), "--receipt",
+                 str(train_receipt), "--max-rules", "2",
+                 "--premise-steps", "2"]) == 0
+    train_doc = json.loads(train_receipt.read_text(encoding="utf-8"))
+    assert train_doc["validation_accessed"] is False
+    sha = train_doc["frozen"]["manifest_sha256"]
+    assert (new_frozen / "manifest.json").is_file()
+    wrong = tmp_path / "refused_review.json"
+    with pytest.raises(TaskSpecRejected, match="R90_MANIFEST_HASH_MISMATCH"):
+        main(["review", "--raw-root", str(root),
+              "--frozen-dir", str(new_frozen),
+              "--manifest-sha", "0"*64, "--receipt", str(wrong)])
+    assert not wrong.exists()
+    val_receipt = tmp_path / "exploratory_validation.json"
+    assert main(["review", "--raw-root", str(root),
+                 "--frozen-dir", str(new_frozen),
+                 "--manifest-sha", sha, "--receipt",
+                 str(val_receipt)]) == 0
+    val_doc = json.loads(val_receipt.read_text(encoding="utf-8"))
+    assert val_doc["single_heldout_condition"] == "N15_M07_F04"
+    assert not val_doc["eligible_for_stable"]
+    with pytest.raises(SystemExit):
+        main(["review", "--raw-root", str(root),
+              "--frozen-dir", str(new_frozen),
+              "--manifest-sha", sha, "--receipt",
+              str(val_receipt)])
