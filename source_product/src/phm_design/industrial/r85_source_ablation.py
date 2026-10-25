@@ -13,7 +13,8 @@ from typing import Mapping, Sequence
 from .design_engine import DesignAcceptance, IndustrialDesignRejected
 from .resource_guard import GuardedDesignTimeout, run_design_guarded
 from .r85_family_policy import validate_pool
-from .taskspec import TaskSpec, TaskSpecRejected, compile_task_spec
+from .taskspec import (TaskSpec, TaskSpecRejected, compile_task_spec,
+                       validate_observations)
 
 
 def _capture(spec, records, *, mode, slots, acceptance):
@@ -69,7 +70,18 @@ def run_r85_source_ablation(task_spec: Mapping | TaskSpec,
         raise ValueError("R85_INVALID_ABLATION_PROPOSAL_BUDGET")
     raw = (task_spec.to_dict() if isinstance(task_spec, TaskSpec)
            else TaskSpec.from_dict(task_spec).to_dict())
-    plan = compile_task_spec(raw)
+    if not isinstance(train_records, (tuple, list)) or not train_records:
+        raise TaskSpecRejected("EMPTY_R85_ABLATION_TRAIN_RECORDS")
+    metadata = []
+    for record in train_records:
+        if (not isinstance(record, Mapping) or
+                set(record) != {"measurements", "metadata"} or
+                not isinstance(record["metadata"], Mapping)):
+            raise TaskSpecRejected("INVALID_R85_ABLATION_SOURCE_RECORD")
+        validate_observations(raw, record["measurements"])
+        metadata.append(dict(record["metadata"]))
+    # Validate roles/group support before either spawned training worker.
+    plan = compile_task_spec(raw, train_manifest=metadata)
     validate_pool(plan["candidate_grid"])
     if not plan["budget"].get("max_wall_seconds"):
         raise TaskSpecRejected("R85_ABLATION_REQUIRES_HARD_WALL")
