@@ -1,0 +1,82 @@
+{
+  "schema": "phm.industrial.task.v0",
+  "id": "paderborn.r90.single_unseen_condition_binary",
+  "equipment": {
+    "family": "rolling_bearing",
+    "adapter": "paderborn_verified_vibration_rms_r90"
+  },
+  "task": {
+    "kind": "fault_classification",
+    "decision_mode": "offline_trajectory",
+    "allow_unknown": false,
+    "multifault": false,
+    "healthy_label": "HEALTHY",
+    "labels": [
+      "HEALTHY",
+      "FAULT"
+    ],
+    "structure": {
+      "components": [
+        "bearing"
+      ],
+      "mechanisms": [
+        "bearing_fault"
+      ],
+      "class_attributes": {
+        "FAULT": {
+          "component": "bearing",
+          "mechanism": "bearing_fault"
+        }
+      }
+    }
+  },
+  "observations": {
+    "time": {
+      "field": "nominal_elapsed_s",
+      "sampling": "fixed"
+    },
+    "healthy_prefix_policy": "not_assumed",
+    "channels": [
+      {
+        "name": "vibration_rms",
+        "role": "sensor",
+        "unit": "raw_source_unit_unverified",
+        "available_at_decision": true
+      },
+      {
+        "name": "vibration_peak_abs",
+        "role": "sensor",
+        "unit": "raw_source_unit_unverified",
+        "available_at_decision": true
+      }
+    ]
+  },
+  "data": {
+    "role": "TRAIN",
+    "group_keys": [
+      "bearing_instance_id"
+    ],
+    "environment_axes": [
+      "operating_condition"
+    ]
+  },
+  "design": {
+    "candidate_max": 1,
+    "compare": [
+      "linear"
+    ],
+    "objectives": [
+      "ERM"
+    ],
+    "allow_refusal": true,
+    "budget": {
+      "max_fits": 48,
+      "max_cpu_seconds": 3600,
+      "seed": 9001
+    }
+  },
+  "deployment": {
+    "causal_online": false,
+    "prototype_only": true
+  }
+}
