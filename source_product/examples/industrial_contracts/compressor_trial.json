@@ -14,8 +14,7 @@
   ],
   "healthy_label": "NORMAL",
   "candidate_families": [
-    "constant",
-    "statistical"
+    "isolation_forest"
   ],
   "validation_target": "future_same_device",
   "budget": {
