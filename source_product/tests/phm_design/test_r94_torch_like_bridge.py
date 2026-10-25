@@ -97,7 +97,8 @@ def test_native_provider_owns_fit_predict_and_no_duplicate_math(
         candidate, device, algorithm):
     eq, train, trial, features, incoming = fixture(device)
     if candidate in {"tree", "random_forest"}:
-        trial["candidate_families"].append(candidate)
+        if candidate not in trial["candidate_families"]:
+            trial["candidate_families"].append(candidate)
     provider = SpyTorchLike()
     bridge = TorchLikeTabularCandidate(candidate, provider=provider)
     assert bridge.fit(eq, train, trial, features) is bridge
@@ -162,7 +163,8 @@ def test_never_forward_metadata_or_nonfinite_measurements_to_native_predict(
 
 def test_wrong_task_or_unavailable_implementation_must_fail_closed():
     eq, train, trial, features, _ = fixture("bearing")
-    trial["candidate_families"].append("statistical")
+    if "statistical" not in trial["candidate_families"]:
+        trial["candidate_families"].append("statistical")
     with pytest.raises(ProviderRefused, match="R94_UNSUPPORTED_PROVIDER_TASK_AND_FAMILY"):
         TorchLikeTabularCandidate("statistical", provider=SpyTorchLike()).fit(
             eq, train, trial, features)
@@ -217,7 +219,8 @@ def test_real_torch_like_native_estimator_runtime_fit_and_replay(
     tl = pytest.importorskip("torch_like")
     eq, train, trial, features, incoming = fixture(device)
     if candidate in ("tree", "random_forest"):
-        trial["candidate_families"].append(candidate)
+        if candidate not in trial["candidate_families"]:
+            trial["candidate_families"].append(candidate)
     m = TorchLikeTabularCandidate(candidate, provider=tl)
     m.fit(eq, train, trial, features)
     predictions = m.predict(incoming)
