@@ -67,7 +67,7 @@ def run_self_organizing_design_guarded(
         raise ValueError("INVALID_EVOLUTION_POLICY_TYPE")
     if seed_schedule not in ("legacy", "r83_matched_train"):
         raise ValueError("UNREGISTERED_SELF_ORGANIZING_SEED_SCHEDULE")
-    if proposal_mode not in ("feedback", "predeclared_static"):
+    if proposal_mode not in ("feedback", "feedback_pareto", "predeclared_static"):
         raise ValueError("UNREGISTERED_SELF_ORGANIZING_PROPOSAL_MODE")
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_DESIGN_ACCEPTANCE_TYPE")

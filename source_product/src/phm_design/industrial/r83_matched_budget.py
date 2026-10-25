@@ -170,6 +170,7 @@ def run_matched_source_train_study(
         max_candidates=ARM_COUNT, epochs=8, max_parameters=30_000),
     acceptance: DesignAcceptance = DesignAcceptance(),
     artifacts_root: str | Path | None = None,
+    include_pareto: bool = False,
 ) -> dict:
     """Run two portfolio designs on verified TRAIN-only records.
 
@@ -180,6 +181,8 @@ def run_matched_source_train_study(
     """
     if not isinstance(acceptance, DesignAcceptance):
         raise ValueError("INVALID_ACCEPTANCE_POLICY")
+    if type(include_pareto) is not bool:
+        raise ValueError("INVALID_R84_PARETO_ABLATION_SWITCH")
     raw, env_count, fits, class_support = _preflight(task_spec, records, policy)
     sensor_fields = [raw["observations"]["time"]["field"]] + [
         c["name"] for c in raw["observations"]["channels"]]
@@ -257,6 +260,7 @@ def run_matched_source_train_study(
         "source_train_test_or_final_accessed": False,
         "independent_qualification": False,
         "model_delivered_to_deployment": False,
+        "r84_pareto_ablation_enabled": include_pareto,
         "arms": {},
         "ablation": {
             "comparison": "STATIC_TOPOLOGY_VS_FEEDBACK_TOPOLOGY",
@@ -265,11 +269,14 @@ def run_matched_source_train_study(
             "same_neural_training_epochs": True,
             "equal_flops_or_parameter_count": False,
             "only_adaptive_arm_uses_source_oof_to_propose_third_genome": True,
+            "pareto_topology_search_is_opt_in": include_pareto,
+            "same_three_candidate_slots_for_pareto": True if include_pareto else None,
+            "compute_equalized_between_topologies": False,
         },
     }
     if frozen_root is not None:
         frozen_root.mkdir(parents=True)
-    for name, spec, executor in (
+    study_arms = [
         ("fixed_portfolio", fixed, lambda: run_design_guarded(
             fixed, records, acceptance=acceptance,
             selection_rule="r83_matched_train_loss")),
@@ -281,7 +288,14 @@ def run_matched_source_train_study(
             evolved, records, policy=policy, acceptance=acceptance,
             seed_schedule="r83_matched_train",
             proposal_mode="feedback")),
-    ):
+    ]
+    if include_pareto:
+        study_arms.append(("self_organizing_pareto", evolved, lambda:
+            run_self_organizing_design_guarded(
+                evolved, records, policy=policy, acceptance=acceptance,
+                seed_schedule="r83_matched_train",
+                proposal_mode="feedback_pareto")))
+    for name, spec, executor in study_arms:
         started = time.monotonic()
         artifact = None
         try:
@@ -316,8 +330,11 @@ def run_matched_source_train_study(
             "comparable_cpu_gpu_compute": False,
         }
         output["arms"][name] = arm_result
-    output["complete_three_arm_comparison"] = set(output["arms"]) == {
-        "fixed_portfolio", "static_topology", "self_organizing"}
+    baseline_arm_names = {"fixed_portfolio", "static_topology", "self_organizing"}
+    output["complete_three_arm_comparison"] = baseline_arm_names.issubset(output["arms"])
+    output["complete_four_arm_pareto_comparison"] = (
+        include_pareto and set(output["arms"]) ==
+        baseline_arm_names | {"self_organizing_pareto"})
     # Historical field is kept only for compatibility with older regression
     # consumers, not as a two-arm scientific interpretation.
     output["complete_two_arm_comparison"] = output["complete_three_arm_comparison"]
@@ -340,6 +357,9 @@ def run_matched_source_train_study(
         "statistically_independent_performance_estimate": False,
         "source_train_comparison_allowed": bool(source_complete),
         "independent_generalization_claim_allowed": False,
+        "r84_pareto_vs_static_neural_source_comparison": (
+            bool(source_complete) and include_pareto),
+        "r84_additional_arm_has_equal_slots_and_fits_not_equal_flops": include_pareto,
         "minimum_observed_physical_groups_per_regime_class": min(
             min(classes.values()) for classes in class_support.values()),
         "minimum_recommended_groups_for_confirmatory_experiment": 5,
