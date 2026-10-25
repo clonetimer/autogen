@@ -21,6 +21,7 @@ from .design_engine import (
     _matched_train_loss,
 )
 from .taskspec import TaskSpec, TaskSpecRejected, compile_task_spec, validate_observations
+from .r84_pareto_search import propose_pareto, METHOD as R84_PARETO_METHOD
 from ..task_candidate_registry import TorchTaskEstimator, deployment_sequence
 
 
@@ -144,6 +145,21 @@ def propose_genome(history: Sequence[Mapping], visited: set[str]) -> tuple[Netwo
             if child.digest not in visited:
                 return child, parent["genome_sha256"]
     raise ValueError("EXHAUSTED_TOPOLOGY_NEIGHBORHOOD")
+
+
+
+def propose_genome_pareto(history: Sequence[Mapping],
+                          visited: set[str]) -> tuple[NetworkGenome, str | None]:
+    """Opt-in multiobjective TRAIN-only proposal, never independent evaluation."""
+    seeds = (NetworkGenome(), NetworkGenome(16, 2, 3, "mean_max", True))
+    for seed in seeds:
+        if seed.digest not in visited:
+            return seed, None
+    child, parent = propose_pareto(
+        history, visited,
+        neighbors=lambda genome: [
+            asdict(x) for x in NetworkGenome(**genome).neighbors()])
+    return NetworkGenome(**child), parent
 
 
 def _metrics(actual: np.ndarray, predicted: np.ndarray, env: np.ndarray,
@@ -273,7 +289,7 @@ def run_self_organizing_design(
         raise ValueError("INVALID_SELF_ORGANIZING_ARGUMENTS")
     if seed_schedule not in ("legacy", "r83_matched_train"):
         raise ValueError("UNREGISTERED_SELF_ORGANIZING_SEED_SCHEDULE")
-    if proposal_mode not in ("feedback", "predeclared_static"):
+    if proposal_mode not in ("feedback", "feedback_pareto", "predeclared_static"):
         raise ValueError("UNREGISTERED_SELF_ORGANIZING_PROPOSAL_MODE")
     if proposal_mode == "predeclared_static" and policy.max_candidates != 3:
         raise ValueError("STATIC_TOPOLOGY_REQUIRES_EXACTLY_THREE_CANDIDATES")
@@ -341,6 +357,7 @@ def run_self_organizing_design(
         "seed": budget["seed"],
         "seed_schedule": seed_schedule,
         "proposal_mode": proposal_mode,
+        "pareto_proposal_method": (R84_PARETO_METHOD if proposal_mode == "feedback_pareto" else None),
         "budget": budget,
         "attempts": [],
         "target_feedback_used": False,
@@ -364,6 +381,8 @@ def run_self_organizing_design(
             refuse("SEARCH_CPU_BUDGET_EXHAUSTED")
         if proposal_mode == "predeclared_static":
             genome, parent = STATIC_R83_GENOMES[trial], None
+        elif proposal_mode == "feedback_pareto":
+            genome, parent = propose_genome_pareto(receipt["attempts"], visited)
         else:
             genome, parent = propose_genome(receipt["attempts"], visited)
         visited.add(genome.digest)
@@ -399,6 +418,7 @@ def run_self_organizing_design(
             "parent_genome_sha256": parent,
             "proposal": ("PREDECLARED_STATIC" if proposal_mode == "predeclared_static"
                          else "PREDECLARED_SEED" if parent is None
+                         else "TRAIN_OOF_PARETO_MUTATION" if proposal_mode == "feedback_pareto"
                          else "TRAIN_OOF_FEEDBACK_MUTATION"),
             "metrics": metrics,
             "selection_loss": _risk(metrics),
