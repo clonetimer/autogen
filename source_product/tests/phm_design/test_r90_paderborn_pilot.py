@@ -137,7 +137,7 @@ def test_explicit_named_channel_required_and_no_silent_array_index_fallback(
     assert len(x) == 256000
     assert len(rms_observations(x)) == 256
     assert set(rms_observations(x)[0]) == {
-        "nominal_elapsed_s", "vibration_rms"}
+        "nominal_elapsed_s", "vibration_rms", "vibration_peak_abs"}
     bad = tmp_path / "not-a-real-vibration.mat"
     savemat(bad, {"signal": np.ones(256000)})
     with pytest.raises(TaskSpecRejected, match="R90_ONE_EXPLICIT_NAMED_VIBRATION_CHANNEL_REQUIRED"):
