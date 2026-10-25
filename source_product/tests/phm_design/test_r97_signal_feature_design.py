@@ -235,7 +235,8 @@ def test_insufficient_source_group_support_abstains_not_fake_accuracy():
 
 def test_total_trial_budget_must_allocate_at_least_one_per_algorithm_per_recipe():
     eq, train, trial = _data()
-    trial["budget"]["max_trials"] = 3  # R93 needs at least 2; R97 needs 4
+    trial["candidate_families"] = ["linear", "tree"]
+    trial["budget"]["max_trials"] = 3  # R93 permits two; R97 needs two per recipe
     with pytest.raises(SignalDesignRejected,
                        match="R97_BUDGET_CANNOT_COMPARE_ALL_DECLARED_FAMILIES"):
         propose_signal_diagnostic_study(eq, train, trial)
