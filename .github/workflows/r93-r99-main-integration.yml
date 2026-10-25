@@ -85,8 +85,8 @@ jobs:
           sha = lambda v: hashlib.sha256(v).hexdigest()
           for label, buf in (
               ("repository_checkout", raw),
-              ("CRLF_reconstituted", raw.replace(b"\\r\\n", b"\\n").replace(b"\\n", b"\\r\\n")),
-              ("LF_reconstituted", raw.replace(b"\\r\\n", b"\\n")),
+              ("CRLF_reconstituted", raw.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")),
+              ("LF_reconstituted", raw.replace(b"\r\n", b"\n")),
           ):
               print(label, sha(buf))
           print("expected_original_trace", d["trace_sha256"])
