@@ -1,7 +1,102 @@
 {
   "schema": "phm.autogen.scope.v1",
-  "stable": "0.7.0 SAT offline limited",
-  "research": "R80-R91 Draft",
-  "production": "not qualified",
-  "as_of": "2026-10-25"
+  "as_of": "2026-10-25",
+  "stable_version": "0.7.0",
+  "stable_main_sha": "b8f1796d2f8216449e130d04537be00901e2248f",
+  "levels": [
+    "none",
+    "synthetic_ci",
+    "real_measurement_ingested",
+    "independent_model_validated",
+    "limited_stable_offline",
+    "industrial_production_approved"
+  ],
+  "note": "Research branch presence and CI pass do not imply model generalization, Stable inclusion, or industrial deployment.",
+  "capabilities": [
+    {
+      "id": "r60_sat_offline",
+      "delivery": "stable",
+      "evidence": "limited_stable_offline",
+      "note": "15 limited SAT/Basilisk simulation-domain offline cells; README_RELEASE_R60.md"
+    },
+    {
+      "id": "r80_taskspec",
+      "delivery": "draft",
+      "evidence": "synthetic_ci",
+      "note": "PR #15: device-agnostic source-only task contract"
+    },
+    {
+      "id": "r81_trial_engine",
+      "delivery": "draft",
+      "evidence": "synthetic_ci",
+      "note": "PR #16-19: training-only candidate execution and task family"
+    },
+    {
+      "id": "r83_native_physics",
+      "delivery": "draft",
+      "evidence": "synthetic_ci",
+      "note": "PR #25-34: original native Basilisk evidence; not industrial hardware"
+    },
+    {
+      "id": "r86_r87_fuzzy",
+      "delivery": "draft",
+      "evidence": "synthetic_ci",
+      "note": "PR #37-38: evolving Gaussian TSK and learnable membership; no proven advantage"
+    },
+    {
+      "id": "r88_validation",
+      "delivery": "draft",
+      "evidence": "synthetic_ci",
+      "note": "PR #39: frozen model SHA and role separation; no real independent heldout"
+    },
+    {
+      "id": "r89_cohort",
+      "delivery": "draft",
+      "evidence": "synthetic_ci",
+      "note": "PR #40: physical bearing group and MAT hash audit"
+    },
+    {
+      "id": "r90_paderborn",
+      "delivery": "draft",
+      "evidence": "synthetic_ci",
+      "note": "PR #41: single condition experiment interface, no actual Paderborn raw benchmark"
+    },
+    {
+      "id": "r91_cwru",
+      "delivery": "draft",
+      "evidence": "real_measurement_ingested",
+      "note": "PR #42: official original 97/109 MAT read and SHA-256; no diagnostic model score"
+    },
+    {
+      "id": "cross_domain_qualification",
+      "delivery": "planned",
+      "evidence": "none",
+      "note": "Independent grouped devices, matched compute and sealed external validation missing"
+    },
+    {
+      "id": "generic_rul",
+      "delivery": "planned",
+      "evidence": "none",
+      "note": "Universal RUL with event/censoring model not qualified"
+    },
+    {
+      "id": "industrial_online_ot",
+      "delivery": "planned",
+      "evidence": "none",
+      "note": "OPC UA/MQTT secure field and production/edge runtime not delivered"
+    },
+    {
+      "id": "operator_workspace",
+      "delivery": "planned",
+      "evidence": "none",
+      "note": "Task form, guided comparison and export for non-programmers not delivered"
+    }
+  ],
+  "forbidden_general_claims": [
+    "cross_domain_validated",
+    "real_time_ready",
+    "fuzzy_superiority_proven",
+    "generic_rul_approved",
+    "field_safety_approved"
+  ]
 }
