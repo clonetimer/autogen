@@ -129,3 +129,25 @@ produced.** The source archives must be independently downloaded and
 reviewed before true real-machine measurements may be claimed. The
 R89 strict 7-healthy rejection and R83f/R83g negative Basilisk experiments
 remain unchanged.
+
+
+## Windows PowerShell / Linux CLI for non-developers
+
+From the source_product directory, install the scientific dependencies
+(numpy, scipy, scikit-learn). Before invoking, set PYTHONPATH to the src
+directory (PowerShell: $env:PYTHONPATH="src"; Bash: export PYTHONPATH=src).
+
+Stage 1, read TRAIN recordings only and produce new-only audit outputs:
+
+    python -m phm_design.industrial.r90_cli freeze --raw-root "D:/datasets/Paderborn" --frozen-dir "D:/research/r90-frozen" --task-spec "examples/industrial/paderborn_r90_binary_pilot.json" --receipt "D:/research/r90-train-receipt.json" --max-rules 2 --premise-steps 2
+
+Archive the train receipt and its frozen.manifest_sha256 field before any
+heldout reading. Stage 2 runs only once for the study:
+
+    python -m phm_design.industrial.r90_cli review --raw-root "D:/datasets/Paderborn" --frozen-dir "D:/research/r90-frozen" --manifest-sha "<exact sha256 from train receipt>" --receipt "D:/research/r90-validation-receipt.json"
+
+The CLI refuses to overwrite a previous receipt, and wrong hashes refuse
+the VALIDATION read. This does NOT enforce a globally one-time blind:
+the user can still manually rerun the command under a new output name,
+so independent review must govern the original experiment. The CLI does
+not download original files or change scientific eligibility.
