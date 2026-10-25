@@ -1,0 +1,43 @@
+name: R88 Frozen Fuzzy Source-Separated Validation
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r88_fuzzy_validation_steward.py'
+      - 'source_product/tests/phm_design/test_r88_frozen_fuzzy_validation.py'
+      - 'source_product/README_R88.md'
+      - '.github/workflows/r88-fuzzy-frozen-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-separated-validation:
+    name: Frozen neural-fuzzy validation / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install NumPy/scikit-learn-only trusted test runtime
+        run: python -m pip install numpy scikit-learn pytest
+      - name: Frozen no-pickle source model and read-only VALIDATION tests (synthetic)
+        run: python -m pytest -q tests/phm_design/test_r88_frozen_fuzzy_validation.py
+        env:
+          PYTHONPATH: src
