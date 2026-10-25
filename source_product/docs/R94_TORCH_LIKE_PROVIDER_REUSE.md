@@ -2,12 +2,19 @@
 
 **状态：研究 PR / 尚未合入 main；仅执行 P1.2 的窄范围适配。**
 
-> 当前对话没有可读取的新 ZIP/源码附件。本轮先以已经明确的用户项目
-> [clonetimer/torch_like](https://github.com/clonetimer/torch_like)
-> 作为复用基础，接口来源为仓库 `docs/API_CONTRACTS.md`、`torch_like/runtime.py`、
-> `torch_like/diagnostics/types.py`、`torch_like/automl/candidate_registry.py`
-> 以及 `torch_like/serialization.py`。如果具体上传项目另有所指，
-> 应以其真实源码接口替换提供者，而非继续创建第二套算法库。
+## 补充：重新上传的 AAS 项目已完成接口审查
+
+用户重新上传的 `20261023_3(1).zip` **实际是 AAS 工程**，不是
+`torch_like` 单独源码。R94 因此同时提供两个**可替代而非嵌套强制依赖**
+的薄适配器：`torch_like_bridge` 面向直接使用已注册的 native sklearn
+候选；`aas_bridge` 面向运行在已有 AAS 宿主中的 `BaseDetector` 插件，
+保留其 `score_threshold` / `native` / `label` 最终判定权、
+`detect_with_detector(preserve_state=True)` 和现有模型注册/保存。
+
+详见 [R94 AAS 原始上传包接口及本机兼容性审计](R94_AAS_TORCHLIKE_EXECUTION_COMPATIBILITY.md)。
+AAS 原始源码没有上传到本仓库。该上传包所含检测器可内部调用
+`torch_like`，但 `autogen` 不需要再调用一次相同的判决或阈值处理，
+否则会发生双重判定。
 
 ## 先复用哪些能力
 
@@ -94,6 +101,6 @@ P1.2 开始执行前必须先通过 R93 的 `compile_source_plan`：只允许 TR
   单位。P3 应复用 `torch_like.automl` 的任务、候选/runner 与
   协议审计，**不要**再创建另一套 AutoML 搜索引擎。
 
-> 如果存在另一个比 `clonetimer/torch_like` 更新的用户上传算法项目，
-> 请按其算法注册、Schema 与 runner 的实际源码更新 provider 映射。
-> 本 PR 的适配器与核心 R93 元数据合同解耦，方便替换。
+> 本轮已检查实际上传 AAS 源码。当前只有两个受控适配方向，分别是
+> 直接 torch_like 算法提供者，以及 AAS 中原有的检测器。两套接口都
+> 不替代 R93 分组审计、P2 真实测量数据核验或 P3 独立模型性能验证。
