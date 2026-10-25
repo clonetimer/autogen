@@ -125,3 +125,16 @@ useful, a future preregistered evaluation must:
   traces for native Basilisk research data.
 
 Draft PR only; no change to main Stable.
+
+## Interpreting the generated mechanism effects
+
+The optional R87 receipt emits
+`source_train_descriptive_mechanism_effects`: frozen-rule premise effect,
+adaptive-rule premise effect, rule-growth effect under frozen/learned
+premises, and their **difference-in-differences interaction**. Accuracy
+and worst-environment/class recall are higher-is-better; healthy FAR is
+lower-is-better. These are numeric **source-TRAIN environment-OOF
+contrasts only**. They do not demonstrate causal efficacy; changing rule
+counts and additional gradient/refit work remain confounders. The receipt
+sets `causal_or_generalization_inference_allowed=false` and does not
+interpret a positive source contrast as an approved model.
