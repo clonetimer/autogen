@@ -34,7 +34,7 @@ class FuzzyRulePolicy:
 def sequence_summary(x):
     """Only observed temporal channels, no fault truth or cohort metadata."""
     x = np.asarray(x, dtype=np.float64)
-    if (x.ndim != 3 or not 6 <= len(x) <= 100_000
+    if (x.ndim != 3 or not 1 <= len(x) <= 100_000
         or not 8 <= x.shape[1] <= 512 or not 1 <= x.shape[2] <= 16
         or not np.isfinite(x).all()):
         raise ValueError("INVALID_R86_OBSERVED_SEQUENCE")
