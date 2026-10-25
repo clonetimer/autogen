@@ -1,0 +1,43 @@
+name: R86 Gaussian TSK Self-Organizing Fuzzy Research
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r86_neuro_fuzzy.py'
+      - 'source_product/src/phm_design/industrial/r86_fuzzy_source_study.py'
+      - 'source_product/tests/phm_design/test_r86_neuro_fuzzy.py'
+      - 'source_product/README_R86.md'
+      - '.github/workflows/r86-neuro-fuzzy-research.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  observed-source-fuzzy-learning:
+    name: R86 grouped source diagnostic prototype / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install numpy scikit-learn pytest
+      - name: Gaussian fuzzy rule fitting plus TRAIN-only group OOF and leak refusal
+        run: python -m pytest -q tests/phm_design/test_r86_neuro_fuzzy.py
+        env:
+          PYTHONPATH: src
