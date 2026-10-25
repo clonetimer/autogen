@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
       - 'source_product/src/phm_design/industrial/r85_family_policy.py'
+      - 'source_product/src/phm_design/industrial/r85_source_ablation.py'
       - 'source_product/src/phm_design/industrial/design_engine.py'
       - 'source_product/src/phm_design/industrial/resource_guard.py'
       - 'source_product/tests/phm_design/test_r85_family_policy.py'
       - 'source_product/tests/phm_design/test_r85_family_integration.py'
+      - 'source_product/tests/phm_design/test_r85_source_ablation.py'
       - '.github/workflows/r85-family-autodesign.yml'
   workflow_dispatch:
 
@@ -53,5 +55,6 @@ jobs:
         run: >-
           python -m pytest -q
           tests/phm_design/test_r85_family_integration.py
+          tests/phm_design/test_r85_source_ablation.py
           tests/phm_design/test_r81a_unified_design_engine.py
         working-directory: source_product
