@@ -1,3 +1,5 @@
+> **Release candidate / Stable convergence (2026-10-25):** `phm-design 0.8.0rc1` is a **pre-release software candidate**, not a published Stable release. The last qualified **Stable remains 0.7.0** with its restricted offline Basilisk scope. R93–R99 cross-industry design tools are experimental, opt-in, and do not certify industrial inference, physical asset identity or production safety. See [0.8.0rc1 Release Gate](source_product/docs/RC_080_RELEASE_SCOPE.md) and [RC CI](.github/workflows/stable-candidate-080.yml). No GitHub Release/tag is published until all RC gates are green.
+
 # PHM AutoDesign — `phm-design` 0.7.0
 
 > Repository `clonetimer/autogen` hosts the PHM AutoDesign (`phm-design`) source tree and release-delivery records.
