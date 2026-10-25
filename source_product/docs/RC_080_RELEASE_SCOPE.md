@@ -24,8 +24,8 @@
 
 1. **版本一致**：`source_product/pyproject.toml`、`phm_design.__version__`、安装后 `importlib.metadata` 都为 `0.8.0rc1`；README 明确 PRE-RELEASE，不能把版本候选当正式 Stable。
 2. **发布介质**：在独立 build 环境成功构建 wheel 和 sdist；验证产物必需模块和元数据；计算 SHA256SUMS，仅作为 CI artifact 暂存，不默默将候选上传 PyPI 或公开 GitHub Release。
-3. **真正的干净安装**：Linux Python 3.11/3.12 + Windows Python 3.11 通过从构建出的 `wheel` 安装（不是 editable/PYTHONPATH 下偷用工作区源代码）；`pip check` 必须通过。
-4. **真正的算法提供者**：从独立公开仓库 `clonetimer/torch_like` 锁定 commit `580133dddf61cce7c354c648d4885e6caec99418`，运行 4 种原生候选（LogisticRegression、DecisionTreeClassifier、RandomForestClassifier、IsolationForest）的 fit/predict，并在可信本地模型制品上进行保存、SHA 和重载预测一致性验证。跨仓库任何网络或安装失败必须可见，不能默认为 skipped/pass。
+3. **真正的干净安装**：Linux Python 3.11/3.12 + Windows Python 3.11 通过从构建出的 `wheel` 安装（不是 editable/PYTHONPATH 下偷用工作区源代码）。拆分两类**独立不可混淆**的证据：不带模型依赖的安装包与 TRAIN-only 设计计划 CLI 烟测；完整钉住 torch_like 后 `pip check` + 真实拟合、预测、保存和恢复门禁。前者 PASS **不能**替代后者。
+4. **真正的算法提供者**：`clonetimer/torch_like` 经检查实际为**私有仓库**。需要为 `clonetimer/autogen` Actions 配置仓库 secret `TORCH_LIKE_READ_TOKEN`，对应 fine-grained GitHub 令牌只授予 `clonetimer/torch_like` 的 **Contents: Read-only** 权限。绝不在对话、源码、日志或 PR 中提交令牌；无权访问时 CI 明确 FAIL 并维持 RC 阻塞。只有成功检出 commit `580133dddf61cce7c354c648d4885e6caec99418` 后，才运行 4 种原生候选（LogisticRegression、DecisionTreeClassifier、RandomForestClassifier、IsolationForest）的 fit/predict，并在可信本地模型制品上进行保存、SHA 和重载预测一致性验证。跨仓库任何网络或安装失败必须可见，不能默认为 skipped/pass。
 5. **闭环操作性**：在源代码工作目录之外，以已安装 wheel 的模块入口执行 `--help`、TRAIN-only `design_cli propose` → 冻结 study SHA → `source-study` 真实提供者拟合 → 结果 JSON；错误使用完整保护角色数据必须拒绝且不创建输出。
 6. **既有功能不回退**：运行 `tests/phm_design` 完整旧版+新代码 Python 组合回归，失败不能忽略；区分确因可选 Basilisk/工业数据/torch_like 缺失而跳过的测试，并在上线声明中写出跳过范围。
 7. **版本控制与发布清晰**：同一提交构建 wheel/sdist，正式 RC 发布需要在 PR/发布记录中明确代码 SHA、制品 SHA、依赖、运行平台、已知限制、批准/拒绝和回滚地址。
@@ -42,7 +42,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
 .\.venv\Scripts\python.exe -m pip install numpy==2.3.5 scikit-learn==1.8.0 scipy pandas PyYAML joblib
-# 然后按上文钉住的 torch_like commit 安装经审核的提供者
+# 然后经获授权的环境从私有 torch_like 仓库按上文钉住 commit 安装经审核的提供者；CI 需要只读 TORCH_LIKE_READ_TOKEN，令牌不可写入命令行/聊天/源码
 .\.venv\Scripts\python.exe -m pip install --no-deps .\torch_like
 # 将 CI artifact 解压得到发行 wheel 后执行（名称按实际构建产物）
 .\.venv\Scripts\python.exe -m pip install --no-deps .\phm_design-0.8.0rc1-py3-none-any.whl
@@ -58,3 +58,10 @@ py -3.11 -m venv .venv
 `0.8.0rc1` **目前为发布候选**，不能因提交代码、合并 main 或上一轮 848 个测试通过就直接称为 Stable。只有以上**实际** Actions 验证通过，才可考虑打 RC tag、编制发布报告，再计划 `0.8.0` 正式软件框架 Stable。RC 并不保证模型性能提升；它保证的是如实列明范围的软件一致性和安装运行性。
 
 候选期间：核心接口冻结，允许**修复测试阻断和文档/安装/打包问题**；禁止借发布收敛引入 R100 新模型、扩大工业设备资格或随意更改已冻结遥测审计签名。
+
+## 6. 本轮已实际发现的阻塞与处理
+
+- 初次候选 wheel/sdist 构建通过，但 `torch_like` 实际为私有仓库；未配置 `TORCH_LIKE_READ_TOKEN` 时，GitHub Actions 默认 `GITHUB_TOKEN` **不能**跨仓库检出，最初三个真实提供者作业被 GitHub 拒绝，**未执行模型 fit/save/load**。已修订门禁，用明确的只读 secret 先验检查代替模糊的“Repository not found”。
+- 第一轮新 CI 旧版完整测试调用目录错误，导致 3 个配置文件的相对路径读取失败；与既有 main 集成流水线在正确 `source_product` 工作目录执行全回归通过的事实不矛盾。候选 CI 已修订工作目录，必须以新一轮实际结果为准。
+- 为确保即使私有提供者凭据暂缺，也能获得独立真实的发行质量证据，新增三平台“wheel 安装 + SOURCE-only 计划生成”门禁，**只承认证书覆盖的功能**，不能代替真正提供者 E2E 门禁。
+- 正式 Stable **NO-GO** 直至发布阻断项全部 PASS、发布制品被审查并对研究性 AAS/泛化范围作出明确排除。
