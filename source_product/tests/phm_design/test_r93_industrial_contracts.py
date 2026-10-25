@@ -236,3 +236,50 @@ def test_operator_cli_refuses_inadvertent_protected_source_and_overwriting(
                  str(tmp_path/"audited.json")]) == 0
     audit = json.loads((tmp_path/"audited.json").read_text(encoding="utf-8"))
     assert audit["evaluation_scope"] == "future_same_device"
+
+
+
+def test_trusted_steward_cannot_claim_validation_without_any_validation_rows():
+    equipment, source, _, trial = cards("bearing")
+    with pytest.raises(ContractRejected,
+                       match="R93_TRUSTED_AUDIT_REQUIRES_VALIDATION_ROLE"):
+        validate_dataset(source, equipment, trial, train_only=False)
+
+
+def test_future_same_device_requires_all_validation_assets_seen_in_train():
+    equipment, _, complete, trial = cards("compressor")
+    complete["records"][-1]["physical_id"] = "other_compressor"
+    with pytest.raises(ContractRejected,
+              match="R93_FUTURE_SAME_DEVICE_HAS_UNSEEN_VALIDATION_ASSET"):
+        validate_dataset(complete, equipment, trial)
+
+
+def test_cli_rejects_duplicate_json_keys_instead_of_last_value_override(tmp_path):
+    equipment, _, _, _ = cards("bearing")
+    p = tmp_path / "duplicate-equipment.json"
+    # Deliberately forge two identical schema property keys.
+    raw = json.dumps(equipment).replace('"schema":',
+        '"schema": "phm.autogen.equipment.v1", "schema":', 1)
+    p.write_text(raw, encoding="utf-8")
+    with pytest.raises(SystemExit):
+        main(["source-plan", "--equipment", str(p),
+              "--trial", str(EXAMPLES/"bearing_trial.json"),
+              "--dataset", str(EXAMPLES/"bearing_train_only.json"),
+              "--output", str(tmp_path/"should-not-exist.json")])
+    assert not (tmp_path/"should-not-exist.json").exists()
+
+
+def test_cli_rejects_nonnumeric_json_nan_untrusted_metadata(tmp_path):
+    data = (EXAMPLES/"bearing_train_only.json").read_text(encoding="utf-8")
+    replaced = data.replace('"embargo_seconds": 0',
+                            '"embargo_seconds": NaN')
+    assert data != replaced
+    p = tmp_path/"nan.json"
+    p.write_text(replaced, encoding="utf-8")
+    with pytest.raises(SystemExit):
+        main(["source-plan", "--equipment",
+              str(EXAMPLES/"bearing_equipment.json"),
+              "--trial", str(EXAMPLES/"bearing_trial.json"),
+              "--dataset", str(p), "--output",
+              str(tmp_path/"should-not-exist.json")])
+    assert not (tmp_path/"should-not-exist.json").exists()
