@@ -77,10 +77,17 @@ P1.2 开始执行前必须先通过 R93 的 `compile_source_plan`：只允许 TR
 
 - 无 provider 的 Linux 3.11/3.12、Windows 3.11：使用受控 spy 适配器
   验证**路由、权限、源观察一致性与失败隔离**，不把 spy 当作真的模型。
-- Linux 3.11 独立安装 **明确锁定的 torch_like 提交**
-  `1e603915896e33fd9f326073c42a477718166b68`，执行真实
-  sklearn 逻辑回归、决策树、随机森林与 IsolationForest，
-  并测试原生 ModelRuntime 和 trusted-local 持久化/重载。
+- **真实库集成测试为单独手动验收，不算自动 PR 通过项。**
+  `torch_like` 的 GitHub 仓库不允许由 `autogen` 的默认 Actions
+  `GITHUB_TOKEN` 直接跨库检出（首次 CI 返回 `Repository not found`）。
+  工作流只在 `workflow_dispatch` 时运行这一受限测试，
+  必须先由维护者在 `autogen` 仓库 Secrets 配置具有
+  `clonetimer/torch_like` **Contents: read** 权限的
+  `TORCH_LIKE_READ_TOKEN`，然后手动运行 R94 工作流。
+  测试锁定提交 `1e603915896e33fd9f326073c42a477718166b68`
+  并实际执行四种原生 sklearn 模型的 ModelRuntime 和可信制品保存/重载。
+  **在这条实际测试 SUCCESS 前，不能宣称真实库已完成跨仓库集成验收。**
+  请勿把私有 token 加到源代码、PR 正文或日志中。
 - 所有示例源数值是合成测试数据，不是公开 CWRU/Paderborn/MetroPT
   的真实独立诊断结果。模型不获得 Stable/industrial 资格。
 - 下一阶段 P2 应接入实际工业测量时保留物理样本身份、文件 SHA 和观测
