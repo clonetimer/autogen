@@ -274,6 +274,8 @@ def validate_dataset(dataset, equipment, trial, *, train_only=False):
     _unique(ids, "record_ids")
     if roles["TRAIN"] == 0:
         _reject("R93_NO_SOURCE_TRAIN_RECORDS")
+    if not train_only and roles["VALIDATION"] == 0:
+        _reject("R93_TRUSTED_AUDIT_REQUIRES_VALIDATION_ROLE")
     if mode == "physical_group":
         for a in SUPPORTED_ROLES:
             for b in SUPPORTED_ROLES:
@@ -286,6 +288,8 @@ def validate_dataset(dataset, equipment, trial, *, train_only=False):
             if any(len(rr) > 1 for rr in by_environment.values()):
                 _reject("R93_ENVIRONMENT_CROSSES_ROLES")
     else:
+        if not train_only and not groups["VALIDATION"] <= groups["TRAIN"]:
+            _reject("R93_FUTURE_SAME_DEVICE_HAS_UNSEEN_VALIDATION_ASSET")
         # Forward split under the same device. No same-source time overlap,
         # no backtracking, and a fixed embargo between different roles.
         order = {role: n for n, role in enumerate(SUPPORTED_ROLES)}
