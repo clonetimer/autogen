@@ -148,3 +148,13 @@ def test_insufficient_healthy_group_support_refused_without_fabrication(tmp_path
     assert not receipt["r88_strict_protocol_manifest_eligible"]
     assert "R89_VALIDATION_NEEDS_TWO_BEARINGS_PER_ENV_CLASS" in receipt["blockers"]
     assert "R89_TOO_FEW_VALIDATION_BEARINGS_PER_CLASS" in receipt["blockers"]
+
+
+def test_metadata_only_check_is_not_raw_bytes_verified_or_source_ready(tmp_path):
+    rows = _cohort(tmp_path)
+    receipt = audit_external_bearing_cohort(
+        rows, source="EXTERNAL_REVIEWER_DOCUMENTED")
+    assert not receipt["r88_strict_protocol_manifest_eligible"]
+    assert "R89_RAW_FILES_NOT_VERIFIED" in receipt["blockers"]
+    assert receipt["raw_file_sha256_checked_against_local_bytes"] is False
+    assert receipt["actual_sensor_or_specimen_provenance_authenticated"] is False
