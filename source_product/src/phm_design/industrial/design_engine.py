@@ -21,6 +21,7 @@ from .taskspec import (
     TaskSpec, TaskSpecRejected, compile_task_spec, validate_observations,
 )
 from .calibration import CalibrationRejected, fit_temperature_selective
+from .r85_family_policy import choose_next as choose_r85_family, validate_pool as validate_r85_pool
 from .feature_program import decode_program, execute_program, program_digest
 from .availability_features import execute_available, atom_dimensions
 from ..open_design import temporal_bins, random_temporal_kernels
@@ -433,7 +434,9 @@ def run_design(task_spec: Mapping | TaskSpec,
                records: Sequence[Mapping], *,
                acceptance: DesignAcceptance = DesignAcceptance(),
                _guarded_execution: bool = False,
-               selection_rule: str = "legacy") -> IndustrialDesignArtifact:
+               selection_rule: str = "legacy",
+               family_search_mode: str | None = None,
+               family_proposals: int = 3) -> IndustrialDesignArtifact:
     """Run a bounded, source-only cross-environment selection and TRAIN refit.
 
     records: [{measurements: [{time_field: float, channel: float, ...},...],
@@ -445,6 +448,13 @@ def run_design(task_spec: Mapping | TaskSpec,
         raise ValueError("INVALID_DESIGN_ACCEPTANCE_TYPE")
     if selection_rule not in ("legacy", "r83_matched_train_loss"):
         raise ValueError("UNREGISTERED_DESIGN_SELECTION_RULE")
+    if family_search_mode is not None:
+        if family_search_mode not in ("feedback", "predeclared_static"):
+            raise TaskSpecRejected("INVALID_R85_FAMILY_SEARCH_MODE")
+        if selection_rule != "r83_matched_train_loss":
+            raise TaskSpecRejected("R85_REQUIRES_COMMON_SOURCE_RISK")
+        if type(family_proposals) is not int or not 3 <= family_proposals <= 6:
+            raise TaskSpecRejected("INVALID_R85_CANDIDATE_SLOTS")
     if not isinstance(records, (tuple, list)) or not records:
         raise TaskSpecRejected("EMPTY_DESIGN_RECORDS")
     raw = task_spec.to_dict() if isinstance(task_spec, TaskSpec) else TaskSpec.from_dict(task_spec).to_dict()
@@ -501,6 +511,15 @@ def run_design(task_spec: Mapping | TaskSpec,
                 str(sample_index))
         seen_trajectories[fingerprint] = group
     fold_plan = list(LeaveOneGroupOut().split(true, groups=environment))
+    if family_search_mode is not None:
+        # Exact, finite predeclared pool; no run-time arbitrary algorithm import.
+        validate_r85_pool(plan["candidate_grid"])
+        if (family_proposals > len(plan["candidate_grid"]) or
+                calibration_policy is not None or adaptive_policy is not None or
+                any(x.get("topology") != "direct" for x in plan["candidate_grid"])):
+            raise TaskSpecRejected("R85_UNSUPPORTED_POOL_OR_CALIBRATION")
+        if budget["max_fits"] < family_proposals * len(fold_plan) + 1:
+            raise TaskSpecRejected("R85_INSUFFICIENT_PREDECLARED_FITS")
     if any(set(groups[train]) & set(groups[test]) or
            set(environment[train]) & set(environment[test])
            for train, test in fold_plan):
@@ -527,6 +546,9 @@ def run_design(task_spec: Mapping | TaskSpec,
         "training_observations_hash_contract": "LENGTH_PREFIXED_FLOAT64_LE_V1",
         "training_record_count": len(matrices),
         "source_data_role": "TRAIN_ONLY",
+        "r85_family_search_mode": family_search_mode,
+        "r85_family_proposals": (family_proposals if family_search_mode else None),
+        "r85_family_search_is_independent_test": False,
         "split": "LEAVE_ONE_ENTIRE_SOURCE_ENVIRONMENT_OUT",
         "source_environment_count": len(set(environment.tolist())),
         "source_physical_group_count": len(set(groups.tolist())),
@@ -627,10 +649,19 @@ def run_design(task_spec: Mapping | TaskSpec,
             adaptive_policy["atoms"], mode="bounded_feedback",
             seeds=seeds, risk=RiskPreference(), seed=budget["seed"],
             program_pool=pool)
-    steps = (adaptive_policy["max_programs"] if planner is not None
+    steps = (family_proposals if family_search_mode is not None
+             else adaptive_policy["max_programs"] if planner is not None
              else len(plan["candidate_grid"]))
+    family_history = []
+    family_proposals_trace = []
     for proposal_step in range(steps):
-        if planner is not None:
+        if family_search_mode is not None:
+            i, proposal_audit = choose_r85_family(
+                plan["candidate_grid"], family_history, mode=family_search_mode)
+            family_proposals_trace.append({"proposal_step": proposal_step,
+                                           "candidate_index": i, **proposal_audit})
+            program = None
+        elif planner is not None:
             program = planner.propose()
             i = candidate_by_key[program.key]
             spec = plan["candidate_grid"][i]
@@ -727,9 +758,29 @@ def run_design(task_spec: Mapping | TaskSpec,
         entry["wall_seconds"] = round(time.perf_counter() - trial_start_wall, 5)
         entry["inference_wall_seconds"] = round(entry["inference_wall_seconds"], 6)
         entry["model_fits"] = fits - trial_fits_before
+        if family_search_mode is not None:
+            family_history.append({
+                "candidate_index": i, "role": "SOURCE_TRAIN_OOF_ONLY",
+                "metrics": ({key: entry["metrics"][key] for key in
+                            ("accuracy", "worst_environment_class_recall",
+                             "healthy_false_alarm")}
+                            if entry.get("status") in ("ELIGIBLE", "REJECTED_BY_POLICY")
+                            else None)})
         if budget_exhausted:
             break
     receipt["fold_model_fits"] = fits
+    if family_search_mode is not None:
+        receipt["r85_family_trace"] = {
+            "schema": "phm.r85.family-feedback.v1",
+            "predeclared_pool_sha256": _sha(plan["candidate_grid"]),
+            "full_pool_count": len(plan["candidate_grid"]),
+            "trained_proposal_count": len(family_history),
+            "proposals": family_proposals_trace,
+            "protected_feedback_accessed": False,
+            "same_source_environment_folds": True,
+            "compute_or_flops_matched": False,
+            "independent_generalization_proven": False,
+        }
     if planner is not None:
         # Normalize tuple-valued Program atoms before exposing the in-memory
         # audit: JSON export and trusted reload must preserve the same shape.
