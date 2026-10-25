@@ -660,6 +660,7 @@ def run_design(task_spec: Mapping | TaskSpec,
                 plan["candidate_grid"], family_history, mode=family_search_mode)
             family_proposals_trace.append({"proposal_step": proposal_step,
                                            "candidate_index": i, **proposal_audit})
+            spec = plan["candidate_grid"][i]
             program = None
         elif planner is not None:
             program = planner.propose()
