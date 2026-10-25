@@ -368,7 +368,9 @@ class CandidateAdapter:
 
     def export_model(self):
         payload = deepcopy(self._model())
-        return {"payload": payload, "sha256": _digest(payload)}
+        resource = self.resource_receipt()
+        signed = {"payload": payload, "resource_receipt": resource}
+        return {**signed, "sha256": _digest(signed)}
 
     def resource_receipt(self):
         if self._resource is None:
@@ -377,12 +379,45 @@ class CandidateAdapter:
 
 
 def load_model(artifact):
-    """Portable inference using only numerical JSON, never untrusted pickle."""
-    if not isinstance(artifact, Mapping) or set(artifact) != {"payload", "sha256"}:
+    """Portable inference using only SHA-bound numerical JSON; never pickle."""
+    if not isinstance(artifact, Mapping) or set(artifact) != {
+            "payload", "resource_receipt", "sha256"}:
         _reject("R94_INVALID_EXPORTED_ARTIFACT")
-    if type(artifact["sha256"]) is not str or artifact["sha256"] != _digest(artifact["payload"]):
+    bound = {"payload": artifact["payload"],
+             "resource_receipt": artifact["resource_receipt"]}
+    if type(artifact["sha256"]) is not str or artifact["sha256"] != _digest(bound):
         _reject("R94_FROZEN_ARTIFACT_HASH_MISMATCH")
     payload = deepcopy(_check_frozen_state(artifact["payload"]))
+    resource = artifact["resource_receipt"]
+    if (not isinstance(resource, Mapping) or
+            set(resource) != {
+                "schema", "candidate", "fit_calls", "source_records",
+                "source_physical_groups", "fit_elapsed_seconds_observed",
+                "frozen_model_bytes_observed", "peak_process_memory_bytes_measured",
+                "training_flops_measured", "hard_preemptive_timeout_enforced",
+                "max_fit_seconds_posthoc_checked", "max_serialized_model_bytes_checked",
+                "candidate_trials_charged", "computer_hardware_matched",
+                "validation_or_final_accessed",
+                "score_on_independent_real_equipment_obtained",
+            } or resource["schema"] != RECEIPT or
+            resource["candidate"] != payload["family"] or
+            resource["fit_calls"] != 1 or resource["candidate_trials_charged"] != 1 or
+            type(resource["source_records"]) is not int or resource["source_records"] < 1 or
+            type(resource["source_physical_groups"]) is not int or
+            resource["source_physical_groups"] < 1 or
+            not _finite(resource["fit_elapsed_seconds_observed"]) or
+            not _finite(resource["frozen_model_bytes_observed"]) or
+            resource["frozen_model_bytes_observed"] <= 0 or
+            resource["hard_preemptive_timeout_enforced"] is not False or
+            resource["max_fit_seconds_posthoc_checked"] is not True or
+            resource["max_serialized_model_bytes_checked"] is not True or
+            resource["computer_hardware_matched"] is not False or
+            resource["validation_or_final_accessed"] is not False or
+            resource["score_on_independent_real_equipment_obtained"] is not False or
+            resource["peak_process_memory_bytes_measured"] is not None or
+            resource["training_flops_measured"] is not None):
+        _reject("R94_UNTRUSTED_OR_ESCALATED_RESOURCE_RECEIPT")
     model = CandidateAdapter(payload["family"])
     model._payload = payload
+    model._resource = deepcopy(resource)
     return model
