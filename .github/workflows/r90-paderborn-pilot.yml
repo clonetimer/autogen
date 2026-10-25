@@ -1,0 +1,43 @@
+name: R90 Preregistered Single-Condition Paderborn Pilot
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r90_paderborn_pilot.py'
+      - 'source_product/tests/phm_design/test_r90_paderborn_pilot.py'
+      - 'source_product/examples/industrial/paderborn_r90_binary_pilot.json'
+      - 'source_product/README_R90.md'
+      - '.github/workflows/r90-paderborn-pilot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-length-mat-frozen-study:
+    name: Paderborn fixed-roster scientific-contract smoke / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install numpy scipy scikit-learn pytest
+      - name: Actual MATLAB IO with deliberately synthetic 4-second signals + frozen five-arm OOF/VAL
+        run: python -m pytest -q tests/phm_design/test_r90_paderborn_pilot.py
+        env:
+          PYTHONPATH: src
