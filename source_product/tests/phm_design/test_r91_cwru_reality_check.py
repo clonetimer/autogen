@@ -30,7 +30,8 @@ def simulated_cwru_mat(tmp_path):
 def test_no_pseudoreplication_or_fuzzy_advantage_from_original_mat_ingestion(
         simulated_cwru_mat):
     r = audit_real_cwru_pair(simulated_cwru_mat)
-    assert r["source_lab_data_are_measured"] is True  # registry provenance statement
+    assert r["publisher_describes_experiment_as_measured"] is True
+    assert r["these_local_bytes_authenticated_as_official"] is False
     assert r["manufacturer_provenance_independently_authenticated"] is False
     assert r["number_of_original_mat_files"] == 2
     assert r["number_of_independent_physical_bearings_verified"] == 0
@@ -93,6 +94,7 @@ def test_cli_receipt_new_only_and_never_claims_detection(
     artifact = json.loads(out.read_text(encoding="utf-8"))
     assert artifact["measured_generalization_accuracy"] is None
     assert artifact["diagnostic_training_performed"] is False
+    assert artifact["official_https_download_in_this_execution"] is False
     with pytest.raises(SystemExit):
         main(["--raw-dir", str(simulated_cwru_mat),
               "--receipt", str(out)])
