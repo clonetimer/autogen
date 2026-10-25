@@ -159,6 +159,38 @@ def run_fuzzy_source_study(task_spec: Mapping | TaskSpec,
     for arm in scores:
         scores[arm]["accepted_by_train_oof_screen"] = acceptance.evaluate(
             scores[arm]["source_train_environment_oof"])["eligible"]
+    descriptive_effects = None
+    if include_learned_premise:
+        def metric(arm, key):
+            return scores[arm]["source_train_environment_oof"][key]
+
+        def vector(first, second):
+            return {key: round(metric(first, key) - metric(second, key), 12)
+                    for key in ("accuracy", "worst_environment_class_recall",
+                                "healthy_false_alarm")}
+
+        fixed_premise = vector("fixed_fuzzy_learned_premise", "fixed_fuzzy")
+        adaptive_premise = vector(
+            "adaptive_fuzzy_learned_premise", "adaptive_fuzzy")
+        rule_effect_frozen = vector("adaptive_fuzzy", "fixed_fuzzy")
+        rule_effect_learned = vector(
+            "adaptive_fuzzy_learned_premise", "fixed_fuzzy_learned_premise")
+        descriptive_effects = {
+            "role": "SOURCE_TRAIN_ENVIRONMENT_OOF_ONLY",
+            "not_independent_and_not_compute_matched": True,
+            "fixed_rule_premise_effect": fixed_premise,
+            "adaptive_rule_premise_effect": adaptive_premise,
+            "rule_growth_effect_with_frozen_premise": rule_effect_frozen,
+            "rule_growth_effect_with_learned_premise": rule_effect_learned,
+            "premise_rule_interaction": {
+                key: round(rule_effect_learned[key] -
+                           rule_effect_frozen[key], 12)
+                for key in rule_effect_frozen},
+            "higher_is_better": ["accuracy",
+                                 "worst_environment_class_recall"],
+            "lower_is_better": ["healthy_false_alarm"],
+            "causal_or_generalization_inference_allowed": False,
+        }
     return {
         "schema": "phm.r86.fuzzy-source-comparison.v1",
         "task_spec_sha256": TaskSpec.from_dict(raw).sha256,
@@ -170,6 +202,7 @@ def run_fuzzy_source_study(task_spec: Mapping | TaskSpec,
         "physical_group_count": len(set(groups.tolist())),
         "same_folds_all_arms": True,
         "four_cell_rule_premise_ablation": include_learned_premise,
+        "source_train_descriptive_mechanism_effects": descriptive_effects,
         "fuzzy_candidate_fits_equal_across_all_cells": all(
             fits[name] == policy.max_rules * len(folds)
             for name, _, _ in fuzzy_arms),
