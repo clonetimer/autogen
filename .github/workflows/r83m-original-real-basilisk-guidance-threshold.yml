@@ -1,11 +1,9 @@
 name: R83m Independent Original Basilisk 75pct RW Loss Guidance Threshold Proof
 
-# One-time first original-source attestation; after completion seal this
-# CI to manual-only to prevent report-only PR updates triggering new studies.
+# Original source SHA-backed read-only attestation succeeded in
+# autogen Actions #40161374796. Keep manual repeat possible but avoid
+# automatic re-analysis from report-only PR changes.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/r83m-original-real-basilisk-guidance-threshold.yml'
   workflow_dispatch:
 
 permissions:
