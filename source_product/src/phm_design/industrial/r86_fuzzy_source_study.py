@@ -180,7 +180,11 @@ def run_fuzzy_source_study(task_spec: Mapping | TaskSpec,
         "fixed_adaptive_equal_candidate_fit_count": (
             fits["fixed_fuzzy"] == fits["adaptive_fuzzy"] ==
             policy.max_rules * len(folds)),
-        "three_arms_complete": all((pred >= 0).all() for pred in predictions.values()),
+        "three_arms_complete": (
+            len(predictions) == 3 and
+            all((pred >= 0).all() for pred in predictions.values())),
+        "all_declared_arms_complete": all(
+            (pred >= 0).all() for pred in predictions.values()),
         "policy": {"max_rules": policy.max_rules, "ridge": policy.ridge,
                    "complexity_penalty": policy.complexity_penalty,
                    "premise_steps": policy.premise_steps,
