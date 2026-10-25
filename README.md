@@ -53,6 +53,18 @@ README_RELEASE_R60.md   Install / recovery / scope guide for the 0.7.0 Stable re
 
 `qualification/` (≈141 MB / 9700+ generated qualification-world artifacts), `__pycache__/`, `failed_attempts/`, and `*.log` build/run logs are excluded via `.gitignore`. The full 900-world qualification evidence package can be regenerated from the release/qualification scripts or obtained as a separate archive; daily install and inference do not require re-running the qualification worlds.
 
+## Industrial cross-domain strategy (research governance only)
+
+The current stable 0.7.0 qualification remains restricted to the offline
+simulation conditions described above. For the separately reviewed,
+**not-yet-released** industrial AutoDesign architecture, task boundaries,
+dataset provenance, evidence levels and phase acceptance gates, read
+[source_product/docs/R92_INDUSTRIAL_CROSS_DOMAIN_STRATEGY.md](source_product/docs/R92_INDUSTRIAL_CROSS_DOMAIN_STRATEGY.md).
+The machine-checkable
+[capability register](source_product/configs/product/r92_scope.json)
+explicitly distinguishes Stable `main`, draft implementation, actual
+measured-signal intake and production capabilities that are **not shipped**.
+
 ## License
 
 No license file is included in this delivery. All rights reserved unless otherwise stated.
