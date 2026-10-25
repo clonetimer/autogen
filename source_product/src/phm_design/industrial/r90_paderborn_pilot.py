@@ -107,10 +107,12 @@ def rms_observations(x):
     width = len(raw) // BINS
     frame = raw[:width * BINS].reshape(BINS, width)
     rms = np.sqrt(np.mean(frame ** 2, axis=1))
-    if not np.isfinite(rms).all():
-        _fail("R90_NONFINITE_RMS")
+    peak = np.max(np.abs(frame), axis=1)
+    if not (np.isfinite(rms).all() and np.isfinite(peak).all()):
+        _fail("R90_NONFINITE_VIBRATION_FEATURE")
     return [{"nominal_elapsed_s": float((i+.5)*width/NOMINAL_HZ),
-             "vibration_rms": float(v)} for i, v in enumerate(rms)]
+             "vibration_rms": float(v), "vibration_peak_abs": float(p)}
+            for i, (v, p) in enumerate(zip(rms, peak))]
 
 
 def _check_task(raw):
@@ -124,6 +126,9 @@ def _check_task(raw):
             "field": "nominal_elapsed_s", "sampling": "fixed"}
         or spec["observations"]["channels"] != [{
             "name": "vibration_rms", "role": "sensor",
+            "unit": "raw_source_unit_unverified",
+            "available_at_decision": True}, {
+            "name": "vibration_peak_abs", "role": "sensor",
             "unit": "raw_source_unit_unverified",
             "available_at_decision": True}]):
         _fail("R90_PINNED_TASKSPEC_REQUIRED")
