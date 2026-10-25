@@ -53,13 +53,28 @@ README_RELEASE_R60.md   Install / recovery / scope guide for the 0.7.0 Stable re
 
 `qualification/` (≈141 MB / 9700+ generated qualification-world artifacts), `__pycache__/`, `failed_attempts/`, and `*.log` build/run logs are excluded via `.gitignore`. The full 900-world qualification evidence package can be regenerated from the release/qualification scripts or obtained as a separate archive; daily install and inference do not require re-running the qualification worlds.
 
-## Cross-equipment research contracts (P1 / Draft)
+## Cross-equipment algorithm-design research (R93–R99, experimental)
 
 The generic industrial `EquipmentCard`, `DatasetCard`, and `TrialSpec`
 research contracts, with strictly TRAIN-only design plans, are documented in
 [source_product/docs/R93_EQUIPMENT_DATA_TRIAL_CONTRACTS.md](source_product/docs/R93_EQUIPMENT_DATA_TRIAL_CONTRACTS.md).
-These are **metadata validators**, not trained cross-industry diagnosis
-models, authenticated physical machine inputs, or new 0.7.0 Stable scope.
+
+R93–R99 introduce **opt-in research-only diagnostic algorithm design tools**:
+source-restricted device and data contracts (R93), reusable AAS/torch_like
+candidate execution adapters (R94), bounded algorithm/sensor/hyperparameter
+search (R95), fold-local preprocessing pipelines (R96), physical frequency
+features (R97), envelope/order/fusion graph design with strict physical
+prerequisites (R98), and explainable bounded revisions, partial-cost receipts,
+and a sealed external-evidence review gate (R99). See
+[source_product/docs/R99_EXPLAIN_REVISE_VALIDATE.md](source_product/docs/R99_EXPLAIN_REVISE_VALIDATE.md).
+
+**Merging research code into `main` does not promote it into the frozen
+`phm-design 0.7.0 Stable` release or extend the release's 15 qualified
+Basilisk simulation-domain offline cases.** Industrial equipment identity,
+predictions from frozen executables, authentic cross-equipment external
+generalization, end-to-end resource fairness and production approval are
+not established by these additions. No deployment/flight-safety claim is made.
+The existing limited Stable release artifacts and version remain unchanged.
 
 ## License
 
