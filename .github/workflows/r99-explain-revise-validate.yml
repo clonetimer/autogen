@@ -5,6 +5,7 @@ on:
     paths:
       - 'source_product/src/phm_design/industrial_contracts/design_review.py'
       - 'source_product/src/phm_design/industrial_contracts/independent_review.py'
+      - 'source_product/src/phm_design/industrial_contracts/resource_measure.py'
       - 'source_product/tests/phm_design/test_r99_design_review.py'
       - 'source_product/docs/R99_EXPLAIN_REVISE_VALIDATE.md'
       - '.github/workflows/r99-explain-revise-validate.yml'
