@@ -61,3 +61,54 @@ Q3: Does a self-organizing neural algorithm exceed capacity- and tuning-budget-m
 5. Run preregistered frozen comparisons and one-time blind evaluation; publish all failures.
 
 This protocol is a planning increment on a separate branch, not evidence of Q1–Q3 completion.
+
+## R83o software progress (2026-10-25)
+
+Implemented a **metadata-only**, Python standard-library preflight:
+
+- `source_product/src/phm_design/industrial/r83o_sensor_cohort_gate.py`
+- `source_product/tests/phm_design/test_r83o_sensor_cohort_gate.py`
+- `.github/workflows/r83o-sensor-cohort-contract.yml`
+
+The preflight enforces a versioned input contract, explicit UNKNOWN sensor
+resolution/error/sampling, deployable-field allowlist and protected-truth plus
+source-group/partition metadata exclusions. It rejects cross-role reuse of
+campaigns, source groups, paired runs, raw case hashes and observation hashes;
+paired controls must have one healthy and one faulted run from a common physics
+group. It reports missing TRAIN/CAL/VAL/TEST/FINAL roles without converting a
+partial research cohort into independent testing evidence.
+
+CLI (from the installed package or with `PYTHONPATH=source_product/src`):
+
+```shell
+python -m phm_design.industrial.r83o_sensor_cohort_gate \
+  --sensor sensor_contract.json \
+  --cohorts trajectory_manifest.json \
+  --features selected_features.json \
+  --output r83o_receipt.json
+```
+
+The sensor JSON has `schema=phm.r83o.sensor.v1`, `signal_name=rw_speed_rad_s`,
+`unit=rad/s`, `sensor_id`, `provenance`, `evidence_sha256`,
+`available_onboard`, `quantization_step_rad_s`, `max_abs_error_rad_s`,
+`sampling_hz`, `max_timestamp_jitter_s` and `telemetry_allowlist`.
+The cohort JSON has `schema=phm.r83o.cohort.v1` and an array of `records`
+including `record_id`, `split`, `campaign_id`, `source_group_id`,
+`pair_id`, `run_kind`, `raw_case_sha256` and `observation_sha256`.
+The features JSON contains `feature_fields` (an array of permitted names).
+The exact schema, accepted enum values and refusal codes are defined by the
+validator source and tested synthetic fixtures.
+
+Exit code 0 = `METADATA_PRECHECK_ONLY` (NOT diagnostic qualification);
+2 = malformed / forbidden input (`REJECTED`); 3 = missing contract evidence or
+required splits (`BLOCKED`). The receipt **always** sets
+`eligible_for_stable=false`, `blind_test_executed=false`, and
+`qualified_diagnostic_claim=false`. A SHA-shaped supplied evidence reference
+is *not* proof that sensor calibration is authentic. No real sensor or blind
+experiment was validated in this increment.
+
+Software implemented: entry-gate schema checks and adversarial metadata
+negative controls. Still missing: externally authenticated sensor calibration,
+sensor observation adapter, original independent Basilisk campaign expansion,
+a protected blind-data steward, and any self-organizing-versus-baseline
+diagnostic comparison. R83f/R83g negative eligibility conclusions stand.
