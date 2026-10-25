@@ -46,6 +46,7 @@ def _capture(spec, records, *, mode, slots, acceptance):
         "decision": audit.get("decision"),
         "source_attempts": len(audit.get("attempts", [])),
         "source_oof_fit_count": audit.get("fold_model_fits"),
+        "source_environment_count": audit.get("source_environment_count"),
         "total_fits": audit.get("total_model_fits"),
         "selected_trial_sha256": selected,
         "selected_train_oof_loss": selection_loss,
@@ -83,17 +84,13 @@ def run_r85_source_ablation(task_spec: Mapping | TaskSpec,
         and all(arms["predeclared_static"][key] == arms["feedback"][key]
                 for key in ("source_task_spec_sha256", "train_manifest_sha256",
                             "train_observations_sha256")))
-    same_fits = (arms["predeclared_static"]["total_fits"] ==
-                 arms["feedback"]["total_fits"] ==
-                 family_proposals * 3 + 1)
-    # Both arms may have differing numbers of folds for different source
-    # datasets: never assume exactly 3 from the TaskSpec alone.
-    if same_fits:
-        counts = [arms[m]["source_oof_fit_count"] for m in arms]
-        same_fits = (counts[0] == counts[1] and
-                     counts[0] == family_proposals * (
-                         arms["feedback"]["total_fits"] -
-                         counts[0] if False else counts[0] // family_proposals))
+    env_counts = [a["source_environment_count"] for a in arms.values()]
+    same_fits = bool(
+        all(type(count) is int and count >= 3 for count in env_counts)
+        and len(set(env_counts)) == 1
+        and all(a["source_oof_fit_count"] == family_proposals * env_counts[0]
+                and a["total_fits"] == family_proposals * env_counts[0] + 1
+                for a in arms.values()))
     all_completed = all(
         a["model_delivered"] and a["source_attempts"] == family_proposals
         for a in arms.values())
