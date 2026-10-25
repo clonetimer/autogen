@@ -171,7 +171,10 @@ class FuzzyRuleClassifier:
         self._mean = mean
         self._scale = std
         nfeatures = len(mean)
+        premise_width_parameters = (
+            len(self._centers) * nfeatures if self.policy.premise_steps else 0)
         parameter_count = (len(self._centers) * nfeatures +
+                           premise_width_parameters +
                            len(self._coef) * len(classes))
         self.audit = {
             "schema": "phm.r86.neuro-fuzzy-train.v1",
@@ -192,6 +195,8 @@ class FuzzyRuleClassifier:
             "selected_rule_count": selected["rule_count"],
             "tail_rules_pruned": self.policy.max_rules-selected["rule_count"],
             "parameters_estimated": parameter_count,
+            "learnable_width_parameter_count": premise_width_parameters,
+            "selected_center_parameter_count": len(self._centers) * nfeatures,
             "rule_search_feedback_role": "TRAIN_FIT_ONLY",
             "fold_local_preprocessing": True,
             "source_train_learning_only": True,
