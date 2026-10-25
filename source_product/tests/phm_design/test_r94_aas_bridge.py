@@ -27,9 +27,16 @@ def load(name):
 
 
 def fixtures(prefix):
+    trial = load(prefix+"_trial.json")
+    # Existing torch_like R94 compressor example predeclares only
+    # isolation_forest. This separate AAS statistical contract test must
+    # explicitly authorize the extra family rather than bypass the policy
+    # gate or silently change the production/example TaskSpec.
+    if prefix == "compressor":
+        trial["candidate_families"].append("statistical")
     return (load(prefix+"_equipment.json"),
             load(prefix+"_train_only.json"),
-            load(prefix+"_trial.json"),
+            trial,
             load(prefix+"_train_features.json"),
             load(prefix+"_inference_features.json"))
 
