@@ -1,0 +1,81 @@
+name: R93-R99 Main Integration Gate
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'source_product/src/phm_design/industrial_contracts/**'
+      - 'source_product/tests/phm_design/test_r9*.py'
+      - 'source_product/docs/R9*.md'
+      - '.github/workflows/r93-r99-main-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research-contract-regression:
+    name: R93-R99 industrial design / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install numerical research test dependencies
+        run: python -m pip install numpy==2.3.5 scikit-learn==1.8.0 scipy pytest==9.0.2
+      - name: Combined R93-R99 research suite with truthful optional provider skips
+        run: python -m pytest -q tests/phm_design/test_r93_industrial_contracts.py tests/phm_design/test_r94_torch_like_bridge.py tests/phm_design/test_r94_aas_bridge.py tests/phm_design/test_r95_diagnostic_design_engine.py tests/phm_design/test_r96_diagnostic_pipeline_design.py tests/phm_design/test_r97_signal_feature_design.py tests/phm_design/test_r97_cwru_signal_probe.py tests/phm_design/test_r98_physical_graph_design.py tests/phm_design/test_r98_cwru_envelope_probe.py tests/phm_design/test_r99_design_review.py
+        env:
+          PYTHONPATH: src
+      - name: Verify frozen Stable package version and research-only state
+        shell: python
+        run: |
+          from pathlib import Path
+          import tomllib
+          p = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          assert p["project"]["version"] == "0.7.0"
+          assert p["project"]["dependencies"] == [
+              "torch==2.10.0", "numpy==2.3.5", "scikit-learn==1.8.0"
+          ]
+          readme = Path("../README.md").read_text(encoding="utf-8")
+          assert "Merging research code into" in readme
+          assert "does not promote it into the frozen" in readme
+
+  legacy-stable-full-regression:
+    name: Existing Stable Python tests / Linux 3.11 / CPU
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned CPU torch from official PyTorch distribution
+        run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install pinned Stable numerical and test dependencies
+        run: python -m pip install numpy==2.3.5 scikit-learn==1.8.0 pytest==9.0.2 scipy
+      - name: Run complete legacy and new Python regression suite, no bypassed failures
+        run: python -m pytest -q tests/phm_design
+        env:
+          PYTHONPATH: src
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+          OMP_NUM_THREADS: '2'
+          MKL_NUM_THREADS: '2'
