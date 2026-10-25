@@ -252,7 +252,8 @@ class RealSklearnProviderContract:
 def test_actual_sklearn_algorithms_execute_grouped_train_only_design():
     pytest.importorskip("sklearn")
     eq, train, trial, features = data("bearing")
-    trial["budget"]["max_trials"] = 2  # same full sensors for both families
+    trial["candidate_families"] = ["linear", "tree"]
+    trial["budget"]["max_trials"] = 2  # exactly two authorized families
     plan = propose_diagnostic_study(eq, train, trial)
     provider = RealSklearnProviderContract()
     result = execute_source_design_study(plan, eq, train, trial, features,
