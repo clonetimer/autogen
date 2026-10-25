@@ -1,0 +1,92 @@
+name: R83m Independent Original Basilisk 75pct RW Loss Guidance Threshold Proof
+
+# One-time first original-source attestation; after completion seal this
+# CI to manual-only to prevent report-only PR updates triggering new studies.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/r83m-original-real-basilisk-guidance-threshold.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  anti-fabrication-physics-proof:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install 'pytest>=8,<10'
+      - run: python -m pip install -e ./source_product --no-deps
+      - name: Do not mistake synthetic examples for original Basilisk source
+        run: python -m pytest -q source_product/tests/phm_design/test_r83m_original_native_guidance_threshold_gate.py
+
+  read-actual-original-4arm-native-bsk:
+    needs: anti-fabrication-physics-proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download ORIGINAL SatAgentSimulation 4-arm native physics from completed run
+        uses: actions/download-artifact@v4
+        with:
+          name: r83m-genuine-basilisk-54-native-guidance-threshold-75pct-loss
+          run-id: 40160788578
+          repository: clonetimer/SatAgentSimulation
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/r83m_original_native_source
+      - name: Independently recompute 54 native Basilisk cases and 27 fault/normal contrasts
+        shell: bash
+        run: |
+          python -m pip install -e ./source_product --no-deps
+          python -m phm_design.industrial.r83m_original_native_guidance_threshold_gate \
+            --source-file "$RUNNER_TEMP/r83m_original_native_source/r83m_genuine_native_54_original.json" \
+            --output "$RUNNER_TEMP/r83m_verified_real_native_54_physics.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ["RUNNER_TEMP"])/"r83m_verified_real_native_54_physics.json"
+          r=json.loads(p.read_text())
+          assert r["actual_Basilisk_cases"]==54
+          assert r["physical_wheel_initial_condition_groups"]==9
+          assert r["healthy_sources"]==27
+          assert r["matched_physics_comparisons"]==27
+          assert r["reference_command_breakdown_original_native_verified"]
+          assert r["original_case_exporter_metadata_shadowed_count"]==0
+          assert r["physical_observability_matrix"]["zero|loss75"]["wheel_speed_effect_positive_gt_1e_minus_8"]==0
+          assert r["physical_observability_matrix"]["pulse05|loss75"]["wheel_speed_effect_positive_gt_1e_minus_8"]==0
+          assert r["physical_observability_matrix"]["pulse09|loss75"]["wheel_speed_effect_positive_gt_1e_minus_8"]==9
+          assert r["source_original_cpp_wheel_torque_derating_checked"]
+          assert not r["diagnostic_model_eligibility_confirmed"]
+          assert not r["independent_hardware_or_flight_safety_certified"]
+          assert not r["stable_release_eligible"]
+          assert not r["protected_validation_test_final_accessed"]
+          for mode,group in sorted(r["physical_observability_matrix"].items()):
+              print("R83M_REAL_NATIVE_OBSERVABILITY_GROUP",mode,group)
+          PY
+      - name: Archive original source proof, NEVER a diagnostic performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83m-autogen-original-native-54-physics-threshold-proof
+          retention-days: 21
+          if-no-files-found: warn
+          path: ${{ runner.temp }}/r83m_verified_real_native_54_physics.json
