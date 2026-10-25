@@ -1,11 +1,10 @@
 name: R83n Read-only R83m Basilisk Encoder Error Sensitivity
 
-# New original-source QA analysis. This is NOT an actual hardware noise
-# injection experiment and not an algorithm qualification.
+# The original source SHA-backed read-only physics sensitivity PASSED
+# in GitHub Actions #40172661521. Seal this source receipt to manual repeat
+# ONLY; documentation/tests must not automatically replay research analyses.
+# The separate r83n-native-contract-regression.yml stays three-OS automatic.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/r83n-sealed-native-encoder-error-sensitivity.yml'
   workflow_dispatch:
 
 permissions:
