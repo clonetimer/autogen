@@ -52,6 +52,8 @@ manifest auditor. It validates:
 - With `raw_root`, read **actual supplied local MAT bytes** and verify SHA
   digests with incremental hashing. This is file-integrity verification, not
   physical provenance attestation.
+- Missing `raw_root` forces `R89_RAW_FILES_NOT_VERIFIED` and a strict
+  **NOT READY** receipt, even if all self-declared specimen IDs look distinct.
 - No acceptance unless predeclared TRAIN/VALIDATION physical support holds.
   The Paderborn 6-healthy inventory triggers
   `R89_CATALOG_HEALTHY_BEARINGS_BELOW_R88_SUPPORT`. CWRU triggers
