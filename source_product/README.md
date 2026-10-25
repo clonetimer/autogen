@@ -1,3 +1,9 @@
+# PHM AutoDesign 0.8.0rc1 — software Stable convergence (PRE-RELEASE)
+
+This source tree is in **release-candidate verification**. `0.8.0rc1` is **not** published Stable. The currently qualified software release remains `0.7.0 Stable` for its limited 15-cell Basilisk offline simulation scope. R93–R99 industrial design functions are experimental until their clean-wheel, real-provider, independent physical equipment and public release gates are satisfied. A framework's Stable qualification must not be confused with a particular diagnostic model's equipment qualification. See [release acceptance criteria](docs/RC_080_RELEASE_SCOPE.md).
+
+## Historical notes below (not current version claims)
+
 # 0.7.0.dev10 — R51 研发候选（非 RC / Stable）
 
 本轮新增按外部工况族留出验证、显式数值秩支持描述、声明观测合同下的精确标签冲突审计。默认世界分组行为保持兼容，Stable0.6.0与已冻结dev9未覆盖。
