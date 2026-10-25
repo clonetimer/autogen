@@ -42,10 +42,17 @@ def _capture(spec, records, *, mode, slots, acceptance):
                         .40 * (1-metrics["worst_environment_class_recall"]) +
                         .15 * metrics["healthy_false_alarm"])
                 break
+    attempts = audit.get("attempts", [])
+    complete_metrics = (isinstance(attempts, list) and
+                        all(isinstance(row, Mapping) and
+                            row.get("status") in ("ELIGIBLE", "REJECTED_BY_POLICY")
+                            and isinstance(row.get("metrics"), Mapping)
+                            for row in attempts))
     return {
         "mode": mode, "model_delivered": delivered,
         "decision": audit.get("decision"),
-        "source_attempts": len(audit.get("attempts", [])),
+        "source_attempts": len(attempts),
+        "all_source_candidate_metrics_measured": bool(complete_metrics),
         "source_oof_fit_count": audit.get("fold_model_fits"),
         "source_environment_count": audit.get("source_environment_count"),
         "total_fits": audit.get("total_model_fits"),
@@ -105,6 +112,7 @@ def run_r85_source_ablation(task_spec: Mapping | TaskSpec,
                 for a in arms.values()))
     all_completed = all(
         a["model_delivered"] and a["source_attempts"] == family_proposals
+        and a["all_source_candidate_metrics_measured"]
         for a in arms.values())
     comparison_valid = bool(same_input_hashes and same_fits and all_completed)
     return {
