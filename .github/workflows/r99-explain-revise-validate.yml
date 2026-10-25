@@ -38,7 +38,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install test-only numerical and existing estimator packages
         run: python -m pip install numpy scipy scikit-learn pytest
-      - name: R93–R99 regressions: physics, source explanation, bounded repairs, genuine raw byte gates
+      - name: "R93-R99 regressions: physics, source explanation, bounded repairs and raw byte gates"
         run: >-
           python -m pytest -q
           tests/phm_design/test_r93_industrial_contracts.py
