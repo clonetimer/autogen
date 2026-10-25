@@ -162,7 +162,8 @@ def audit_real_cwru_pair(raw_root):
         "status": "MEASURED_SIGNAL_INGESTION_ONLY",
         "original_source_page": (
             "https://engineering.case.edu/bearingdatacenter/download-data-file"),
-        "source_lab_data_are_measured": True,
+        "publisher_describes_experiment_as_measured": True,
+        "these_local_bytes_authenticated_as_official": False,
         "number_of_original_mat_files": len(items),
         "recordings": items,
         "two_recordings_same_reported_sample_rate": True,
@@ -195,6 +196,7 @@ def main(args=None):
     if opt.download_official:
         official_download_files(opt.raw_dir)
     result = audit_real_cwru_pair(opt.raw_dir)
+    result["official_https_download_in_this_execution"] = bool(opt.download_official)
     with output.open("x", encoding="utf-8") as f:
         json.dump(result, f, sort_keys=True, indent=2, allow_nan=False)
         f.write("\n")
