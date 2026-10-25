@@ -5,7 +5,7 @@ against its perfectly aligned healthy counterfactual is possible only in
 offline physics QA. A flight detector has no such healthy twin.
 
 No stochastic noise is injected and no diagnostic model is trained. This
-only computes NECESSARY measurement-resolution margins under hypothetical,
+only computes SUFFICIENT source-oracle separation margins under hypothetical,
 independently bounded per-observation speed error, +/- epsilon rad/s,
 against the ACTUAL original 54-case R83m Basilisk source verified by SHA.
 The real hardware noise/quantization/cadence remains UNKNOWN.
