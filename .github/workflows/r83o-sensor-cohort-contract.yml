@@ -13,8 +13,8 @@ permissions:
 
 jobs:
   metadata-preflight-and-negative-controls:
-    name: "R83o metadata guard / \${{ matrix.os }} / Python \${{ matrix.python-version }}"
-    runs-on: \${{ matrix.os }}
+    name: "R83o metadata guard / ${{ matrix.os }} / Python ${{ matrix.python-version }}"
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: \${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version }}
       - name: Install lightweight test runner (no Basilisk simulation)
         run: python -m pip install 'pytest>=8,<10'
       - name: Run synthetic metadata-only adversarial controls
