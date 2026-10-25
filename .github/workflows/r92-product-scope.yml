@@ -1,0 +1,52 @@
+name: R92 Cross-Domain Capability Boundary Gate
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/configs/product/r92_scope.json'
+      - 'source_product/src/phm_design/strategy/**'
+      - 'source_product/tests/phm_design/test_r92_scope_gate.py'
+      - 'source_product/docs/R92_INDUSTRIAL_CROSS_DOMAIN_STRATEGY.md'
+      - '.github/workflows/r92-product-scope.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capability-claim-audit:
+    name: Research vs Stable scope check / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install lean scope-check runtime
+        run: python -m pip install pytest
+      - name: Audit capability contract and unsupported-claim refusals
+        run: python -m pytest -q tests/phm_design/test_r92_scope_gate.py
+        env:
+          PYTHONPATH: src
+      - name: Print the genuine limited Stable contract
+        run: >-
+          python -m phm_design.strategy.scope_gate
+          --register configs/product/r92_scope.json
+          --capability r60_sat_offline
+          --claim limited_simulation_offline_qualified
+        env:
+          PYTHONPATH: src
