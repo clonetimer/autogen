@@ -5,6 +5,8 @@ on:
     paths:
       - 'README.md'
       - 'source_product/src/phm_design/industrial_contracts/**'
+      - 'source_product/paired_observation_audit.py'
+      - 'source_product/tests/phm_design/test_r17_checkout_integrity.py'
       - 'source_product/tests/phm_design/test_r9*.py'
       - 'source_product/docs/R9*.md'
       - '.github/workflows/r93-r99-main-integration.yml'
