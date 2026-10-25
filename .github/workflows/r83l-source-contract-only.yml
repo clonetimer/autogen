@@ -1,0 +1,36 @@
+name: R83l Original Native 54-case Contract Regression
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r83l_original_basilisk_multiwheel_physics_gate.py'
+      - 'source_product/tests/phm_design/test_r83l_original_native_multiwheel_physics_gate.py'
+      - '.github/workflows/r83l-source-contract-only.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-identity-and-shadow-regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install 'pytest>=8,<10'
+      - run: python -m pip install -e ./source_product --no-deps
+      - name: Original-source SHA, actuator truth, non-promotable research result
+        run: python -m pytest -q source_product/tests/phm_design/test_r83l_original_native_multiwheel_physics_gate.py
