@@ -1,0 +1,12 @@
+[
+  {
+    "pressure": 8.1,
+    "oil_temperature": 50.15,
+    "motor_current": 12.1
+  },
+  {
+    "pressure": 12,
+    "oil_temperature": 80,
+    "motor_current": 20
+  }
+]
