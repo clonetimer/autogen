@@ -110,3 +110,20 @@ on real signals, but **must not** promise class generalization from two
 recordings. A proper causal effectiveness comparison of fuzzy self-organization
 will require an independent physical-specimen cohort; otherwise it remains
 a lower-support descriptive comparison only.
+
+## Actual measured input obtained on 2026-10-25
+
+The first R91 GitHub run [40190914686](https://github.com/clonetimer/autogen/actions/runs/40190914686)
+**successfully downloaded** official `97.mat` and `109.mat`, located exact
+vibration fields and obtained finite descriptive statistics. It archived a
+JSON-only audit artifact. See
+[`evidence/R91_ORIGINAL_CWRU_MEASURED_SIGNAL_AUDIT_20261025.md`](evidence/R91_ORIGINAL_CWRU_MEASURED_SIGNAL_AUDIT_20261025.md)
+for exact 243,938-point recordings, unmodified SHA-256 values, RMS/crest
+statistics and strict no-diagnostic-effectiveness conclusions.
+
+R91 now pins the two SHA-256 values first seen in that real official HTTPS
+retrieval. A later `--download-official` run MUST fail if bytes change,
+triggering a separate source-version review. This pinned digest is a
+reproducibility reference and **not a publisher-signed authentication**.
+The audit receipt separately records whether this invocation downloaded
+from the official URLs or inspected local caller-supplied files.
