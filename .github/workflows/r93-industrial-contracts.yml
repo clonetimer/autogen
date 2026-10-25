@@ -1,0 +1,62 @@
+name: R93 Cross-Equipment Industrial Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial_contracts/**'
+      - 'source_product/examples/industrial_contracts/**'
+      - 'source_product/tests/phm_design/test_r93_industrial_contracts.py'
+      - 'source_product/docs/R93_EQUIPMENT_DATA_TRIAL_CONTRACTS.md'
+      - '.github/workflows/r93-industrial-contracts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-contracts:
+    name: Two-device TRAIN-only contract / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install minimal test-only dependency
+        run: python -m pip install pytest
+      - name: Contract and leakage guards
+        run: python -m pytest -q tests/phm_design/test_r93_industrial_contracts.py
+        env:
+          PYTHONPATH: src
+      - name: Check bearing source-only plan CLI
+        run: >-
+          python -m phm_design.industrial_contracts source-plan
+          --equipment examples/industrial_contracts/bearing_equipment.json
+          --dataset examples/industrial_contracts/bearing_train_only.json
+          --trial examples/industrial_contracts/bearing_trial.json
+          --output r93-ci-source-plan.json
+        env:
+          PYTHONPATH: src
+      - name: Inspect actual JSON output has no protected roles
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          o = json.loads(Path("r93-ci-source-plan.json").read_text())
+          assert o["calibration_validation_final_read"] is False
+          assert o["status"] == "PLAN_ONLY_NO_MODEL_TRAINED"
+          assert o["model_qualified"] is False
