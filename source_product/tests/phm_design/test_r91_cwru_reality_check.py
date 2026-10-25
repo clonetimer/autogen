@@ -10,7 +10,8 @@ from scipy.io import savemat
 
 from phm_design.industrial.r91_cwru_reality_check import (
     REGISTRY, RealSignalRefused, audit_real_cwru_pair,
-    main, _read_recording)
+    main, _read_recording, verify_first_documented_official_bytes,
+    FIRST_OBSERVED_OFFICIAL_SHA256)
 
 
 @pytest.fixture
@@ -98,3 +99,16 @@ def test_cli_receipt_new_only_and_never_claims_detection(
     with pytest.raises(SystemExit):
         main(["--raw-dir", str(simulated_cwru_mat),
               "--receipt", str(out)])
+
+
+
+def test_first_actual_official_download_sha_pin_refuses_changed_original_files(
+        simulated_cwru_mat):
+    r = audit_real_cwru_pair(simulated_cwru_mat)
+    with pytest.raises(RealSignalRefused,
+                       match="R91_OFFICIAL_SOURCE_BYTES_CHANGED_SINCE_FIRST_AUDIT"):
+        verify_first_documented_official_bytes(r)
+    # This exercises byte-identity pin algebra ONLY, not real provenance.
+    for item in r["recordings"]:
+        item["sha256"] = FIRST_OBSERVED_OFFICIAL_SHA256[item["file_id"]]
+    assert verify_first_documented_official_bytes(r) is True
