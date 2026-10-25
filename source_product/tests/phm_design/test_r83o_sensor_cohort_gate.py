@@ -78,6 +78,19 @@ def test_reject_oracle_fields_even_if_the_allowlist_is_poisoned(name):
         gate.preflight(sensor, cohorts, features)
 
 
+
+@pytest.mark.parametrize("name", [
+    "split", "split_name", "campaign_id", "source_group_id", "pair_id",
+    "record_id", "run_kind", "raw_case_sha256", "observation_sha256",
+    "world_id", "generation_family_id", "source_case_id", "seed",
+])
+def test_reject_metadata_and_split_keys_even_if_allowlisted(name):
+    sensor, cohorts, features = fixture()
+    sensor["telemetry_allowlist"].append(name)
+    features["feature_fields"].append(name)
+    with pytest.raises(gate.AdmissionError, match="PROTECTED_METADATA_FIELD"):
+        gate.preflight(sensor, cohorts, features)
+
 def test_refuse_feature_not_approved_by_actual_sensor_allowlist():
     sensor, cohorts, features = fixture()
     features["feature_fields"] = ["rw_speed_rad_s", "hidden_private_register"]
