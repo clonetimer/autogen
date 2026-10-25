@@ -1,0 +1,46 @@
+{
+  "schema": "phm.autogen.dataset.v1",
+  "dataset_id": "compressor_synthetic_contract_example",
+  "equipment_id": "compressor_fixture",
+  "origin": "synthetic",
+  "license": "synthetic_metadata_fixture_not_measured",
+  "split_protocol": {
+    "mode": "temporal_forward",
+    "embargo_seconds": 3600
+  },
+  "records": [
+    {
+      "record_id": "c001",
+      "physical_id": "compressor_001",
+      "session_id": "session_c001",
+      "environment_id": "operating",
+      "role": "TRAIN",
+      "source_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "start_utc": "2026-01-01T00:00:00Z",
+      "end_utc": "2026-01-02T00:00:00Z",
+      "label": "NORMAL"
+    },
+    {
+      "record_id": "c002",
+      "physical_id": "compressor_001",
+      "session_id": "session_c002",
+      "environment_id": "operating",
+      "role": "TRAIN",
+      "source_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "start_utc": "2026-01-02T01:00:00Z",
+      "end_utc": "2026-01-03T00:00:00Z",
+      "label": "NORMAL"
+    },
+    {
+      "record_id": "c003",
+      "physical_id": "compressor_001",
+      "session_id": "session_c003",
+      "environment_id": "operating",
+      "role": "VALIDATION",
+      "source_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "start_utc": "2026-01-03T03:00:00Z",
+      "end_utc": "2026-01-04T00:00:00Z",
+      "label": "ANOMALY"
+    }
+  ]
+}
