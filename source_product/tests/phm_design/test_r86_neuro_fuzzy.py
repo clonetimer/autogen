@@ -118,7 +118,7 @@ def test_refuse_final_data_truth_and_reused_physical_group():
     cross = copy.deepcopy(data)
     key = spec["data"]["group_keys"][0]
     cross[2]["metadata"][key] = cross[0]["metadata"][key]
-    with pytest.raises(TaskSpecRejected, match="R86_GROUP_CROSSES_ENVIRONMENT|UNSUPPORTED_TRAINING"):
+    with pytest.raises(TaskSpecRejected, match="R86_GROUP_CROSSES_ENVIRONMENT|UNSUPPORTED_TRAINING|PHYSICAL_GROUP_CROSSES_ENVIRONMENTS"):
         # Source compiler may reject duplicated logical group before LOEO.
         cross[2]["metadata"][spec["data"]["environment_axes"][0]] = "other_regime"
         run_fuzzy_source_study(spec, cross)
