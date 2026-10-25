@@ -18,6 +18,8 @@ import pytest
 
 from phm_design.industrial_contracts.design_review import (
     DesignReviewRejected, explain_source_design)
+from phm_design.industrial_contracts.resource_measure import (
+    measure_source_graph_end_to_end)
 from phm_design.industrial_contracts.independent_review import (
     IndependentReviewRejected, freeze_comparison,
     evaluate_sealed_measured_comparison)
@@ -234,3 +236,27 @@ def test_source_only_fixtures_never_qualify_as_real_measured_evidence(tmp_path):
                        match="R99_EXPERIMENTAL_MEASURED_DATA_ONLY"):
         evaluate_sealed_measured_comparison(
             frozen, equipment, manifest, trial, originals, {})
+
+
+
+def test_full_source_algorithm_design_resource_meter_includes_fft_and_provider():
+    equipment, train, trial = _cards(speed=True)
+    frozen = propose_physical_graph_study(equipment, train, trial)
+    fake = SpyTorchLike()
+    measured = measure_source_graph_end_to_end(
+        frozen, equipment, train, trial, _signals(train), provider=fake)
+    assert measured["schema"] == "phm.autogen.r99-end-to-end-resource.v1"
+    assert measured["study_sha256"] == frozen["study_sha256"]
+    assert measured["source_report"]["source_fit_calls_actual"] == 32
+    assert len(fake.created) == 32
+    cost = measured["measured_resources"]
+    assert cost["complete_feature_pipeline_and_model_fit_wall_seconds"] >= 0
+    assert cost["complete_feature_pipeline_and_model_fit_process_cpu_seconds"] >= 0
+    assert cost["traced_python_allocation_peak_bytes_observed"] > 0
+    assert cost["envelope_fft_and_fold_preprocessing_included_in_timing"]
+    assert not cost["numpy_c_extension_peak_allocation_tracked"]
+    assert not cost["gpu_memory_measured"]
+    assert not cost["cpu_gpu_flops_measured"]
+    assert not cost["same_hardware_and_software_comparison_proven"]
+    assert not measured["independent_generalization_proven"]
+    assert not measured["qualified_for_industrial_deployment"]
