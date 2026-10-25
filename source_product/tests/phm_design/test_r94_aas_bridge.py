@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 
 from phm_design.industrial_contracts.aas_bridge import (
-    AASDetectorBridge, DetectorBridgeRejected,
+    AASDetectorBridge, DetectorBridgeRejected, bind_existing_aas_detector,
 )
 from phm_design.industrial_contracts.contracts import ContractRejected
 
@@ -254,3 +254,53 @@ def test_aas_threshold_must_be_train_calibrated_not_invented_from_review_rows():
     with pytest.raises(DetectorBridgeRejected, match="R94_AAS_TRAIN_ONLY_THRESHOLD_NOT_CALIBRATED"):
         AASDetectorBridge(BrokenCalibration(), descriptor=descriptor(
             "three_sigma", "statistical", "score_threshold")).fit(eq, train, trial, rows)
+
+
+
+def test_existing_aas_descriptor_binding_calls_original_state_preserving_loader():
+    eq, train, trial, features, inference = fixtures("compressor")
+    det = AASScoreThresholdDouble()
+    calls = []
+
+    def authoritative_service(detector, matrix, *, preserve_state):
+        assert preserve_state is True
+        calls.append("AAS.detectors.loader.detect_with_detector")
+        before = detector.export_evaluation_state()
+        try:
+            return detector.detect(matrix)
+        finally:
+            detector.restore_evaluation_state(before)
+
+    # Structure copied from supplied AAS configs/detectors/three_sigma.yaml;
+    # class_path remains descriptive and is NOT imported by the adapter.
+    original = {
+        "name": "three_sigma", "label": "3-Sigma",
+        "description": "statistical detector", "min_training_samples": 2,
+        "class_path": "detectors.statistical_detectors.ThreeSigmaDetector",
+        "type": "statistical", "dependencies": ["numpy"],
+        "config": {}, "decision_mode": "score_threshold",
+        "decision_modes": ["score_threshold"],
+    }
+    bridge = bind_existing_aas_detector(
+        det, original, candidate_family="statistical",
+        detection_service=authoritative_service).fit(eq, train, trial, features)
+    first = bridge.predict(inference)
+    assert first["pred_label"] == [0, 1]
+    assert calls == ["AAS.detectors.loader.detect_with_detector"]
+    assert bridge.resource_receipt()["backend_contract"] == "AAS.BaseDetector"
+    assert bridge.export_model()["descriptor"]["class_path"] == original["class_path"]
+
+
+def test_external_detection_service_cannot_change_mode_or_length():
+    eq, train, trial, features, inference = fixtures("compressor")
+    det = AASScoreThresholdDouble()
+    def spoofed_service(detector, matrix, *, preserve_state):
+        return {"decision_mode": "native", "pred_label": [0, 1],
+                "anomaly_score": None}
+    bridge = bind_existing_aas_detector(det, {
+        "name": "zscore", "class_path": "detectors.statistical_detectors.ZScoreDetector",
+        "config": {}, "decision_mode": "score_threshold",
+    }, candidate_family="statistical",
+    detection_service=spoofed_service).fit(eq, train, trial, features)
+    with pytest.raises(DetectorBridgeRejected, match="R94_AAS_DECISION_MODE_MISMATCH"):
+        bridge.predict(inference)
