@@ -36,6 +36,12 @@ REGISTRY = {
         "url": "https://engineering.case.edu/sites/default/files/109.mat",
     },
 }
+# First direct-official-HTTPS observed byte hashes, 2026-10-25, R91 run
+# 40190914686. NOT independently publisher-signed checksums.
+FIRST_OBSERVED_OFFICIAL_SHA256 = {
+    "97": "16bf48babcf1c7ac224bc1a81cd9eafdb27e42d5cf559761907e067e8eeadf3c",
+    "109": "daddef5f784879becdf8fefbe2453f11c3cfc8d061a2a671da2f546d1bb48460",
+}
 MAX_BYTES = 16 * 1024 * 1024
 WINDOW_SAMPLES = 4096
 
@@ -182,6 +188,19 @@ def audit_real_cwru_pair(raw_root):
     }
 
 
+def verify_first_documented_official_bytes(receipt):
+    """Detect official-source byte drift since the first actual run.
+
+    Successful comparison means identical bytes to a previously logged HTTPS
+    retrieval, NOT that a lab has cryptographically certified their origin.
+    """
+    observed = {item["file_id"]: item["sha256"]
+                for item in receipt["recordings"]}
+    if observed != FIRST_OBSERVED_OFFICIAL_SHA256:
+        _reject("R91_OFFICIAL_SOURCE_BYTES_CHANGED_SINCE_FIRST_AUDIT")
+    return True
+
+
 def main(args=None):
     parser = argparse.ArgumentParser(description=(
         "Audit two official CWRU original real vibration recordings; "
@@ -196,7 +215,13 @@ def main(args=None):
     if opt.download_official:
         official_download_files(opt.raw_dir)
     result = audit_real_cwru_pair(opt.raw_dir)
+    if opt.download_official:
+        verify_first_documented_official_bytes(result)
     result["official_https_download_in_this_execution"] = bool(opt.download_official)
+    result["original_bytes_match_first_documented_official_retrieval"] = (
+        {i["file_id"]: i["sha256"] for i in result["recordings"]}
+        == FIRST_OBSERVED_OFFICIAL_SHA256)
+    result["publisher_signed_checksum_verified"] = False
     with output.open("x", encoding="utf-8") as f:
         json.dump(result, f, sort_keys=True, indent=2, allow_nan=False)
         f.write("\n")
