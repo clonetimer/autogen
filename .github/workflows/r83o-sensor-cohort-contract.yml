@@ -1,0 +1,39 @@
+name: R83o Sensor and Blinded Cohort Metadata Gate
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r83o_sensor_cohort_gate.py'
+      - 'source_product/tests/phm_design/test_r83o_sensor_cohort_gate.py'
+      - '.github/workflows/r83o-sensor-cohort-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  metadata-preflight-and-negative-controls:
+    name: "R83o metadata guard / ${{ matrix.os }} / Python ${{ matrix.python-version }}"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install lightweight test runner (no Basilisk simulation)
+        run: python -m pip install 'pytest>=8,<10'
+      - name: Run synthetic metadata-only adversarial controls
+        run: python -m pytest -q source_product/tests/phm_design/test_r83o_sensor_cohort_gate.py
+        env:
+          PYTHONPATH: source_product/src
