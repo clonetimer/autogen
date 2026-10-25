@@ -35,6 +35,7 @@ def mock_audit(spec, mode):
         "total_model_fits": 10,
         "attempts": [
             {"trial_index": i, "trial_sha256": ("c"*64 if i == 0 else str(i)),
+             "status": "ELIGIBLE",
              "metrics": {"accuracy": .8, "worst_environment_class_recall": .6,
                          "healthy_false_alarm": .1}}
             for i in range(3)],
@@ -131,3 +132,19 @@ def test_guard_transfers_family_parameters_into_spawn_target(monkeypatch):
     assert recorded[0][0] is guard._worker
     assert recorded[0][1][-2:] == ("feedback", 3)
     assert recorded[0][2] == 180
+
+
+def test_failed_source_candidate_invalidates_comparison(monkeypatch):
+    import phm_design.industrial.r85_source_ablation as study
+    spec, data = spec_and_data()
+    def fake(spec_arg, records, **kwargs):
+        audit = mock_audit(spec_arg, kwargs["family_search_mode"])
+        if kwargs["family_search_mode"] == "feedback":
+            audit["attempts"][1]["status"] = "FAILED"
+            audit["attempts"][1].pop("metrics")
+        return SimpleNamespace(audit=audit)
+    monkeypatch.setattr(study, "run_design_guarded", fake)
+    receipt = run_r85_source_ablation(spec, data)
+    assert not receipt["source_train_descriptive_comparison_allowed"]
+    assert not receipt["all_declared_candidates_evaluated"]
+    assert not receipt["arms"]["feedback"]["all_source_candidate_metrics_measured"]
