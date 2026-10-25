@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'source_product/src/phm_design/industrial/r90_paderborn_pilot.py'
+      - 'source_product/src/phm_design/industrial/r90_cli.py'
       - 'source_product/tests/phm_design/test_r90_paderborn_pilot.py'
       - 'source_product/examples/industrial/paderborn_r90_binary_pilot.json'
       - 'source_product/README_R90.md'
