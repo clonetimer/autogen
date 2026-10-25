@@ -145,6 +145,15 @@ def review_original_real_native_rw_source(path: str | Path) -> dict:
                         if any(not math.isfinite(_number(v)) for v in row.values()) or \
                                 abs(row["time_s"]-idx*DT)>1e-8:
                             _fail("ORIGINAL_SCHEDULER_TIME_OR_FINITE_SAMPLE_CHANGED")
+                        # Verify that the physical guidance pulse really
+                        # arrived in the native FSW recorder on its target
+                        # axis, at the BSK scheduler's measured 2.0..3.8s.
+                        active=2.0-1e-8<=row["time_s"]<=3.8+1e-8
+                        theta=math.tan(math.radians(ANGLES[ref])/4.) if active else 0.
+                        for axis in WHEELS:
+                            expected=theta if axis==wheel else 0.
+                            if abs(row[f"fsw.native_reference_mrp_{axis}"]-expected)>1e-8:
+                                _fail("ORIGINAL_SCHEDULED_NATIVE_GUIDANCE_MRP_NOT_ACTUALLY_APPLIED")
                     if mode!="healthy":
                         post=[r for r in rows if r["time_s"]>=ONSET_S+DT-1e-8]
                         if max(abs(r["rw.native_target_applied_torque_nm_QA_ONLY"]) for r in post)>cap+1e-9:
