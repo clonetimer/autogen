@@ -8,6 +8,7 @@ on:
       - 'source_product/pyproject.toml'
       - 'source_product/src/**'
       - 'source_product/scripts/stable_candidate_smoke.py'
+      - 'source_product/scripts/stable_core_wheel_smoke.py'
       - 'source_product/tests/**'
       - 'source_product/docs/RC_080_RELEASE_SCOPE.md'
       - '.github/workflows/stable-candidate-080.yml'
@@ -56,6 +57,42 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 30
+
+  clean-core-wheel:
+    name: Offline source-plan from installed wheel / ${{ matrix.os }} / py${{ matrix.python-version }}
+    needs: build-dist
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: autogen-phm-design-0.8.0rc1-unpublished-candidate
+          path: dist
+      - name: Install built wheel into clean venv without simulation/model dependencies
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess, sys
+          wheel = list(Path("dist").glob("phm_design-0.8.0rc1-*.whl"))
+          assert len(wheel) == 1, wheel
+          subprocess.check_call([sys.executable, "-m", "pip",
+                                 "install", "--no-deps", str(wheel[0])])
+      - name: Non-editable TRAIN-only operator workflow and package metadata
+        run: python source_product/scripts/stable_core_wheel_smoke.py
 
   clean-wheel-genuine-provider:
     name: Clean wheel + REAL torch_like / ${{ matrix.os }} / py${{ matrix.python-version }}
