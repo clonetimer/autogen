@@ -7,6 +7,7 @@ private torch_like package was checked out or that data are real equipment.
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 from pathlib import Path
 import json
 
@@ -200,7 +201,7 @@ def test_hard_fit_count_ceiling_avoids_silent_budget_overrun():
         row = deepcopy(train["records"][n % 4])
         row["record_id"] = f"large_train_{n:02d}"
         row["physical_id"] = f"synthetic_bearing_{n:02d}"
-        row["source_sha256"] = ("%x" % (n % 16))*64
+        row["source_sha256"] = hashlib.sha256(f"synthetic-r95-{n}".encode()).hexdigest()
         train["records"].append(row)
     plan = propose_diagnostic_study(eq, train, trial)
     assert plan["screening_refusal"] == "R95_SOURCE_FIT_BUDGET_EXCEEDS_HARD_RESEARCH_CEILING"
