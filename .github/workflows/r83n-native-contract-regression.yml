@@ -1,0 +1,38 @@
+name: R83n Original Native Source Contract Regression
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial/r83n_original_native_speed_error_envelope.py'
+      - 'source_product/tests/phm_design/test_r83n_original_native_speed_error_envelope.py'
+      - '.github/workflows/r83n-native-contract-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-claims-contract:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install 'pytest>=8,<10'
+      - run: python -m pip install -e ./source_product --no-deps
+      - run: >-
+          python -m pytest -q
+          source_product/tests/phm_design/test_r83m_original_native_guidance_threshold_gate.py
+          source_product/tests/phm_design/test_r83n_original_native_speed_error_envelope.py
