@@ -144,7 +144,10 @@ class AASDetectorBridge:
     AAS' original 0/1 decision contract. No universal multiclass coercion.
     """
 
-    def __init__(self, detector, *, descriptor):
+    def __init__(self, detector, *, descriptor, detection_service=None):
+        if detection_service is not None and not callable(detection_service):
+            _reject("R94_INVALID_AAS_DETECTION_SERVICE")
+        self._detection_service = detection_service
         if not isinstance(descriptor, Mapping) or set(descriptor) != {
                 "name", "class_path", "decision_mode", "config",
                 "candidate_family"}:
@@ -267,7 +270,11 @@ class AASDetectorBridge:
         features = _table(observations, self._channels)
         import numpy as np
         matrix = np.asarray(features, dtype=np.float64)
-        result = _freeze_detector_decision(self.detector, matrix)
+        result = (
+            self._detection_service(self.detector, matrix, preserve_state=True)
+            if self._detection_service is not None
+            else _freeze_detector_decision(self.detector, matrix)
+        )
         decision = _validate_decision(result, len(matrix),
                                       self.descriptor["decision_mode"])
         decision["predicted_class"] = [
@@ -299,3 +306,31 @@ class AASDetectorBridge:
         if self._receipt is None:
             _reject("R94_NO_FIT_RECEIPT")
         return deepcopy(self._receipt)
+
+
+
+def bind_existing_aas_detector(detector, aas_descriptor, *,
+                               candidate_family, detection_service=None):
+    """Bind an AAS-instantiated detector and its original YAML descriptor.
+
+    AAS still calls detectors.loader.load_detector(descriptor), and may
+    supply detectors.loader.detect_with_detector as detection_service.
+    Autogen never imports an arbitrary class_path or builds plugin runners.
+    """
+    if not isinstance(aas_descriptor, Mapping):
+        _reject("R94_INVALID_AAS_YAML_DESCRIPTOR")
+    config = aas_descriptor.get("config") or {}
+    if not isinstance(config, Mapping):
+        _reject("R94_INVALID_AAS_YAML_CONFIG")
+    mode = config.get("decision_mode",
+                      aas_descriptor.get("decision_mode",
+                                         getattr(detector, "decision_mode", None)))
+    minimal = {
+        "name": aas_descriptor.get("name"),
+        "class_path": aas_descriptor.get("class_path"),
+        "decision_mode": mode,
+        "config": dict(config),
+        "candidate_family": candidate_family,
+    }
+    return AASDetectorBridge(
+        detector, descriptor=minimal, detection_service=detection_service)
