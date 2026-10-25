@@ -281,7 +281,29 @@ def evaluate_frozen_fuzzy_validation(frozen_root: str | Path,
             expected, prediction, env,
             labels.index(raw["task"]["healthy_label"]), len(labels))
     # Deterministic physical-group macro delta + group-paired bootstrap.
-    from .r83_frozen_validation import _paired_group_interval
+    # Keep this purely NumPy: frozen inference must not depend on importing
+    # a neural search trainer, Torch, pickle, or any mutable study worker.
+    def paired_interval(p_a, p_b):
+        by_group = {}
+        for i, group in enumerate(groups):
+            by_group.setdefault(group, []).append(i)
+        per_group = np.asarray([
+            np.mean(p_a[by_group[g]] == expected[by_group[g]]) -
+            np.mean(p_b[by_group[g]] == expected[by_group[g]])
+            for g in sorted(by_group)], dtype=float)
+        rng = np.random.default_rng(88017)
+        draws = rng.integers(0, len(per_group),
+                             size=(499, len(per_group)))
+        means = per_group[draws].mean(axis=1)
+        return {
+            "point_delta_group_macro_accuracy": float(per_group.mean()),
+            "cluster_bootstrap_95_percentile_interval": [
+                float(np.quantile(means, .025)),
+                float(np.quantile(means, .975))],
+            "bootstrap_seed": 88017, "replicates": 499,
+            "unit": "SELF_REPORTED_PHYSICAL_GROUP",
+            "confirmatory_significance_claim": False,
+        }
     effects = {}
     for a, b in (
         ("adaptive_fuzzy", "fixed_fuzzy"),
@@ -290,8 +312,8 @@ def evaluate_frozen_fuzzy_validation(frozen_root: str | Path,
         ("adaptive_fuzzy_learned_premise", "fixed_fuzzy_learned_premise"),
         ("adaptive_fuzzy_learned_premise", "linear_reference"),
     ):
-        effects[a + "_vs_" + b] = _paired_group_interval(
-            expected, groups, predictions[a], predictions[b])
+        effects[a + "_vs_" + b] = paired_interval(
+            predictions[a], predictions[b])
     return {
         "schema": "phm.r88.readonly-source-separated-validation.v1",
         "manifest_sha256": expected_manifest_sha256,
