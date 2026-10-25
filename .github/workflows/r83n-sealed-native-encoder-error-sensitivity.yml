@@ -1,0 +1,94 @@
+name: R83n Read-only R83m Basilisk Encoder Error Sensitivity
+
+# The original source SHA-backed read-only physics sensitivity PASSED
+# in GitHub Actions #40172661521. Seal this source receipt to manual repeat
+# ONLY; documentation/tests must not automatically replay research analyses.
+# The separate r83n-native-contract-regression.yml stays three-OS automatic.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-and-claims-contract:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install 'pytest>=8,<10'
+      - run: python -m pip install -e ./source_product --no-deps
+      - name: Defend source digest, uncertainty bounds and refusal of classifier claims
+        run: >-
+          python -m pytest -q
+          source_product/tests/phm_design/test_r83m_original_native_guidance_threshold_gate.py
+          source_product/tests/phm_design/test_r83n_original_native_speed_error_envelope.py
+
+  inspect-original-real-native-source-only:
+    needs: source-and-claims-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch ORIGINAL sealed 54-case C-backed Basilisk source from upstream
+        uses: actions/download-artifact@v4
+        with:
+          name: r83m-genuine-basilisk-54-native-guidance-threshold-75pct-loss
+          run-id: 40160788578
+          repository: clonetimer/SatAgentSimulation
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/original_r83m_native_54
+      - name: Revalidate original native C++ source and calculate bounded-error paired-oracle sensitivity
+        shell: bash
+        run: |
+          python -m pip install -e ./source_product --no-deps
+          python -m phm_design.industrial.r83n_original_native_speed_error_envelope \
+            --source-file "$RUNNER_TEMP/original_r83m_native_54/r83m_genuine_native_54_original.json" \
+            --output "$RUNNER_TEMP/r83n_sealed_native_encoder_error_sensitivity.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=json.loads((Path(os.environ["RUNNER_TEMP"])/"r83n_sealed_native_encoder_error_sensitivity.json").read_text())
+          assert r["real_native_original_runs"]==54 and r["counterfactual_pair_cases"]==27
+          assert r["physical_wheel_initial_groups"]==9
+          assert r["original_R83M_Basilisk_source_sha256"]=="635fd4e4cd36da39a15ba1289003ba84aaf4551b02de70c3d063ada878209502"
+          assert r["actual_hardware_encoder_precision_known"] is False
+          assert r["original_counterfactual_healthy_twin_available_on_orbit"] is False
+          assert r["diagnostic_model_trained"] is False
+          assert r["false_alarm_rate_or_detection_delay_measured"] is False
+          assert r["source_fault_target_or_applied_torque_used_as_model_input"] is False
+          assert r["protected_validation_test_final_accessed"] is False
+          assert r["stable_release_eligible"] is False
+          m=r["error_envelope_physics_oracle_matrix"]
+          assert m["zero"]["0.0000"]["paired_true_speed_contrasts_above_error_difference_bound"]==0
+          assert m["pulse05"]["0.0000"]["paired_true_speed_contrasts_above_error_difference_bound"]==0
+          assert m["pulse09"]["0.0000"]["paired_true_speed_contrasts_above_error_difference_bound"]==9
+          assert m["pulse09"]["0.0010"]["paired_true_speed_contrasts_above_error_difference_bound"]==9
+          assert m["pulse09"]["0.0100"]["paired_true_speed_contrasts_above_error_difference_bound"]==0
+          print("R83N_TRUE_NATIVE_SOURCE_ORACLE_LIMITATION_NOT_A_SENSOR_MODEL",m)
+          PY
+      - name: Archive original-physics-only non-diagnostic bounded-error receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r83n-basilisk-native-original-speed-error-sensitivity
+          if-no-files-found: warn
+          retention-days: 21
+          path: ${{ runner.temp }}/r83n_sealed_native_encoder_error_sensitivity.json
