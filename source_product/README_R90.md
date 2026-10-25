@@ -46,7 +46,9 @@ sample length.
 
 Use `source_product/examples/industrial/paderborn_r90_binary_pilot.json`.
 It intentionally restricts diagnosis to **HEALTHY vs FAULT** and uses only
-the explicitly named `vibration_1` source channel.
+the explicitly named `vibration_1` source channel, from which two fixed
+sensor-derived features (RMS and peak-absolute vibration per bin) are computed.
+The second model feature is **not** a second sensor.
 
 ```python
 import json
@@ -85,7 +87,8 @@ print(report["results"])
   review. CI tests are **not** proof of authentic-file compatibility.
 - Raw sample length must be 200,000–300,000, reflecting approximately
   four seconds at the nominal 64 kHz; the first 256 equally sized bins
-  become **RMS vibration amplitudes**. This deliberately discards phase
+  become **RMS and peak-absolute vibration amplitudes**. The existing
+sequence encoder requires two numerical channels besides the time axis. This deliberately discards phase
   and most frequency detail. Sensor units are **unverified**; the time
   axis uses the *nominal* sampling rate, not a measured timestamp.
 - Each raw MAT file gets SHA-256 logged. Records are pinned to two
