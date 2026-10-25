@@ -20,6 +20,15 @@ ROLES = frozenset({"TRAIN", "CAL", "VAL", "TEST", "FINAL"})
 PROVENANCE = frozenset({"UNKNOWN", "NATIVE_TRUTH_ONLY", "VALIDATED_SIM_SENSOR", "CALIBRATED_ONBOARD_SENSOR"})
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 _SHA = re.compile(r"^[0-9a-f]{64}$")
+_RESERVED_METADATA_FIELDS = frozenset({
+    "split", "split_name", "role", "data_role", "campaign_id",
+    "source_group_id", "source_case_id", "pair_id", "record_id",
+    "run_kind", "raw_case_sha256", "observation_sha256", "world_id",
+    "generation_family_id", "source_hash", "data_hash", "seed",
+})
+_RESERVED_METADATA_PARTS = ("sha256", "split_", "_split", "campaign_",
+                            "source_group", "source_case", "pair_id",
+                            "record_id", "world_id", "_hash")
 _FORBIDDEN = frozenset({
     "fault", "injection", "injected", "oracle", "truth", "true",
     "target", "label", "onset", "counterfactual", "capacity",
@@ -62,6 +71,9 @@ def _number(value, *, positive: bool, code: str) -> float | None:
 
 def _field(value: str) -> str:
     _require(isinstance(value, str) and _NAME.fullmatch(value) is not None, "INVALID_TELEMETRY_FIELD")
+    _require(value not in _RESERVED_METADATA_FIELDS
+             and not any(x in value for x in _RESERVED_METADATA_PARTS),
+             "PROTECTED_METADATA_FIELD:" + value)
     words = set(value.split("_"))
     _require(not (words & _FORBIDDEN), "ORACLE_OR_FAULT_TRUTH_FIELD:" + value)
     _require(not any(s in value for s in ("healthy_twin", "ground_truth", "u_current",
