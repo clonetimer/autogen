@@ -25,7 +25,7 @@ SCOPE = {
 }
 CANDIDATES = {
     "constant", "statistical", "linear", "tree", "random_forest",
-    "cnn1d", "tcn", "gru", "fuzzy_tsk",
+    "cnn1d", "tcn", "gru", "fuzzy_tsk", "isolation_forest",
 }
 IDENT = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,95}$")
 HASH = re.compile(r"^[0-9a-f]{64}$")
