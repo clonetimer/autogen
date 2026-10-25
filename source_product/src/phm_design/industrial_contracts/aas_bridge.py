@@ -178,10 +178,11 @@ class AASDetectorBridge:
         self._receipt = None
         self._channels = None
         self._labels = None
+        self._fit_attempted = False
 
     def fit(self, equipment, train_manifest, trial, train_features):
-        if self._plan is not None:
-            _reject("R94_REFIT_AFTER_TRAIN_FREEZE_FORBIDDEN")
+        if self._fit_attempted:
+            _reject("R94_REFIT_AFTER_TRAIN_ATTEMPT_FORBIDDEN")
         source_plan = compile_source_plan(equipment, train_manifest, trial)
         labels = trial["labels"]
         if len(labels) != 2 or labels[0] != trial["healthy_label"]:
@@ -216,6 +217,12 @@ class AASDetectorBridge:
         # choose to use train_y for classification, but never sees VAL.
         import numpy as np
         matrix = np.asarray(batch, dtype=np.float64)
+        if self.descriptor["decision_mode"] == "score_threshold" and (
+                not callable(getattr(self.detector, "needs_threshold_calibration", None))
+                or not callable(getattr(self.detector, "fit_threshold", None))
+                or not callable(getattr(self.detector, "score", None))):
+            _reject("R94_AAS_CALIBRATION_PROTOCOL_REQUIRED")
+        self._fit_attempted = True
         start = perf_counter()
         # Real AAS BaseDetector accepts positional train_y, not 'y='.
         self.detector.fit(matrix, train_y)
@@ -224,6 +231,9 @@ class AASDetectorBridge:
                 self.detector.needs_threshold_calibration()):
             scores = self.detector.score(matrix)
             self.detector.fit_threshold(scores)
+        if (self.descriptor["decision_mode"] == "score_threshold" and
+                self.detector.needs_threshold_calibration()):
+            _reject("R94_AAS_TRAIN_ONLY_THRESHOLD_NOT_CALIBRATED")
         elapsed = perf_counter() - start
         if elapsed > trial["budget"]["max_fit_seconds"]:
             _reject("R94_POSTHOC_FIT_WALL_TIME_LIMIT_EXCEEDED")
