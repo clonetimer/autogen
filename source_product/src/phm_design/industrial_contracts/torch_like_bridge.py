@@ -97,9 +97,13 @@ class TorchLikeTabularCandidate:
     the mathematical estimator or writes a parallel joblib serializer.
     """
 
-    def __init__(self, family: str, *, provider=None):
+    def __init__(self, family: str, *, provider=None, design_options=None):
         self.family = family
         self._provider = provider
+        # The design engine may supply only fixed, audited options. It must
+        # never pass arbitrary estimator keyword arguments or class paths.
+        self.design_options = {} if design_options is None else dict(design_options)
+        self._validated_design_options(family, self.design_options)
         self._runtime = None
         self._model = None
         self._plan = None
@@ -123,8 +127,9 @@ class TorchLikeTabularCandidate:
         descriptor = provider.get_estimator_info(algorithm)
         if descriptor["kind"] != required_kind:
             _reject("R94_PROVIDER_CAPABILITY_MISMATCH")
-        instance = provider.create_estimator(
-            algorithm, **self._constructor_options(algorithm, trial))
+        options = self._constructor_options(algorithm, trial)
+        options.update(self.design_options)
+        instance = provider.create_estimator(algorithm, **options)
         runtime = provider.as_runtime(instance)
         if not runtime.supports("fit") or not runtime.supports("predict"):
             _reject("R94_PROVIDER_MISSING_REQUIRED_NATIVE_OPERATION")
@@ -168,6 +173,26 @@ class TorchLikeTabularCandidate:
             "production_qualified": False,
         }
         return self
+
+    @staticmethod
+    def _validated_design_options(family, options):
+        from collections.abc import Mapping
+        if not isinstance(options, Mapping):
+            _reject("R95_INVALID_ALGORITHM_DESIGN_OPTIONS")
+        # Finite, predeclared hyperparameter alternatives: no arbitrary
+        # estimator kwargs and no opportunities to override random_state.
+        allowed = {
+            "linear": {"C": (0.1, 1.0)},
+            "tree": {"max_depth": (3, 5)},
+            "random_forest": {"n_estimators": (20, 40)},
+            "isolation_forest": {"n_estimators": (20, 40)},
+        }
+        for name, value in options.items():
+            if (name not in allowed.get(family, {}) or
+                    type(value) not in (int, float) or
+                    value not in allowed[family][name]):
+                _reject("R95_UNREGISTERED_OR_UNSAFE_DESIGN_HYPERPARAMETER")
+        return True
 
     @staticmethod
     def _constructor_options(algorithm, trial):
