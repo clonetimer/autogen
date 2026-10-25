@@ -42,6 +42,12 @@
         "role": "sensor",
         "unit": "raw_source_unit_unverified",
         "available_at_decision": true
+      },
+      {
+        "name": "vibration_peak_abs",
+        "role": "sensor",
+        "unit": "raw_source_unit_unverified",
+        "available_at_decision": true
       }
     ]
   },
