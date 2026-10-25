@@ -95,14 +95,14 @@ def read_vibration_mat(path):
     if len(found) != 1:
         _fail("R90_ONE_EXPLICIT_NAMED_VIBRATION_CHANNEL_REQUIRED")
     x = found[0]
-    if not 8192 <= len(x) <= 1_000_000 or not np.isfinite(x).all():
+    if not 200000 <= len(x) <= 300000 or not np.isfinite(x).all():
         _fail("R90_INVALID_SIGNAL_SAMPLES")
     return x
 
 
 def rms_observations(x):
     raw = np.asarray(x, dtype=float)
-    if raw.ndim != 1 or len(raw) < 8192 or not np.isfinite(raw).all():
+    if raw.ndim != 1 or len(raw) < 200000 or not np.isfinite(raw).all():
         _fail("R90_INVALID_RMS_INPUT")
     width = len(raw) // BINS
     frame = raw[:width * BINS].reshape(BINS, width)
