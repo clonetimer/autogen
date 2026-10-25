@@ -1,0 +1,52 @@
+name: R98 Physics-Gated Diagnostic Algorithm Graph Design
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial_contracts/physical_graph_design.py'
+      - 'source_product/tests/phm_design/test_r98_physical_graph_design.py'
+      - 'source_product/docs/R98_PHYSICAL_GRAPH_ALGORITHM_DESIGN.md'
+      - '.github/workflows/r98-physical-graph-design.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  physical-graph-execution:
+    name: Envelope/order/fusion source-only graph / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install actual sklearn/SciPy test dependencies (without bundling AAS/torch_like)
+        run: python -m pip install numpy scipy scikit-learn pytest
+      - name: Run R93-R98 regression, envelope/order numeric assertions and real sklearn model fits
+        run: >-
+          python -m pytest -q
+          tests/phm_design/test_r93_industrial_contracts.py
+          tests/phm_design/test_r94_torch_like_bridge.py
+          tests/phm_design/test_r94_aas_bridge.py
+          tests/phm_design/test_r95_diagnostic_design_engine.py
+          tests/phm_design/test_r96_diagnostic_pipeline_design.py
+          tests/phm_design/test_r97_signal_feature_design.py
+          tests/phm_design/test_r97_cwru_signal_probe.py
+          tests/phm_design/test_r98_physical_graph_design.py
+        env:
+          PYTHONPATH: src
