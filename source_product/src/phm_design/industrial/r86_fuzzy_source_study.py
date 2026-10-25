@@ -7,6 +7,7 @@ alarm-delay claim. All representations use deployment-observed sequence data.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 from typing import Mapping, Sequence
 
 import numpy as np
@@ -41,11 +42,17 @@ def _metric(y, prediction, environment, healthy_idx, nclasses):
 def run_fuzzy_source_study(task_spec: Mapping | TaskSpec,
                            records: Sequence[Mapping], *,
                            policy: FuzzyRulePolicy = FuzzyRulePolicy(),
-                           acceptance: DesignAcceptance = DesignAcceptance()):
+                           acceptance: DesignAcceptance = DesignAcceptance(),
+                           include_learned_premise: bool = False):
     """TRAIN-only LOEO protocol. No test data or model artifact is emitted."""
     if not isinstance(policy, FuzzyRulePolicy) or not isinstance(
             acceptance, DesignAcceptance):
         raise ValueError("R86_INVALID_COMPARISON_POLICY")
+    if type(include_learned_premise) is not bool:
+        raise ValueError("R87_INVALID_PREMISE_ABLATION_SWITCH")
+    if (include_learned_premise and policy.premise_steps == 0 or
+            not include_learned_premise and policy.premise_steps != 0):
+        raise ValueError("R87_EXPLICIT_PREMISE_TUNING_ABLATION_REQUIRED")
     if not isinstance(records, (list, tuple)) or not records:
         raise TaskSpecRejected("R86_EMPTY_TRAIN_SOURCE")
     raw = (task_spec.to_dict() if isinstance(task_spec, TaskSpec)
@@ -90,10 +97,22 @@ def run_fuzzy_source_study(task_spec: Mapping | TaskSpec,
     sequence = np.stack([deployment_sequence(m) for m in matrices])
     if len(sequence) < policy.max_rules + 2:
         raise TaskSpecRejected("R86_INSUFFICIENT_PHYSICAL_EXAMPLES")
+    fixed_premise_policy = replace(policy, premise_steps=0)
+    fuzzy_arms = [
+        ("fixed_fuzzy", "fixed", fixed_premise_policy),
+        ("adaptive_fuzzy", "adaptive", fixed_premise_policy),
+    ]
+    if include_learned_premise:
+        fuzzy_arms.extend([
+            ("fixed_fuzzy_learned_premise", "fixed", policy),
+            ("adaptive_fuzzy_learned_premise", "adaptive", policy),
+        ])
     predictions = {arm: np.full(len(y), -1, dtype=int)
-                   for arm in ("linear_reference", "fixed_fuzzy", "adaptive_fuzzy")}
+                   for arm in ("linear_reference",) +
+                   tuple(name for name, _, _ in fuzzy_arms)}
     fits = {arm: 0 for arm in predictions}
-    rule_traces = {arm: [] for arm in ("fixed_fuzzy", "adaptive_fuzzy")}
+    ridge_refits = {arm: 0 for arm in predictions}
+    rule_traces = {name: [] for name, _, _ in fuzzy_arms}
     for train, holdout in folds:
         if len(set(y[train])) != nclasses:
             raise TaskSpecRejected("R86_TRAIN_FOLD_MISSING_CLASS")
@@ -106,16 +125,22 @@ def run_fuzzy_source_study(task_spec: Mapping | TaskSpec,
         baseline.fit(features[train], y[train])
         predictions["linear_reference"][holdout] = baseline.predict(features[holdout])
         fits["linear_reference"] += 1
-        for mode in ("fixed", "adaptive"):
-            arm = mode + "_fuzzy"
-            model = FuzzyRuleClassifier(policy, mode=mode).fit(sequence[train], y[train])
+        for arm, mode, arm_policy in fuzzy_arms:
+            model = FuzzyRuleClassifier(arm_policy, mode=mode).fit(
+                sequence[train], y[train])
             predictions[arm][holdout] = model.predict(sequence[holdout])
             fits[arm] += model.audit["candidate_fit_count"]
+            ridge_refits[arm] += model.audit["total_consequent_ridge_refits"]
             rule_traces[arm].append({
                 "fold_heldout_environment": sorted(set(env[holdout].tolist())),
                 "selected_rule_count": model.audit["selected_rule_count"],
                 "tail_rules_pruned": model.audit["tail_rules_pruned"],
                 "candidate_fit_count": model.audit["candidate_fit_count"],
+                "ridge_consequent_refit_count": model.audit[
+                    "total_consequent_ridge_refits"],
+                "premise_gradient_steps_accepted": model.audit[
+                    "total_premise_updates_accepted"],
+                "premise_tuned": bool(arm_policy.premise_steps),
                 "parameter_count": model.audit["parameters_estimated"],
                 "heldout_group_overlap": False,
                 "source_train_only_rule_growth": True,
@@ -125,6 +150,7 @@ def run_fuzzy_source_study(task_spec: Mapping | TaskSpec,
             y, pred, env, labels.index(plan["ontology"]["healthy_label"]), nclasses),
         "accepted_by_train_oof_screen": None,
         "candidate_fits": fits[arm],
+        "consequent_ridge_refits": ridge_refits[arm],
         "estimated_model_parameters_by_fold": (
             [item["parameter_count"] for item in rule_traces[arm]]
             if arm in rule_traces else None),
@@ -143,12 +169,22 @@ def run_fuzzy_source_study(task_spec: Mapping | TaskSpec,
         "environment_count": len(folds),
         "physical_group_count": len(set(groups.tolist())),
         "same_folds_all_arms": True,
+        "four_cell_rule_premise_ablation": include_learned_premise,
+        "fuzzy_candidate_fits_equal_across_all_cells": all(
+            fits[name] == policy.max_rules * len(folds)
+            for name, _, _ in fuzzy_arms),
+        "ridge_refit_count_equal_across_premise_conditions": (
+            len(set(ridge_refits[name] for name, _, _ in fuzzy_arms)) == 1),
+        "premise_gradient_budget_per_rule_candidate": (
+            policy.premise_steps if include_learned_premise else 0),
         "fixed_adaptive_equal_candidate_fit_count": (
             fits["fixed_fuzzy"] == fits["adaptive_fuzzy"] ==
             policy.max_rules * len(folds)),
         "three_arms_complete": all((pred >= 0).all() for pred in predictions.values()),
         "policy": {"max_rules": policy.max_rules, "ridge": policy.ridge,
-                   "complexity_penalty": policy.complexity_penalty},
+                   "complexity_penalty": policy.complexity_penalty,
+                   "premise_steps": policy.premise_steps,
+                   "premise_learning_rate": policy.premise_learning_rate},
         "arms": scores,
         "compute_flops_or_runtime_equalized": False,
         "linear_reference_equal_fit_count": False,
