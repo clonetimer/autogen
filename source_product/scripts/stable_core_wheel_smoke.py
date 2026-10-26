@@ -17,8 +17,8 @@ import tempfile
 
 def main():
     import phm_design
-    assert phm_design.__version__ == "0.8.0rc1"
-    assert metadata.version("phm-design") == "0.8.0rc1"
+    assert phm_design.__version__ == "0.8.0"
+    assert metadata.version("phm-design") == "0.8.0"
     source = Path(phm_design.__file__).resolve()
     assert "site-packages" in str(source).lower(), ("wrong import source", source)
     examples = Path(__file__).resolve().parents[1] / "examples" / "industrial_contracts"
