@@ -1,4 +1,4 @@
-"""Clean-install 0.8.0rc1 smoke for a frozen release candidate.
+"""Clean-install 0.8.0 smoke for a frozen release candidate.
 
 Run this from source_product/scripts/ *after installing the BUILT wheel* in
 a fresh Python environment containing the pinned real torch_like provider.
@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 
-RC_VERSION = "0.8.0rc1"
+RC_VERSION = "0.8.0"
 
 
 def _run(argv, cwd):
