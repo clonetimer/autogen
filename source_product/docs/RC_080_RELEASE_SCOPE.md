@@ -1,3 +1,5 @@
+> Historical prerelease document (2026-10-25). The release decision has changed by explicit user request: private `torch_like` native training/save/reload is not a required 0.8.0 **Stable Core** capability. For CURRENT release criteria, see [STABLE_080_RELEASE.md](STABLE_080_RELEASE.md). This archived RC document is not a binding current-release checklist.
+
 # PHM AutoDesign 0.8.0rc1 — Stable 收敛 / 发布范围与验收门禁
 
 **状态：2026-10-25 正式启动软件 Stable 候选阶段；当前为 PRE-RELEASE（未正式发布/未创建 GitHub Release）。**
