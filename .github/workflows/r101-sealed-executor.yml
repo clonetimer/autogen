@@ -1,0 +1,58 @@
+name: R101 Sealed Evaluator Contract Research
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial_contracts/sealed_executor.py'
+      - 'source_product/tests/phm_design/test_r101_sealed_executor.py'
+      - 'source_product/docs/R101_SEALED_EXECUTOR_CONTRACT.md'
+      - '.github/workflows/r101-sealed-executor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-fixture:
+    name: R101 sealed fixture and R99 steward / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install bounded protocol dependencies (NO native private torch_like)
+        run: python -m pip install numpy==2.3.5 scipy scikit-learn==1.8.0 pytest==9.0.2
+      - name: Run R99-R101 experimental protocol regression
+        env:
+          PYTHONPATH: src
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+        run: >-
+          python -m pytest -q
+          tests/phm_design/test_r99_design_review.py
+          tests/phm_design/test_r100_guarded_revision.py
+          tests/phm_design/test_r101_sealed_executor.py
+      - name: Stable Core metadata cannot be silently rewritten
+        shell: python
+        run: |
+          import tomllib
+          from pathlib import Path
+          root = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          assert root["project"]["version"] == "0.8.0"
+          assert root["project"]["dependencies"] == [
+              "torch==2.10.0", "numpy==2.3.5", "scikit-learn==1.8.0"]
+          print("R101 research only; v0.8.0 Stable contract unchanged")
