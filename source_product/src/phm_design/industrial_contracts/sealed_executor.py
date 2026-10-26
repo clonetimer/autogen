@@ -66,7 +66,7 @@ def _check_frozen(frozen, trial):
 
 
 def _read_bundle(root):
-    if type(root) not in (str, Path):
+    if not isinstance(root, (str, Path)):
         _fail("R101_ARTIFACT_DIRECTORY_REQUIRED")
     path = Path(root)
     if path.is_symlink() or not path.is_dir():
