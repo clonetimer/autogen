@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Compatibility shim for legacy QUALIFY_RC.sh entry point.
-# Run ONLY after installing the candidate WHEEL and pinned REAL torch_like.
-# A broader 0.8.0rc1 release gate, including complete regression tests,
+# HISTORICAL COMPATIBILITY SCRIPT: OPTIONAL REAL PRIVATE torch_like acceptance ONLY.
+# 0.8.0 Stable Core does NOT require native private torch_like acceptance.
+# Invoke manually only when validating the optional provider integration after installation.
+# A broader 0.8.0 release gate, including complete regression tests,
 # lives in .github/workflows/stable-candidate-080.yml.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
