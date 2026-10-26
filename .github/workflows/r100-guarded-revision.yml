@@ -1,0 +1,52 @@
+name: R100 Guarded SOURCE Revision Research
+
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial_contracts/guarded_revision.py'
+      - 'source_product/tests/phm_design/test_r100_guarded_revision.py'
+      - 'source_product/docs/R100_GUARDED_SOURCE_REVISION.md'
+      - '.github/workflows/r100-guarded-revision.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guarded-source-revision:
+    name: R100 SOURCE-only gate / ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.12'
+          - os: windows-latest
+            python-version: '3.11'
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install SOURCE-only protocol fixture requirements (no private provider)
+        run: python -m pip install numpy==2.3.5 scipy scikit-learn==1.8.0 pytest==9.0.2
+      - name: Regress R99 and guarded R100 research without native-provider qualification
+        env:
+          PYTHONPATH: src
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+        run: python -m pytest -q tests/phm_design/test_r99_design_review.py tests/phm_design/test_r100_guarded_revision.py
+      - name: Assert current Stable Core version unchanged
+        shell: python
+        run: |
+          import tomllib
+          from pathlib import Path
+          root=tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          assert root["project"]["version"] == "0.8.0"
+          print("Stable Core metadata untouched; research-only R100 workflow")
