@@ -2,7 +2,7 @@
 
 **Current release scope:** reproducibly installable and regression-tested `phm-design` software framework, including the previously limited `0.7.0` SAT/Basilisk offline pathways, R93 source-data contracts, and R95 **SOURCE-only design proposals**. R94 native `torch_like` training/persistence depends on a **private optional package** and is **NOT part of the 0.8.0 Stable Core acceptance**; AAS application integration and independently qualified industrial model performance remain experimental. No actual equipment/flight-control use is qualified.
 
-See [0.8.0 official scope and verification](docs/STABLE_080_RELEASE.md). Older release and development narratives below are **historical documentation**, not current package status or test counts.
+Download the [published v0.8.0 Stable Core wheel, source archive, and SHA256 checksums](https://github.com/clonetimer/autogen/releases/tag/v0.8.0). See [official release scope and verification](docs/STABLE_080_RELEASE.md) and [post-release maintenance policy](docs/STABLE_080_POSTRELEASE_MAINTENANCE.md). Older release and development narratives below are **historical documentation**, not current package status or test counts.
 
 ---
 
