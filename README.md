@@ -1,19 +1,19 @@
-> **Release candidate / Stable convergence (2026-10-25):** `phm-design 0.8.0rc1` is a **pre-release software candidate**, not a published Stable release. The last qualified **Stable remains 0.7.0** with its restricted offline Basilisk scope. R93–R99 cross-industry design tools are experimental, opt-in, and do not certify industrial inference, physical asset identity or production safety. See [0.8.0rc1 Release Gate](source_product/docs/RC_080_RELEASE_SCOPE.md) and [RC CI](.github/workflows/stable-candidate-080.yml). No GitHub Release/tag is published until all RC gates are green.
+> **Current software release: `phm-design 0.8.0 Stable Core`.** The supported **core framework** covers frozen package/runtime and command-line interfaces, original `0.7.0` limited offline simulation capability, verified R93 data contracts and **SOURCE-only diagnostic design proposal**, Windows/Linux clean-wheel usage, and regression-tested research APIs. **Actual `torch_like` native fit/save/reload and full AAS host integration are OPTIONAL EXPERIMENTAL integrations, not 0.8.0 Stable guarantees.** No independent real industrial equipment quality/flight-safety qualification. See [0.8.0 Stable release contract](source_product/docs/STABLE_080_RELEASE.md).
 
-# PHM AutoDesign — `phm-design` 0.7.0
+# PHM AutoDesign — `phm-design` 0.8.0 Stable Core
 
 > Repository `clonetimer/autogen` hosts the PHM AutoDesign (`phm-design`) source tree and release-delivery records.
 >
 > **Research-only / NOT for flight safety.** This is a research-grade multi-family compositional network design toolkit for Prognostics and Health Management (PHM). It must **not** be used for real spacecraft flight-safety decisions or online real-time closed-loop control. See [Safety & Scope](#safety--scope).
 
-PHM AutoDesign designs and qualifies multi-family compositional diagnostic networks, targeting the spacecraft (SAT / Basilisk simulation) domain. The frozen **`0.7.0 Stable`** release has limited qualification for 15 specified SAT/Basilisk simulation-domain offline diagnostic cases under `RELEASE_DECISION_R60.md`; `0.6.0` is retained as a rollback artifact.
+PHM AutoDesign designs and qualifies multi-family compositional diagnostic networks, targeting the spacecraft (SAT / Basilisk simulation) domain. The prior **`0.7.0 Stable`** release has limited qualification for 15 specified SAT/Basilisk simulation-domain offline diagnostic cases under `RELEASE_DECISION_R60.md`; `0.6.0` is retained as a rollback artifact.
 
 ## Package
 
 | | |
 |---|---|
 | **Name** | `phm-design` |
-| **Version** | `0.7.0` |
+| **Version** | `0.8.0` |
 | **Python** | `>=3.11,<3.14` (tested on CPython 3.11 / 3.12) |
 | **Core deps** | `torch==2.10.0`, `numpy==2.3.5`, `scikit-learn==1.8.0` |
 | **Optional** | `dev` (pytest), `simulation` (Basilisk `bsk`, `colorama`, `sgp4`), `automl` (optuna) |
@@ -29,12 +29,12 @@ python -m pip install --no-build-isolation --no-deps .
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q tests/phm_design
 ```
 
-For the released wheel/sdist, see `artifacts/` and [README_RELEASE_R60.md](README_RELEASE_R60.md).
+For the **0.8.0** wheel/sdist, see the [Stable 0.8.0 release](https://github.com/clonetimer/autogen/releases/tag/v0.8.0) once its GitHub Actions publication completes. The historical **0.7.0** qualified wheel/sdist remain in `artifacts/` and [README_RELEASE_R60.md](README_RELEASE_R60.md); these are not 0.8.0 binaries.
 
 ## Safety & Scope
 
 - **Do not use for real flight-safety decisions or online closed-loop control.** Support is limited to offline discrimination over whole-trajectory data within supported simulation distributions.
-- `0.7.0` is a **limited simulation-domain Stable** release, not certification for real flight-safety decisions, online diagnosis, or arbitrary datasets. A newly trained `design` model is `DEVELOPMENT_ONLY` and does **not** automatically inherit the bundled 15-cell diagnostic qualification.
+- The retained `0.7.0` is a **limited simulation-domain Stable** release, not certification for real flight-safety decisions, online diagnosis, or arbitrary datasets. A newly trained `design` model is `DEVELOPMENT_ONLY` and does **not** automatically inherit the bundled 15-cell diagnostic qualification.
 - Do not re-label past failed evaluation worlds as new blind tests, and do not expand Stable support scope without fresh independent training / calibration / sealing evidence.
 
 ## Repository layout
