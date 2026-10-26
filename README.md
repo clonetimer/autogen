@@ -29,7 +29,7 @@ python -m pip install --no-build-isolation --no-deps .
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q tests/phm_design
 ```
 
-For the **0.8.0** wheel/sdist, see the [Stable 0.8.0 release](https://github.com/clonetimer/autogen/releases/tag/v0.8.0) once its GitHub Actions publication completes. The historical **0.7.0** qualified wheel/sdist remain in `artifacts/` and [README_RELEASE_R60.md](README_RELEASE_R60.md); these are not 0.8.0 binaries.
+The published **0.8.0 Stable Core** wheel, source archive and matching checksums are available in the [official v0.8.0 Release](https://github.com/clonetimer/autogen/releases/tag/v0.8.0). The tag pins commit `5248049275167bbcf396fac775bcb71a60c3e76e`. See the [post-release maintenance and research-PR policy](source_product/docs/STABLE_080_POSTRELEASE_MAINTENANCE.md). The historical **0.7.0** qualified wheel/sdist remain in `artifacts/` and [README_RELEASE_R60.md](README_RELEASE_R60.md); these are not 0.8.0 binaries.
 
 ## Safety & Scope
 
@@ -71,12 +71,13 @@ and a sealed external-evidence review gate (R99). See
 [source_product/docs/R99_EXPLAIN_REVISE_VALIDATE.md](source_product/docs/R99_EXPLAIN_REVISE_VALIDATE.md).
 
 **Merging research code into `main` does not promote it into the frozen
-`phm-design 0.7.0 Stable` release or extend the release's 15 qualified
-Basilisk simulation-domain offline cases.** Industrial equipment identity,
+`phm-design 0.7.0` 15-case Basilisk simulation-domain qualification.**
+The published `phm-design 0.8.0 Stable Core` distributes R93–R99 research APIs,
+but those APIs have no additional equipment-specific model qualification. Industrial equipment identity,
 predictions from frozen executables, authentic cross-equipment external
 generalization, end-to-end resource fairness and production approval are
 not established by these additions. No deployment/flight-safety claim is made.
-The existing limited Stable release artifacts and version remain unchanged.
+The previous `0.7.0` limited Stable artifacts and qualification evidence are retained unchanged for rollback; the separately published `0.8.0` Stable Core package is the current software version.
 
 ## License
 
