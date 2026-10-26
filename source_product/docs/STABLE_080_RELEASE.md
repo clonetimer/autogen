@@ -1,6 +1,6 @@
 # phm-design 0.8.0 Stable Core — Release Contract
 
-**Current target release: v0.8.0, software Core Stable.**
+**Published release: [v0.8.0](https://github.com/clonetimer/autogen/releases/tag/v0.8.0), 2026-10-26; software Core Stable.**
 **Approved scope change:** The user explicitly waived native private `torch_like` fit/predict/save/reload from the Stable release gate. It remains an optional, **unqualified** research integration and is not marketed as part of 0.8.0 Stable.
 
 ## What "Stable" means here
@@ -48,8 +48,10 @@ py -3.11 -m venv .venv
 
 For the SOURCE-only example, run `source_product/scripts/stable_core_wheel_smoke.py` from the source checkout after installing the built wheel; it uses the synthetic `source_product/examples/industrial_contracts` sample cards **only to test reproducibility**, not device accuracy.
 
-## Actual release process
+## Completed release process and maintenance rule
 
-`.github/workflows/stable-candidate-080.yml` is the **software Core Stable publication workflow** (despite historical filename). On PR it performs a **dry-run build and acceptance** without publishing. On merge to `main` with the explicitly approved squash title beginning `release: phm-design 0.8.0 Stable Core`, it repeats the exact required gates and, only on success, uses GitHub's own `GITHUB_TOKEN` with `contents:write` to tag the merge commit and attach audited artifacts to a GitHub Release. GitHub repository workflow-write permissions may separately block this publication; if so, the source is still merged but the Release must be clearly reported as blocked, not invented.
+The actual publication workflow is [`.github/workflows/stable-core-080.yml`](../../.github/workflows/stable-core-080.yml), not the historical `stable-candidate-080.yml` (removed after RC). PR-triggered checks are build/acceptance only. The release run on `main` succeeded: [Actions #40252242491](https://github.com/clonetimer/autogen/actions/runs/40252242491). The `v0.8.0` tag points to **`5248049275167bbcf396fac775bcb71a60c3e76e`**, and the [Release](https://github.com/clonetimer/autogen/releases/tag/v0.8.0) published `phm_design-0.8.0-py3-none-any.whl`, `phm_design-0.8.0.tar.gz`, and `SHA256SUMS`. All nine same-commit check runs succeeded, including release publication.
+
+**Post-release edits MUST NOT retag `v0.8.0`, overwrite released assets, modify the frozen 0.7.0 15-case evidence, or silently expand Stable capability claims.** Maintenance on main after the tag is not automatically part of the published v0.8.0 wheel. For subsequent fixes, use a separate patch release with its own checksum and test evidence. See [post-release maintenance policy](STABLE_080_POSTRELEASE_MAINTENANCE.md).
 
 All artifacts are research-only and **not for flight safety or real equipment safety-critical control**.
