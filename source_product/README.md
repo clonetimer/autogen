@@ -1,3 +1,13 @@
+# PHM AutoDesign 0.8.0 Stable Core
+
+**Current release scope:** reproducibly installable and regression-tested `phm-design` software framework, including the previously limited `0.7.0` SAT/Basilisk offline pathways, R93 source-data contracts, and R95 **SOURCE-only design proposals**. R94 native `torch_like` training/persistence depends on a **private optional package** and is **NOT part of the 0.8.0 Stable Core acceptance**; AAS application integration and independently qualified industrial model performance remain experimental. No actual equipment/flight-control use is qualified.
+
+See [0.8.0 official scope and verification](docs/STABLE_080_RELEASE.md). Older release and development narratives below are **historical documentation**, not current package status or test counts.
+
+---
+
+## Historical research / developer notes
+
 # 0.7.0.dev10 — R51 研发候选（非 RC / Stable）
 
 本轮新增按外部工况族留出验证、显式数值秩支持描述、声明观测合同下的精确标签冲突审计。默认世界分组行为保持兼容，Stable0.6.0与已冻结dev9未覆盖。
