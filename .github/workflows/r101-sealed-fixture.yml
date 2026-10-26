@@ -1,0 +1,42 @@
+name: R101 Sealed Fixture Execution Research
+on:
+  pull_request:
+    paths:
+      - 'source_product/src/phm_design/industrial_contracts/sealed_fixture_execution.py'
+      - 'source_product/tests/phm_design/test_r101_sealed_fixture_execution.py'
+      - 'source_product/docs/R101_SEALED_FIXTURE_EXECUTION.md'
+      - '.github/workflows/r101-sealed-fixture.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-executable-receipts:
+    name: R101 sealed fixture / ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: '3.11'}
+          - {os: ubuntu-latest, python: '3.12'}
+          - {os: windows-latest, python: '3.11'}
+    defaults:
+      run:
+        working-directory: source_product
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install pytest==9.0.2
+      - name: Execute actual safe fixture scorer and tamper tests
+        env:
+          PYTHONPATH: src
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+        run: python -m pytest -q tests/phm_design/test_r101_sealed_fixture_execution.py
+      - name: Assert release metadata unchanged
+        shell: python
+        run: |
+          import tomllib
+          from pathlib import Path
+          assert tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version']=='0.8.0'
